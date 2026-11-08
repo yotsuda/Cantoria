@@ -1,0 +1,13 @@
+.vscode/**
+src/**
+test/**
+out-test/**
+*.ts
+**/*.map
+tsconfig.json
+tsconfig.test.json
+esbuild.js
+node_modules/**
+*.vsix
+# The bundled program (bin/<rid>/) ships; its debug symbols do not.
+**/*.pdb

@@ -1,0 +1,111 @@
+// Copyright 2026 Yoshifumi Tsuda
+// Licensed under the Apache License, Version 2.0. See LICENSE in the repository root.
+
+import { describe, it } from 'node:test';
+import * as assert from 'node:assert/strict';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+import {
+    neutrinoFolderProblems, parseLine, programCandidates, requestLine, rid, scoreProblems, serveArgs, voiceKey, voicesIn,
+} from '../src/core';
+
+const join = (...parts: string[]) => parts.join('\\');
+
+describe('the score a caller hands sing', () => {
+    const score = { sampleRate: 48000, language: 'ja', notes: [
+        { start: 0, duration: 0.5, pitch: 60, lyric: 'ゆ' }, { start: 0.5, duration: 0.25, pitch: 62, melisma: true },
+    ] };
+
+    it('is checked for its shape only; the music is the engine\'s to judge', () => {
+        assert.deepEqual(scoreProblems(score), []);
+        assert.deepEqual(scoreProblems(null), ['the score is not an object']);
+        assert.deepEqual(scoreProblems({}), ['the score has no "notes" array']);
+        assert.deepEqual(scoreProblems({ notes: [] }), ['the score has no notes']);
+        assert.deepEqual(scoreProblems({ notes: [{ start: 0, duration: 1, pitch: 60 }] }), ['note 0: no lyric (write one, or mark the note melisma)']);
+        assert.deepEqual(scoreProblems({ notes: [{ start: 'a', duration: 1, pitch: 60, lyric: 'x' }] }), ['note 0: "start" is not a number']);
+    });
+
+    it('is keyed by the voice and its bytes', () => {
+        const a = voiceKey(score, 'MERROW');
+        assert.match(a, /^[0-9a-f]{40}$/);
+        assert.equal(voiceKey(score, 'MERROW'), a);
+        assert.notEqual(voiceKey(score, 'OTHER'), a);
+        assert.notEqual(voiceKey({ ...score, notes: score.notes.slice(0, 1) }, 'MERROW'), a);
+    });
+});
+
+describe('the engine\'s wire', () => {
+    it('reads the answers and leaves the chatter alone', () => {
+        assert.deepEqual(parseLine('{"ready":true,"backend":"neutrino","voices":["MERROW"],"outDir":"x"}'), { ready: true, backend: 'neutrino', voices: ['MERROW'], outDir: 'x' });
+        assert.deepEqual(parseLine('{"id":"k","wav":"C:\\\\v\\\\k.wav","duration":8,"sampleRate":48000,"seconds":0.4}'), { id: 'k', wav: 'C:\\v\\k.wav', duration: 8, sampleRate: 48000, seconds: 0.4 });
+        assert.deepEqual(parseLine('{"id":"k","error":"no lyric"}'), { id: 'k', error: 'no lyric' });
+        assert.equal(parseLine('cantilena: serving neutrino from …'), null);
+        assert.equal(parseLine('{broken'), null);
+    });
+
+    it('writes one request a line and names the WAV by the key', () => {
+        const line = requestLine('k1', { notes: [] }, 'MERROW', 'C:\\v\\k1.wav');
+        assert.ok(line.endsWith('\n'));
+        assert.deepEqual(JSON.parse(line), { id: 'k1', score: { notes: [] }, voice: 'MERROW', output: 'C:\\v\\k1.wav' });
+    });
+
+    it('starts the engine resident, with the GPU unless told not to', () => {
+        assert.deepEqual(serveArgs('C:\\v', true, 4), ['serve', '--out-dir', 'C:\\v', '--threads', '4']);
+        assert.deepEqual(serveArgs('C:\\v', false, 0), ['serve', '--out-dir', 'C:\\v', '--threads', '1', '--cpu']);
+    });
+});
+
+describe('where the program and the voices are', () => {
+    it('names the bundled build by the machine', () => {
+        assert.equal(rid('win32', 'x64'), 'win-x64');
+        assert.equal(rid('darwin', 'arm64'), 'osx-arm64');
+        assert.equal(rid('linux', 'x64'), 'linux-x64');
+        assert.equal(rid('freebsd', 'x64'), undefined);
+    });
+
+    it('looks for the program in the setting, the bundle, then the PATH', () => {
+        assert.deepEqual(programCandidates('win32', 'x64', 'C:\\ext', 'C:\\dev\\cantilena.exe', join),
+            ['C:\\dev\\cantilena.exe', 'C:\\ext\\bin\\win-x64\\cantilena.exe', 'cantilena.exe']);
+        assert.deepEqual(programCandidates('darwin', 'arm64', '/ext', '  ', (...p) => p.join('/')),
+            ['/ext/bin/osx-arm64/cantilena', 'cantilena']);
+    });
+
+    it('lists the voices as the engine does: the model folders holding an info.toml', () => {
+        const tree = new Set(['N\\model', 'N\\model\\MERROW\\info.toml', 'N\\model\\KIRITAN\\info.toml', 'N\\model\\_broken']);
+        const dirs = (d: string) => d === 'N\\model' ? ['_broken', 'MERROW', 'KIRITAN'] : [];
+        assert.deepEqual(voicesIn('N', dirs, p => tree.has(p), join), ['KIRITAN', 'MERROW']);
+        assert.deepEqual(voicesIn('X', dirs, p => tree.has(p), join), []);
+    });
+
+    it('says what a NEUTRINO folder lacks', () => {
+        assert.deepEqual(neutrinoFolderProblems('', () => true, join), ['no NEUTRINO folder is set (Cantilena: Choose NEUTRINO Folder…)']);
+        assert.deepEqual(neutrinoFolderProblems('N', () => false, join), ['the NEUTRINO folder does not exist: N']);
+        const has = new Set(['N', 'N\\bin\\neutrino_server.exe']);
+        assert.deepEqual(neutrinoFolderProblems('N', p => has.has(p), join), ['not a NEUTRINO (Tau v3.2+) folder: bin\\neutrino_client.exe is missing under N']);
+        const all = new Set(['N', 'N\\bin\\neutrino_server.exe', 'N\\bin\\neutrino_client.exe', 'N\\bin\\musicXMLtoLabel.exe', 'N\\settings\\dic']);
+        assert.deepEqual(neutrinoFolderProblems('N', p => all.has(p), join), []);
+    });
+});
+
+describe('the manifest', () => {
+    const manifest = JSON.parse(fs.readFileSync(path.join(__dirname, '..', '..', 'package.json'), 'utf8'));
+    const props = manifest.contributes.configuration.properties;
+    const commands = (manifest.contributes.commands as { command: string }[]).map(c => c.command);
+
+    it('holds the settings, each engine setting machine-overridable', () => {
+        for (const name of ['cantilena.neutrinoFolder', 'cantilena.voice', 'cantilena.gpu', 'cantilena.threads', 'cantilena.program']) {
+            assert.ok(props[name], `${name} is contributed`);
+            assert.equal(props[name].scope, 'machine-overridable', name);
+        }
+        assert.equal(props['cantilena.voice'].default, 'MERROW');
+        assert.match(props['cantilena.neutrinoFolder'].markdownDescription, /command:cantilena\.chooseNeutrinoFolder/);
+        assert.match(props['cantilena.voice'].markdownDescription, /command:cantilena\.chooseVoice/);
+    });
+
+    it('contributes the four commands and starts on nothing but them and the API', () => {
+        assert.deepEqual(commands.sort(), ['cantilena.checkSetup', 'cantilena.chooseNeutrinoFolder', 'cantilena.chooseVoice', 'cantilena.forgetVoices']);
+        assert.deepEqual(manifest.activationEvents, []);
+        assert.equal(manifest.main, './out/extension.js');
+        assert.equal(manifest.license, 'Apache-2.0');
+    });
+});

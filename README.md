@@ -15,6 +15,9 @@ and the one thing this library adds.
 - A **command-line tool** (`cantilena`) that reads that score as JSON and
   writes a WAV, so any editor or notation program can call it without linking
   to it.
+- A **VS Code extension** (`yotsuda.cantilena`, in `editors/vscode`) that carries the
+  CLI, holds the settings (where NEUTRINO is, which voice) and sings for other
+  extensions through an API — how Lily# sings its lyrics.
 - **Backends** behind the same contract:
   - `neutrino` — drives a user's own installation of
     [NEUTRINO](https://studio-neutrino.com/) (closed-source freeware, Japanese

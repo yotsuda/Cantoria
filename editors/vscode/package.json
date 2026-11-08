@@ -1,0 +1,107 @@
+{
+  "name": "cantilena",
+  "displayName": "Cantilena Singing Voice",
+  "description": "Sings the lyrics of a score for notation extensions such as Lily#: notes with syllables in, a voice out — through your own installation of NEUTRINO (Japanese voices). Open source (Apache-2.0); runs locally on Windows.",
+  "version": "0.1.0",
+  "publisher": "yotsuda",
+  "preview": true,
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yotsuda/cantilena.git"
+  },
+  "bugs": {
+    "url": "https://github.com/yotsuda/cantilena/issues"
+  },
+  "homepage": "https://github.com/yotsuda/cantilena#readme",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "keywords": [
+    "singing",
+    "vocal synthesis",
+    "lyrics",
+    "sheet music",
+    "lilysharp",
+    "neutrino"
+  ],
+  "activationEvents": [],
+  "main": "./out/extension.js",
+  "contributes": {
+    "configuration": {
+      "title": "Cantilena",
+      "properties": {
+        "cantilena.neutrinoFolder": {
+          "type": "string",
+          "default": "",
+          "scope": "machine-overridable",
+          "markdownDescription": "The folder of your NEUTRINO installation (Tau, v3.2 or later): the one holding `bin\\`, `model\\` and `settings\\`. NEUTRINO is not bundled — it is free software of STUDIO NEUTRINO under its own terms, from [studio-neutrino.com](https://studio-neutrino.com/). Empty: nothing can be sung.\n\n**[Choose the folder…](command:cantilena.chooseNeutrinoFolder)**"
+        },
+        "cantilena.voice": {
+          "type": "string",
+          "default": "MERROW",
+          "scope": "machine-overridable",
+          "markdownDescription": "The voice the lyrics are sung in: a folder under NEUTRINO's `model\\` (MERROW ships with NEUTRINO; other voices are their authors' work under their authors' terms, installed there by you).\n\n**[Choose a voice…](command:cantilena.chooseVoice)**"
+        },
+        "cantilena.gpu": {
+          "type": "boolean",
+          "default": true,
+          "scope": "machine-overridable",
+          "markdownDescription": "Render on the GPU when NEUTRINO can (CUDA). Off: the CPU, slower by an order of magnitude."
+        },
+        "cantilena.threads": {
+          "type": "number",
+          "default": 4,
+          "minimum": 1,
+          "maximum": 64,
+          "scope": "machine-overridable",
+          "markdownDescription": "CPU threads NEUTRINO renders with."
+        },
+        "cantilena.program": {
+          "type": "string",
+          "default": "",
+          "scope": "machine-overridable",
+          "markdownDescription": "For developers: the `cantilena` program to run instead of the one bundled with this extension (a build from the repository)."
+        }
+      }
+    },
+    "commands": [
+      {
+        "command": "cantilena.chooseNeutrinoFolder",
+        "category": "Cantilena",
+        "title": "Choose NEUTRINO Folder…"
+      },
+      {
+        "command": "cantilena.chooseVoice",
+        "category": "Cantilena",
+        "title": "Choose Voice…"
+      },
+      {
+        "command": "cantilena.checkSetup",
+        "category": "Cantilena",
+        "title": "Check Setup"
+      },
+      {
+        "command": "cantilena.forgetVoices",
+        "category": "Cantilena",
+        "title": "Forget Rendered Voices"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run check-types && node esbuild.js --production",
+    "compile": "node esbuild.js",
+    "check-types": "tsc --noEmit",
+    "test": "tsc -p tsconfig.test.json && node --test \"out-test/test/**/*.test.js\"",
+    "watch": "node esbuild.js --watch"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.90.0",
+    "esbuild": "^0.25.0",
+    "typescript": "^5.3.0"
+  }
+}

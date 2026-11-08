@@ -33,3 +33,10 @@ voices/
 
 # Local scratch
 scratch/
+
+# The VS Code extension's build (editors/vscode); the bundled program is under bin/ above
+node_modules/
+out/
+out-test/
+*.vsix
+artifacts/

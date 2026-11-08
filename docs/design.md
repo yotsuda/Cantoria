@@ -127,6 +127,33 @@ life of one process and talks **JSON lines** on stdin/stdout, UTF-8 both ways:
 - Measured 2026-11-08 (RTX 5070 Ti, the 8 s example): first request 3.8 s,
   the next 0.4 s.
 
+### 4.2 The VS Code extension (`editors/vscode`, `yotsuda.cantilena`)
+
+The engine's home for editors (the owner's decision 2026-11-08, the shape the Lily#
+OMR reader took): it carries the `cantilena` program (win-x64 to begin with, under
+`bin/<rid>/`), holds the settings an engine needs — `cantilena.neutrinoFolder`,
+`cantilena.voice`, `cantilena.gpu`, `cantilena.threads`, and `cantilena.program` for a
+developer's build — with pickers (**Choose NEUTRINO Folder…**, **Choose Voice…**) and a
+**Check Setup**, and sings for other extensions through the API its `activate` returns:
+
+```ts
+{
+  version: string, apiVersion: 1,
+  status(): Promise<{ ready, program, backend: 'neutrino', neutrinoFolder, voice, voices, problems }>,
+  sing(score, { voice? }): Promise<{ wav, duration, sampleRate, cached }>,   // the README's score
+  release(): void,                                                          // let the engine go
+}
+```
+
+Inside, one resident `serve` (§4.1) per extension host (`src/engine.ts`), started on the first
+`sing`, its WAVs named by the key of the score and the voice under the extension's storage, so
+a phrase is sung once per machine (**Forget Rendered Voices** clears them); a changed engine
+setting lets the engine go. `sing` throws one sentence when it cannot (no program, no NEUTRINO
+folder, a score the engine refused). Lily# calls it from its preview (its
+`docs/singing-design.md` §5); any other notation extension can. `tools/pack-extension.ps1`
+publishes the program self-contained into `editors/vscode/bin/win-x64` and packs the VSIX
+(`vsce package --target win32-x64`); publishing to the Marketplace is the owner's.
+
 ## 5. How a caller uses it (Lily#'s plan)
 
 1. The editor resolves the part that sings (the one the score's `lyrics`

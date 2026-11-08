@@ -1,0 +1,33 @@
+// Bundles src/extension.ts into out/extension.js (vscode stays external). `--production` minifies,
+// `--watch` rebuilds on change.
+const esbuild = require('esbuild');
+
+const production = process.argv.includes('--production');
+const watch = process.argv.includes('--watch');
+
+async function main() {
+    const ctx = await esbuild.context({
+        entryPoints: ['src/extension.ts'],
+        bundle: true,
+        format: 'cjs',
+        minify: production,
+        sourcemap: !production,
+        sourcesContent: false,
+        platform: 'node',
+        target: 'node20',
+        outfile: 'out/extension.js',
+        external: ['vscode'],
+        logLevel: 'warning',
+    });
+    if (watch) {
+        await ctx.watch();
+    } else {
+        await ctx.rebuild();
+        await ctx.dispose();
+    }
+}
+
+main().catch(e => {
+    console.error(e);
+    process.exit(1);
+});
