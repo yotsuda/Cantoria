@@ -37,6 +37,32 @@ public class ScoreJsonTests
     }
 
     [Fact]
+    public void Reads_ATinyOverlap_AsTouching_AndARealOneAsAProblem()
+    {
+        // A caller that rounds starts and durations apart (sixteenths at 132 are repeating
+        // decimals) hands over notes that overlap by a millionth — not music, rounding. Read
+        // trims the earlier note to the next one's start when the overlap is under a millisecond
+        // (Lily# session 1144, owner's report "note 23 at 6.591 s starts before note 22 ends").
+        var tidy = ScoreJson.Read("""
+            { "notes": [
+              { "start": 6.25, "duration": 0.113637, "pitch": 60, "lyric": "あ" },
+              { "start": 6.363636, "duration": 0.227273, "pitch": 62, "lyric": "い" },
+              { "start": 6.590909, "duration": 0.5, "pitch": 64, "lyric": "う" } ] }
+            """);
+        Assert.Empty(tidy.Validate());
+        Assert.Equal(tidy.Notes[1].Start, tidy.Notes[0].End, 12);
+        Assert.Equal(tidy.Notes[2].Start, tidy.Notes[1].End, 12);
+        Assert.Equal(0.5, tidy.Notes[2].Duration);              // the last note is left alone
+
+        var overlapping = ScoreJson.Read("""
+            { "notes": [
+              { "start": 0, "duration": 0.51, "pitch": 60, "lyric": "あ" },
+              { "start": 0.5, "duration": 0.5, "pitch": 62, "lyric": "い" } ] }
+            """);
+        Assert.Contains(overlapping.Validate(), p => p.Contains("starts before note 0 ends"));
+    }
+
+    [Fact]
     public void Writes_WhatItReads_LyricsUnescaped()
     {
         var score = ScoreJson.Read(Yuki);

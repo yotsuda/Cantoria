@@ -34,6 +34,11 @@ melisma flag, breath flag. Decisions:
   a plain CV voice.
 - **Rests are gaps.** No rest objects. Breaths are flags, because a breath is
   a phrase boundary the singer acts on, not silence.
+- **A caller's rounding is not an overlap.** `ScoreJson.Read` runs `SungScore.Tidy`:
+  a note starting less than a millisecond before the one before it ends has that
+  note cut to its start (the two touched in the caller's music; its start and
+  duration were rounded apart — sixteenths at 132 are repeating decimals). A longer
+  overlap is still a `Validate` problem.
 
 ## 3. Pipeline
 

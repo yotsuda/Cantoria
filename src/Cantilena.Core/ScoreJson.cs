@@ -25,14 +25,15 @@ public static class ScoreJson
         AllowTrailingCommas = true,
     };
 
-    /// <summary>Reads a score; throws <see cref="JsonException"/> on malformed JSON.</summary>
+    /// <summary>Reads a score, a caller's rounding taken out (<see cref="SungScore.Tidy"/>); throws
+    /// <see cref="JsonException"/> on malformed JSON.</summary>
     public static SungScore Read(string json)
     {
         var dto = JsonSerializer.Deserialize<ScoreDto>(json, Options)
             ?? throw new JsonException("the score is null");
         var notes = (dto.Notes ?? []).Select(n => new SungNote(
             n.Start, n.Duration, n.Pitch, n.Lyric, n.Melisma ?? false, n.Breath ?? false)).ToList();
-        return new SungScore(notes, dto.Language ?? "ja", dto.SampleRate ?? 44100);
+        return new SungScore(notes, dto.Language ?? "ja", dto.SampleRate ?? 44100).Tidy();
     }
 
     /// <summary>Writes a score as indented JSON, lyrics unescaped.</summary>

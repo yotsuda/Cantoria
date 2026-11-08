@@ -41,6 +41,35 @@ public sealed record SungScore(
     /// <summary>Seconds at which the last note ends; 0 for an empty score.</summary>
     public double End => Notes.Count == 0 ? 0 : Notes[^1].End;
 
+    /// <summary>An overlap shorter than this is a caller's rounding, not music (<see cref="Tidy"/>).</summary>
+    public const double RoundingOverlap = 0.001;
+
+    /// <summary>
+    /// The score with a caller's rounding taken out: where a note starts less than
+    /// <see cref="RoundingOverlap"/> before the note before it ends, that earlier note is cut to
+    /// end where this one starts — the notes touched in the caller's music, and its start and
+    /// duration were rounded apart (sixteenths at 132 to the quarter are repeating decimals; Lily#
+    /// session 1144, owner's report "note 23 at 6.591 s starts before note 22 ends (6.591 s)"). A
+    /// longer overlap is left for <see cref="Validate"/> to report. The same score when nothing
+    /// needed cutting.
+    /// </summary>
+    public SungScore Tidy()
+    {
+        List<SungNote>? notes = null;
+        for (int i = 1; i < Notes.Count; i++)
+        {
+            var prev = (notes ?? Notes)[i - 1];
+            double overlap = prev.End - Notes[i].Start;
+            if (overlap <= 0 || overlap >= RoundingOverlap)
+            {
+                continue;
+            }
+            notes ??= Notes.ToList();
+            notes[i - 1] = prev with { Duration = Math.Max(RoundingOverlap, Notes[i].Start - prev.Start) };
+        }
+        return notes is null ? this : this with { Notes = notes };
+    }
+
     /// <summary>
     /// The score's problems, in order, as messages a caller can show; empty when it is sound.
     /// Checked: notes in time order and not overlapping, durations positive, pitches in MIDI
