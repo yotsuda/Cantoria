@@ -34,7 +34,13 @@ public sealed class DiffSingerVoice : IDisposable
         }
         Options = options;
         Folder = options.Folder;
-        Provider = options.Provider == OnnxProvider.Cpu ? OnnxProviders.CpuName : OnnxProviders.DirectMLName + "?";
+        Provider = options.Provider switch
+        {
+            OnnxProvider.Cpu => OnnxProviders.CpuName,
+            OnnxProvider.CoreML => OnnxProviders.CoreMLName + "?",
+            OnnxProvider.DirectML => OnnxProviders.DirectMLName + "?",
+            _ => OperatingSystem.IsWindows() ? OnnxProviders.DirectMLName + "?" : OnnxProviders.CpuName,
+        };
         Acoustic = DsConfig.Load(Path.Combine(Folder, "dsconfig.yaml"));
         if (Acoustic.Acoustic is null)
         {
@@ -112,12 +118,12 @@ public sealed class DiffSingerVoice : IDisposable
         {
             return new InferenceSession(path, _sessionOptions);
         }
-        catch (Exception e) when (Provider == OnnxProviders.DirectMLName && Options.Provider == OnnxProvider.Auto && OnnxProviders.IsUnavailable(e))
+        catch (Exception e) when (Provider != OnnxProviders.CpuName && Options.Provider == OnnxProvider.Auto && OnnxProviders.IsUnavailable(e))
         {
             _sessionOptions.Dispose();
             _sessionOptions = new SessionOptions();
+            ProviderNote = $"{Provider} could not open {Path.GetFileName(path)} ({e.Message.Split('\n')[0].Trim()}); the CPU sings";
             Provider = OnnxProviders.CpuName;
-            ProviderNote = $"DirectML could not open {Path.GetFileName(path)} ({e.Message.Split('\n')[0].Trim()}); the CPU sings";
             return new InferenceSession(path, _sessionOptions);
         }
     }

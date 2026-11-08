@@ -212,10 +212,13 @@ export function voicesIn(folder: string, listDirs: (dir: string) => string[], ex
     return listDirs(model).filter(name => exists(join(model, name, 'info.toml'))).sort();
 }
 
-/** What a NEUTRINO folder must hold to be one; an empty setting is no problem of its own (another engine may be set up). */
-export function neutrinoFolderProblems(folder: string, exists: (p: string) => boolean, join: (...parts: string[]) => string): string[] {
+/** What a NEUTRINO folder must hold to be one; an empty setting is no problem of its own (another engine may be set up).
+ *  NEUTRINO runs on Windows only: a folder set elsewhere is told so instead of being searched. */
+export function neutrinoFolderProblems(folder: string, exists: (p: string) => boolean, join: (...parts: string[]) => string,
+    platform: string = 'win32'): string[] {
     const f = folder.trim();
     if (!f) { return []; }
+    if (platform !== 'win32') { return ['NEUTRINO runs on Windows only: leave the NEUTRINO folder empty here and set up a DiffSinger voices folder']; }
     const problems: string[] = [];
     if (!exists(f)) { return [`the NEUTRINO folder does not exist: ${f}`]; }
     for (const file of [['bin', 'neutrino_server.exe'], ['bin', 'neutrino_client.exe'], ['bin', 'musicXMLtoLabel.exe'], ['settings', 'dic']]) {

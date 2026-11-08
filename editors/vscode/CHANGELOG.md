@@ -7,6 +7,9 @@
   once the models are resident, against ten or more on the CPU) and on the CPU where there is none —
   the Cantilena output channel says which (`diffsinger: the models run on DirectML`). `cantilena.gpu`
   off keeps every engine on the CPU. About 21 MB more in the VSIX (DirectML's redistributable).
+- **Linux x64 and macOS arm64**: the extension is published for those platforms too, with the
+  program bundled (DiffSinger voices on the CPU there; NEUTRINO is Windows-only, and Check Setup
+  says so if its folder is set). Not yet heard on either — the first phrase there is yours.
 
 ## 0.3.0
 

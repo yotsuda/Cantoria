@@ -24,7 +24,10 @@ sealed class Engines
     public string? VoicesFolder { get; init; }
     /// <summary>A vocoder folder for DiffSinger voices that bundle none.</summary>
     public string? VocoderFolder { get; init; }
-    public bool UseGpu { get; init; } = true;
+    /// <summary>NEUTRINO on its GPU (CUDA); false with <c>--cpu</c> / <c>--provider cpu</c>.</summary>
+    public bool UseGpu => Provider != OnnxProvider.Cpu;
+    /// <summary>Where a DiffSinger voice's models run (<c>--provider</c>; <c>--cpu</c> is <c>cpu</c>).</summary>
+    public OnnxProvider Provider { get; init; } = OnnxProvider.Auto;
     public int Threads { get; init; } = 4;
     public int Steps { get; init; } = 20;
     public bool KeepFiles { get; init; }
@@ -32,17 +35,21 @@ sealed class Engines
     /// <summary>
     /// The folders from the options, else the environment (<c>CANTILENA_NEUTRINO_DIR</c>,
     /// <c>CANTILENA_VOICES_DIR</c>, <c>CANTILENA_VOCODER_DIR</c>), else <c>cantilena.json</c> in the
-    /// user's config folder (<c>neutrino.folder</c>, <c>diffsinger.voices</c>, <c>diffsinger.vocoder</c>).
+    /// user's config folder (<c>neutrino.folder</c>, <c>diffsinger.voices</c>, <c>diffsinger.vocoder</c>;
+    /// <c>%APPDATA%\cantilena</c> on Windows, <c>~/.config/cantilena</c> elsewhere). NEUTRINO runs on
+    /// Windows only: elsewhere its folder is read as not set, whatever says it.
     /// </summary>
-    public static Engines Configure(string? neutrinoDir, string? voicesDir, string? vocoderDir, bool gpu, int threads, int steps, bool keep)
+    public static Engines Configure(string? neutrinoDir, string? voicesDir, string? vocoderDir, OnnxProvider provider, int threads, int steps, bool keep)
     {
         var settings = Settings();
         return new Engines
         {
-            NeutrinoFolder = First(neutrinoDir, Environment.GetEnvironmentVariable("CANTILENA_NEUTRINO_DIR"), settings("neutrino", "folder")),
+            NeutrinoFolder = OperatingSystem.IsWindows()
+                ? First(neutrinoDir, Environment.GetEnvironmentVariable("CANTILENA_NEUTRINO_DIR"), settings("neutrino", "folder"))
+                : null,
             VoicesFolder = First(voicesDir, Environment.GetEnvironmentVariable("CANTILENA_VOICES_DIR"), settings("diffsinger", "voices")),
             VocoderFolder = First(vocoderDir, Environment.GetEnvironmentVariable("CANTILENA_VOCODER_DIR"), settings("diffsinger", "vocoder")),
-            UseGpu = gpu,
+            Provider = provider,
             Threads = threads,
             Steps = steps,
             KeepFiles = keep,
@@ -101,6 +108,10 @@ sealed class Engines
         switch (engine)
         {
             case "neutrino":
+                if (!OperatingSystem.IsWindows())
+                {
+                    return ["NEUTRINO runs on Windows only; on this system sing through a DiffSinger voice (--voices-dir)"];
+                }
                 if (NeutrinoFolder is null)
                 {
                     return ["where is NEUTRINO? give --neutrino-dir, set CANTILENA_NEUTRINO_DIR, or write neutrino.folder in cantilena.json"];
@@ -151,13 +162,13 @@ sealed class Engines
         };
     }
 
-    /// <summary>A DiffSinger voice's options: <c>--cpu</c> keeps it off the GPU, else DirectML when
-    /// this build and this machine have it (<see cref="OnnxProvider.Auto"/>).</summary>
+    /// <summary>A DiffSinger voice's options, on <see cref="Provider"/> (<c>--provider</c>; the default
+    /// <see cref="OnnxProvider.Auto"/> is DirectML when this build and this machine have it, else the CPU).</summary>
     private DiffSingerOptions DiffSinger(string folder) => new(folder)
     {
         VocoderFolder = VocoderFolder,
         Steps = Steps,
-        Provider = UseGpu ? OnnxProvider.Auto : OnnxProvider.Cpu,
+        Provider = Provider,
     };
 
     /// <summary>Every voice installed, as <c>engine/name</c>: NEUTRINO's, then the DiffSinger voices folder's.</summary>
@@ -177,5 +188,6 @@ sealed class Engines
 
     /// <summary>What is configured, for the <c>ready</c> line and messages.</summary>
     public string Describe() =>
-        $"neutrino {NeutrinoFolder ?? "(not set)"}; diffsinger voices {VoicesFolder ?? "(not set)"}" + (VocoderFolder is null ? "" : $", vocoder {VocoderFolder}");
+        $"neutrino {(OperatingSystem.IsWindows() ? NeutrinoFolder ?? "(not set)" : "(Windows only)")}; diffsinger voices {VoicesFolder ?? "(not set)"}"
+        + (VocoderFolder is null ? "" : $", vocoder {VocoderFolder}") + $", provider {Provider.ToString().ToLowerInvariant()}";
 }

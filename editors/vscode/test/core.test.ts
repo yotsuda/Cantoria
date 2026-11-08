@@ -135,6 +135,10 @@ describe('where the program and the voices are', () => {
         assert.deepEqual(neutrinoFolderProblems('N', p => has.has(p), join), ['not a NEUTRINO (Tau v3.2+) folder: bin\\neutrino_client.exe is missing under N']);
         const all = new Set(['N', 'N\\bin\\neutrino_server.exe', 'N\\bin\\neutrino_client.exe', 'N\\bin\\musicXMLtoLabel.exe', 'N\\settings\\dic']);
         assert.deepEqual(neutrinoFolderProblems('N', p => all.has(p), join), []);
+        // Off Windows a NEUTRINO folder is not searched: it cannot run there.
+        assert.deepEqual(neutrinoFolderProblems('N', p => all.has(p), join, 'linux'),
+            ['NEUTRINO runs on Windows only: leave the NEUTRINO folder empty here and set up a DiffSinger voices folder']);
+        assert.deepEqual(neutrinoFolderProblems('', () => true, join, 'darwin'), []);
     });
 });
 

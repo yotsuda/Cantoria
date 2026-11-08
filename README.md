@@ -29,7 +29,9 @@ and the one thing this library adds.
     ONNX Runtime, after the C# implementation in
     [OpenUtau](https://github.com/stakira/OpenUtau). Japanese lyrics (kana) so
     far. On Windows the models run on the GPU through DirectML (any DirectX 12
-    device; the CPU where there is none, or with `--cpu`).
+    device; the CPU where there is none, or with `--cpu`); on Linux and macOS on
+    the CPU (CoreML on request, `--provider coreml`, untested). The program is
+    published for win-x64, linux-x64 and osx-arm64; NEUTRINO itself is Windows-only.
 
 Cantilena ships **no voice**. A voice (a trained model, a singing library) is
 its author's work under its author's terms; the user installs one and points

@@ -42,6 +42,11 @@ export class Engine {
         const env = { ...process.env };
         if (this.setup.neutrinoFolder) { env.CANTILENA_NEUTRINO_DIR = this.setup.neutrinoFolder; } else { delete env.CANTILENA_NEUTRINO_DIR; }
         const args = serveArgs(this.outDir, this.setup.gpu, this.setup.threads, this.setup.voicesFolder, this.setup.vocoderFolder);
+        // The bundled program is packed on Windows, where a VSIX carries no file modes: on Linux and
+        // macOS it arrives without its execute bit, so it is given one before the first start.
+        if (process.platform !== 'win32' && path.isAbsolute(this.setup.program)) {
+            try { fs.chmodSync(this.setup.program, 0o755); } catch { /* a read-only install: spawn says so */ }
+        }
         const child = cp.spawn(this.setup.program, args, { windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'], env });
         this.child = child;
         readline.createInterface({ input: child.stdout! }).on('line', line => this.answer(line));

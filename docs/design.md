@@ -132,15 +132,19 @@ cantilena sing score.json -o out.wav --voice neutrino/MERROW --neutrino-dir C:\N
 cantilena sing score.json -o out.wav --voice diffsinger/TIGER --voices-dir C:\voices
 cantilena sing score.json -o out.wav --voice C:\voices\TIGER        # a path holding dsconfig.yaml
 cantilena voices [--neutrino-dir …] [--voices-dir …]                 # what is installed, as engine/name
+cantilena providers                                                  # where DiffSinger models can run here (CPU, DirectML, CoreML; what auto picks)
 cantilena serve [the same]                                           # a resident singer for an editor (below)
 cantilena --version
 ```
 
 A voice is `engine/name`; a bare name is NEUTRINO's. The folders come from the
 options, else the environment (`CANTILENA_NEUTRINO_DIR`, `CANTILENA_VOICES_DIR`,
-`CANTILENA_VOCODER_DIR`), else `%APPDATA%\cantilena\cantilena.json`
-(`neutrino.folder`, `diffsinger.voices`, `diffsinger.vocoder`). Exit codes: 0 sung,
-1 the backend failed (its message on stderr), 2 bad arguments, score or settings.
+`CANTILENA_VOCODER_DIR`), else `cantilena.json` in the user's config folder
+(`%APPDATA%\cantilena` on Windows, `~/.config/cantilena` elsewhere: `neutrino.folder`,
+`diffsinger.voices`, `diffsinger.vocoder`). `--provider auto|cpu|directml|coreml` picks where
+a DiffSinger voice's models run (§3.2; `--cpu` is `cpu` for every engine). NEUTRINO runs on
+Windows only. Exit codes: 0 sung, 1 the backend failed (its message on stderr), 2 bad
+arguments, score or settings.
 
 ### 4.1 `serve` — the resident singer
 
@@ -175,8 +179,8 @@ life of one process and talks **JSON lines** on stdin/stdout, UTF-8 both ways:
 ### 4.2 The VS Code extension (`editors/vscode`, `yotsuda.cantilena`)
 
 The engine's home for editors (the owner's decision 2026-11-08, the shape the Lily#
-OMR reader took): it carries the `cantilena` program (win-x64 to begin with, under
-`bin/<rid>/`), holds the settings an engine needs — `cantilena.neutrinoFolder`,
+OMR reader took): it carries the `cantilena` program (under `bin/<rid>/`: one VSIX per
+platform target — win-x64, linux-x64, osx-arm64 — since 0.4.0, roadmap B5), holds the settings an engine needs — `cantilena.neutrinoFolder`,
 `cantilena.voice`, `cantilena.gpu`, `cantilena.threads`, and `cantilena.program` for a
 developer's build — with pickers (**Choose NEUTRINO Folder…**, **Choose Voice…**) and a
 **Check Setup**, and sings for other extensions through the API its `activate` returns:
@@ -201,8 +205,15 @@ a phrase is sung once per machine (**Forget Rendered Voices** clears them); a ch
 setting lets the engine go. `sing` throws one sentence when it cannot (no program, no NEUTRINO
 folder, a score the engine refused). Lily# calls it from its preview (its
 `docs/singing-design.md` §5); any other notation extension can. `tools/pack-extension.ps1`
-publishes the program self-contained into `editors/vscode/bin/win-x64` and packs the VSIX
-(`vsce package --target win32-x64`); publishing to the Marketplace is the owner's.
+publishes the program self-contained into `editors/vscode/bin/<rid>` and packs one VSIX per
+target (`vsce package --target win32-x64 | linux-x64 | darwin-arm64`, each with its own program
+only; win-x64 on the DirectML package, the others on the CPU package); publishing to the
+Marketplace is the owner's. A VSIX packed on Windows carries no file modes, so the extension
+gives the program its execute bit before the first start on Linux and macOS. NEUTRINO is
+Windows-only: off Windows the program reads its folder as not set and the extension's Check
+Setup says so; `.github/workflows/ci.yml` builds and tests on the three platforms and runs the
+published program (`--version`, `check`, `providers`) on each — no voice is installed there, so
+nothing is sung in CI.
 
 ## 5. How a caller uses it (Lily#'s plan)
 

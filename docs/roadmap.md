@@ -68,11 +68,18 @@ OpenUtau DiffSinger format — a folder the user installs, as a sound font is.
    `serve`; the extension's `cantilena.voicesFolder` (and **Choose Voices Folder…**) beside
    `neutrinoFolder`, the voices list and the picker show both engines, either engine alone is a
    complete setup.
-5. **B5 — platform builds**: `linux-x64`, `osx-arm64` (self-contained publish, as `win-x64`
-   is), one VSIX per target. CI sings one phrase per platform with a small voice.
+5. **B5 — platform builds**: *built 2026-11-08* (0.4.0; Lily# session 1140): `linux-x64` and
+   `osx-arm64` published self-contained beside `win-x64`, one VSIX per target
+   (`tools/pack-extension.ps1`), the execute bit restored by the extension, NEUTRINO told as
+   Windows-only off Windows, `cantilena providers`; `.github/workflows/ci.yml` builds, tests and
+   runs the program on the three platforms. ⚠️ Not yet heard on Linux or macOS: the build
+   machine is Windows, and CI has no voice to sing with (every voice is its author's) — the
+   first Linux or macOS phrase is the owner's, or whoever runs the VSIX there. CoreML is
+   appended on request (`--provider coreml`), not by `auto`, until it has been heard.
 
 *Done when* the same score sings through `neutrino/…` and `diffsinger/…` by changing the voice
-setting, and through `diffsinger/…` on Linux or macOS with no GPU.
+setting (done), and through `diffsinger/…` on Linux or macOS with no GPU (the build ships; the
+hearing is open).
 
 ## C. Languages
 

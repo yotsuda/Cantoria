@@ -7,6 +7,7 @@ using System.Text.Json;
 using Cantilena;
 using Cantilena.Audio;
 using Cantilena.Cli;
+using Cantilena.DiffSinger;
 
 // cantilena — the command line over the library (docs/design.md §4).
 // Exit codes: 0 done, 1 the backend failed, 2 bad arguments, score or settings.
@@ -17,6 +18,7 @@ return args switch
     [] or ["--help"] or ["-h"] => Help(0),
     ["check", var path] => Check(path),
     ["voices", ..] => Voices(args[1..]),
+    ["providers"] => Providers(),
     ["sing", ..] => await Sing(args[1..]),
     ["serve", ..] => await Serve(args[1..]),
     _ => Help(2),
@@ -39,6 +41,7 @@ static int Help(int code)
           cantilena check <score.json>                     validate a score, print its summary
           cantilena sing <score.json> -o <out.wav> [options]
           cantilena voices [options]                       the voices installed, as engine/name
+          cantilena providers                              where DiffSinger models can run on this machine
           cantilena serve [options]                        sing scores sent on stdin, one JSON line each
           cantilena --version
 
@@ -52,7 +55,9 @@ static int Help(int code)
           --voices-dir <folder>       the folder whose subfolders are DiffSinger voices
           --vocoder-dir <folder>      a vocoder folder for DiffSinger voices that bundle none
           --steps <n>                 DiffSinger sampling steps (default 20; fewer is faster)
-          --cpu                       NEUTRINO: do not ask for the GPU
+          --provider <name>           DiffSinger: auto (default: DirectML on Windows where there is a
+                                      DirectX 12 device, else the CPU), cpu, directml, coreml (macOS; untested)
+          --cpu                       the CPU for every engine (NEUTRINO without its GPU; --provider cpu)
           --threads <n>               NEUTRINO: CPU threads (default 4)
           --keep                      NEUTRINO: leave the MusicXML, labels and WAV under output\cantilena\
           --backend <name>            (older form) the engine of a bare --voice name
@@ -68,9 +73,10 @@ static int Help(int code)
         End of stdin ends the process.
 
         The folders are taken from the options, else the environment (CANTILENA_NEUTRINO_DIR,
-        CANTILENA_VOICES_DIR, CANTILENA_VOCODER_DIR), else %APPDATA%\cantilena\cantilena.json
-        ("neutrino": {"folder": …}, "diffsinger": {"voices": …, "vocoder": …}). The score format is
-        documented in README.md.
+        CANTILENA_VOICES_DIR, CANTILENA_VOCODER_DIR), else cantilena.json in the user's config folder
+        (%APPDATA%\cantilena on Windows, ~/.config/cantilena elsewhere: "neutrino": {"folder": …},
+        "diffsinger": {"voices": …, "vocoder": …}). NEUTRINO runs on Windows only. The score format
+        is documented in README.md.
 
         """);
     return code;
@@ -146,6 +152,17 @@ static int Voices(string[] rest)
     foreach (var v in voices)
     {
         Console.WriteLine(v);
+    }
+    return 0;
+}
+
+/// <summary>What this build on this machine can run DiffSinger models on — the CPU, DirectML, CoreML —
+/// and what `auto` would pick; a line each. Exit 0 always: it is a report.</summary>
+static int Providers()
+{
+    foreach (var line in Cantilena.DiffSinger.OnnxProviders.Describe())
+    {
+        Console.WriteLine(line);
     }
     return 0;
 }
@@ -360,7 +377,8 @@ static string FileNameOf(string id)
 sealed class EngineArgs
 {
     public string? Voice, Backend, NeutrinoDir, VoicesDir, VocoderDir, Output, OutDir, Path;
-    public bool Cpu, Keep;
+    public bool Keep;
+    public OnnxProvider Provider = OnnxProvider.Auto;
     public int Threads = 4, Steps = 20;
     public List<string> Unknown = [];
 
@@ -380,7 +398,18 @@ sealed class EngineArgs
                 case "--vocoder-dir" when i + 1 < rest.Length: a.VocoderDir = rest[++i]; break;
                 case "--threads" when i + 1 < rest.Length && int.TryParse(rest[i + 1], out a.Threads): i++; break;
                 case "--steps" when i + 1 < rest.Length && int.TryParse(rest[i + 1], out a.Steps): i++; break;
-                case "--cpu": a.Cpu = true; break;
+                case "--cpu": a.Provider = OnnxProvider.Cpu; break;
+                case "--provider" when i + 1 < rest.Length:
+                    i++;
+                    if (Enum.TryParse<OnnxProvider>(rest[i], ignoreCase: true, out var p))
+                    {
+                        a.Provider = p;
+                    }
+                    else
+                    {
+                        a.Unknown.Add($"--provider {rest[i]} (there is: auto, cpu, directml, coreml)");
+                    }
+                    break;
                 case "--keep": a.Keep = true; break;
                 case var s when s.StartsWith('-'): a.Unknown.Add(s); break;
                 default:
@@ -404,7 +433,7 @@ sealed class EngineArgs
         return a;
     }
 
-    public Engines Engines() => Cantilena.Cli.Engines.Configure(NeutrinoDir, VoicesDir, VocoderDir, !Cpu, Threads, Steps, Keep);
+    public Engines Engines() => Cantilena.Cli.Engines.Configure(NeutrinoDir, VoicesDir, VocoderDir, Provider, Threads, Steps, Keep);
 }
 
 /// <summary>One line of <c>cantilena serve</c>'s stdin.</summary>

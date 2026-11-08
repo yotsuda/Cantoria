@@ -7,8 +7,9 @@ DiffSinger voices are, which voice — and sings for other extensions through it
 editor of its own.
 
 Open source, Apache-2.0: [github.com/yotsuda/cantilena](https://github.com/yotsuda/cantilena).
-Windows x64 for now (the bundled program); other platforms can point `cantilena.program` at a
-build of their own.
+Published for Windows x64, Linux x64 and macOS arm64 with the program bundled (NEUTRINO itself
+runs on Windows only; DiffSinger voices sing everywhere). Other platforms can point
+`cantilena.program` at a build of their own.
 
 ## Setup
 

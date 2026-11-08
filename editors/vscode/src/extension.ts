@@ -102,9 +102,9 @@ function setupNow(context: vscode.ExtensionContext): { setup?: EngineSetup; prob
     const prog = program(context);
     const n = neutrinoFolder(), d = voicesFolder();
     const problems: string[] = [];
-    if (!prog) { problems.push('the cantilena program was not found (this extension is built for Windows x64; developers set cantilena.program)'); }
+    if (!prog) { problems.push(`the cantilena program was not found (the extension bundles it for win-x64, linux-x64 and osx-arm64; this machine is ${process.platform}-${process.arch}; developers set cantilena.program)`); }
     if (!n && !d) { problems.push('no engine is set up: choose a NEUTRINO folder (Cantilena: Choose NEUTRINO Folder…) or a DiffSinger voices folder (Cantilena: Choose Voices Folder…)'); }
-    problems.push(...neutrinoFolderProblems(n, fs.existsSync, path.join));
+    problems.push(...neutrinoFolderProblems(n, fs.existsSync, path.join, process.platform));
     problems.push(...voicesFolderProblems(d, fs.existsSync));
     if (problems.length > 0) { return { problems, program: prog }; }
     return {
