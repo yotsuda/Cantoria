@@ -168,7 +168,13 @@ publishes the program self-contained into `editors/vscode/bin/win-x64` and packs
 3. The setting names the backend and voice the way a sound font is named:
    a path the user chose, nothing bundled.
 
-## 6. Licensing boundaries
+## 6. What comes next
+
+The order of work after the `neutrino` backend — the `diffsinger` backend, languages,
+expression hints, more engines, platform builds, a downloadable first voice — is
+[roadmap.md](roadmap.md).
+
+## 7. Licensing boundaries
 
 - Cantilena: Apache-2.0. May include MIT code (OpenUtau) with notices; may
   reference Apache/MIT packages.
