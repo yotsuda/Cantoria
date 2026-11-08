@@ -6,8 +6,8 @@ import * as assert from 'node:assert/strict';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import {
-    ENGINES, languageTag, neutrinoFolderProblems, parseLine, programCandidates, requestLine, rid, scoreProblems, serveArgs,
-    speakerOf, splitVoiceId, voiceEntriesIn, voiceId, voiceKey, voicesIn,
+    ENGINES, characterNameOf, diffSingerEntriesIn, diffSingerVoicesIn, languageTag, neutrinoFolderProblems, parseLine, programCandidates,
+    requestLine, rid, scoreProblems, serveArgs, speakerOf, splitVoiceId, voiceEntriesIn, voiceId, voiceKey, voicesFolderProblems, voicesIn,
 } from '../src/core';
 
 const join = (...parts: string[]) => parts.join('\\');
@@ -50,9 +50,11 @@ describe('the engine\'s wire', () => {
         assert.deepEqual(JSON.parse(line), { id: 'k1', score: { notes: [] }, voice: 'MERROW', output: 'C:\\v\\k1.wav' });
     });
 
-    it('starts the engine resident, with the GPU unless told not to', () => {
+    it('starts the engine resident, with the GPU unless told not to, and the DiffSinger folders when set', () => {
         assert.deepEqual(serveArgs('C:\\v', true, 4), ['serve', '--out-dir', 'C:\\v', '--threads', '4']);
         assert.deepEqual(serveArgs('C:\\v', false, 0), ['serve', '--out-dir', 'C:\\v', '--threads', '1', '--cpu']);
+        assert.deepEqual(serveArgs('C:\\v', true, 4, 'C:\\voices', ' '), ['serve', '--out-dir', 'C:\\v', '--threads', '4', '--voices-dir', 'C:\\voices']);
+        assert.deepEqual(serveArgs('C:\\v', true, 4, '', 'C:\\voc'), ['serve', '--out-dir', 'C:\\v', '--threads', '4', '--vocoder-dir', 'C:\\voc']);
     });
 });
 
@@ -81,7 +83,7 @@ describe('where the program and the voices are', () => {
     // A voice is named engine/name everywhere (docs/roadmap.md A), so a second engine's voice
     // needs no new setting; a bare name is the first engine's.
     it('names a voice engine/name, and reads either form', () => {
-        assert.deepEqual(ENGINES, ['neutrino']);
+        assert.deepEqual(ENGINES, ['neutrino', 'diffsinger']);
         assert.equal(voiceId('neutrino', 'MERROW'), 'neutrino/MERROW');
         assert.deepEqual(splitVoiceId('neutrino/MERROW'), { engine: 'neutrino', name: 'MERROW' });
         assert.deepEqual(splitVoiceId(' Neutrino/KIRITAN '), { engine: 'neutrino', name: 'KIRITAN' });
@@ -110,8 +112,24 @@ describe('where the program and the voices are', () => {
         ]);
     });
 
-    it('says what a NEUTRINO folder lacks', () => {
-        assert.deepEqual(neutrinoFolderProblems('', () => true, join), ['no NEUTRINO folder is set (Cantilena: Choose NEUTRINO Folder…)']);
+    it('lists the DiffSinger voices: the subfolders with a dsconfig.yaml, each named by its character.yaml', () => {
+        const tree = new Set(['V', 'V\\TIGER\\dsconfig.yaml', 'V\\TIGER\\character.yaml', 'V\\TIGER\\dsdur\\dsdict-ja.yaml', 'V\\Plain\\dsconfig.yaml', 'V\\notes']);
+        const dirs = (d: string) => d === 'V' ? ['notes', 'TIGER', 'Plain'] : [];
+        const text = (p: string) => p === 'V\\TIGER\\character.yaml' ? 'name: "TIGER DS v106"\nauthor: x\n' : undefined;
+        assert.deepEqual(diffSingerVoicesIn('V', dirs, p => tree.has(p), join), ['Plain', 'TIGER']);
+        assert.deepEqual(diffSingerVoicesIn('', dirs, p => tree.has(p), join), []);
+        assert.deepEqual(diffSingerEntriesIn('V', dirs, p => tree.has(p), text, join), [
+            { id: 'diffsinger/Plain', engine: 'diffsinger', name: 'Plain', label: 'Plain' },
+            { id: 'diffsinger/TIGER', engine: 'diffsinger', name: 'TIGER', label: 'TIGER DS v106', language: 'ja' },
+        ]);
+        assert.equal(characterNameOf("name: 'Momo'\n"), 'Momo');
+        assert.equal(characterNameOf('singer_type: diffsinger\n'), undefined);
+        assert.deepEqual(voicesFolderProblems('', () => false), []);
+        assert.deepEqual(voicesFolderProblems('V', () => false), ['the DiffSinger voices folder does not exist: V']);
+    });
+
+    it('says what a NEUTRINO folder lacks (an empty setting is no problem of its own)', () => {
+        assert.deepEqual(neutrinoFolderProblems('', () => true, join), []);
         assert.deepEqual(neutrinoFolderProblems('N', () => false, join), ['the NEUTRINO folder does not exist: N']);
         const has = new Set(['N', 'N\\bin\\neutrino_server.exe']);
         assert.deepEqual(neutrinoFolderProblems('N', p => has.has(p), join), ['not a NEUTRINO (Tau v3.2+) folder: bin\\neutrino_client.exe is missing under N']);
@@ -126,17 +144,18 @@ describe('the manifest', () => {
     const commands = (manifest.contributes.commands as { command: string }[]).map(c => c.command);
 
     it('holds the settings, each engine setting machine-overridable', () => {
-        for (const name of ['cantilena.neutrinoFolder', 'cantilena.voice', 'cantilena.gpu', 'cantilena.threads', 'cantilena.program']) {
+        for (const name of ['cantilena.neutrinoFolder', 'cantilena.voicesFolder', 'cantilena.vocoderFolder', 'cantilena.voice', 'cantilena.gpu', 'cantilena.threads', 'cantilena.program']) {
             assert.ok(props[name], `${name} is contributed`);
             assert.equal(props[name].scope, 'machine-overridable', name);
         }
         assert.equal(props['cantilena.voice'].default, 'neutrino/MERROW');
         assert.match(props['cantilena.neutrinoFolder'].markdownDescription, /command:cantilena\.chooseNeutrinoFolder/);
         assert.match(props['cantilena.voice'].markdownDescription, /command:cantilena\.chooseVoice/);
+        assert.match(props['cantilena.voicesFolder'].markdownDescription, /command:cantilena\.chooseVoicesFolder/);
     });
 
-    it('contributes the four commands and starts on nothing but them and the API', () => {
-        assert.deepEqual(commands.sort(), ['cantilena.checkSetup', 'cantilena.chooseNeutrinoFolder', 'cantilena.chooseVoice', 'cantilena.forgetVoices']);
+    it('contributes the five commands and starts on nothing but them and the API', () => {
+        assert.deepEqual(commands.sort(), ['cantilena.checkSetup', 'cantilena.chooseNeutrinoFolder', 'cantilena.chooseVoice', 'cantilena.chooseVoicesFolder', 'cantilena.forgetVoices']);
         assert.deepEqual(manifest.activationEvents, []);
         assert.equal(manifest.main, './out/extension.js');
         assert.equal(manifest.license, 'Apache-2.0');

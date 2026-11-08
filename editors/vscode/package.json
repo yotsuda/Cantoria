@@ -1,8 +1,8 @@
 {
   "name": "cantilena",
   "displayName": "Cantilena Singing Voice",
-  "description": "Sings the lyrics of a score for notation extensions such as Lily#: notes with syllables in, a voice out — through your own installation of NEUTRINO (Japanese voices). Open source (Apache-2.0); runs locally on Windows.",
-  "version": "0.2.0",
+  "description": "Sings the lyrics of a score for notation extensions such as Lily#: notes with syllables in, a voice out — through your own installation of NEUTRINO, or DiffSinger voices in the OpenUtau format. Open source (Apache-2.0); runs locally on Windows.",
+  "version": "0.3.0",
   "publisher": "yotsuda",
   "preview": true,
   "license": "Apache-2.0",
@@ -26,7 +26,8 @@
     "lyrics",
     "sheet music",
     "lilysharp",
-    "neutrino"
+    "neutrino",
+    "diffsinger"
   ],
   "activationEvents": [],
   "main": "./out/extension.js",
@@ -38,13 +39,25 @@
           "type": "string",
           "default": "",
           "scope": "machine-overridable",
-          "markdownDescription": "The folder of your NEUTRINO installation (Tau, v3.2 or later): the one holding `bin\\`, `model\\` and `settings\\`. NEUTRINO is not bundled — it is free software of STUDIO NEUTRINO under its own terms, from [studio-neutrino.com](https://studio-neutrino.com/). Empty: nothing can be sung.\n\n**[Choose the folder…](command:cantilena.chooseNeutrinoFolder)**"
+          "markdownDescription": "The folder of your NEUTRINO installation (Tau, v3.2 or later): the one holding `bin\\`, `model\\` and `settings\\`. NEUTRINO is not bundled — it is free software of STUDIO NEUTRINO under its own terms, from [studio-neutrino.com](https://studio-neutrino.com/). Empty: no NEUTRINO voice can be sung (a DiffSinger voices folder is the other engine).\n\n**[Choose the folder…](command:cantilena.chooseNeutrinoFolder)**"
+        },
+        "cantilena.voicesFolder": {
+          "type": "string",
+          "default": "",
+          "scope": "machine-overridable",
+          "markdownDescription": "The folder whose subfolders are DiffSinger voices in the OpenUtau format (each holding a `dsconfig.yaml`, as OpenUtau installs them). Each voice is its author's work under its author's terms; none is bundled. Empty: no DiffSinger voice can be sung.\n\n**[Choose the folder…](command:cantilena.chooseVoicesFolder)**"
+        },
+        "cantilena.vocoderFolder": {
+          "type": "string",
+          "default": "",
+          "scope": "machine-overridable",
+          "markdownDescription": "A vocoder folder (holding `vocoder.yaml` and its model) for DiffSinger voices that bundle none. Most voices bundle their own; leave this empty then."
         },
         "cantilena.voice": {
           "type": "string",
           "default": "neutrino/MERROW",
           "scope": "machine-overridable",
-          "markdownDescription": "The voice the lyrics are sung in, as `engine/name`: for NEUTRINO, `neutrino/` and a folder under its `model\\` (MERROW ships with NEUTRINO; other voices are their authors' work under their authors' terms, installed there by you). A bare name means a NEUTRINO voice.\n\n**[Choose a voice…](command:cantilena.chooseVoice)**"
+          "markdownDescription": "The voice the lyrics are sung in, as `engine/name`: `neutrino/` and a folder under NEUTRINO's `model\\` (MERROW ships with NEUTRINO), or `diffsinger/` and a folder under the voices folder. Other voices are their authors' work under their authors' terms, installed there by you. A bare name means a NEUTRINO voice.\n\n**[Choose a voice…](command:cantilena.chooseVoice)**"
         },
         "cantilena.gpu": {
           "type": "boolean",
@@ -73,6 +86,11 @@
         "command": "cantilena.chooseNeutrinoFolder",
         "category": "Cantilena",
         "title": "Choose NEUTRINO Folder…"
+      },
+      {
+        "command": "cantilena.chooseVoicesFolder",
+        "category": "Cantilena",
+        "title": "Choose Voices Folder… (DiffSinger)"
       },
       {
         "command": "cantilena.chooseVoice",

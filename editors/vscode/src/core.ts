@@ -25,7 +25,7 @@ export interface CantilenaScore {
 }
 
 /** The engines this extension sings through; the first is what a bare voice name means. */
-export const ENGINES = ['neutrino'] as const;
+export const ENGINES = ['neutrino', 'diffsinger'] as const;
 export type EngineName = typeof ENGINES[number];
 
 /** A voice as the API names it: `engine/name`, e.g. `neutrino/MERROW` — the form `sing`'s
@@ -35,9 +35,9 @@ export interface VoiceEntry {
     /** `engine/name`. */
     id: string;
     engine: EngineName;
-    /** The engine's own name for the voice: for NEUTRINO, its folder under `model\`. */
+    /** The engine's own name for the voice: for NEUTRINO, its folder under `model\`; for DiffSinger, its folder under the voices folder. */
     name: string;
-    /** What the voice calls itself (NEUTRINO's `info.toml`, the speaker's name), else `name`. */
+    /** What the voice calls itself (NEUTRINO's `info.toml` speaker name, a DiffSinger voice's `character.yaml` name), else `name`. */
     label: string;
     /** The language it sings, as a BCP-47 tag where known (`ja`). */
     language?: string;
@@ -86,6 +86,41 @@ export function voiceEntriesIn(folder: string, listDirs: (dir: string) => string
         if (language) { entry.language = language; }
         return entry;
     });
+}
+
+/** The DiffSinger voices under a folder: its subfolders holding a `dsconfig.yaml` (as the engine lists them). */
+export function diffSingerVoicesIn(folder: string, listDirs: (dir: string) => string[], exists: (p: string) => boolean,
+    join: (...parts: string[]) => string): string[] {
+    if (!folder || !exists(folder)) { return []; }
+    return listDirs(folder).filter(name => exists(join(folder, name, 'dsconfig.yaml'))).sort();
+}
+
+/** What a DiffSinger voice's `character.yaml` calls it: its `name:` line, unquoted; undefined when there is none. */
+export function characterNameOf(yaml: string): string | undefined {
+    const m = /^\s*name\s*:\s*(.+?)\s*$/m.exec(yaml);
+    if (!m) { return undefined; }
+    const v = m[1].replace(/^(["'])(.*)\1$/, '$2').trim();
+    return v || undefined;
+}
+
+/** The DiffSinger voices under a folder as the API lists them: the voices' folders, each read for its name. */
+export function diffSingerEntriesIn(folder: string, listDirs: (dir: string) => string[], exists: (p: string) => boolean,
+    readText: (p: string) => string | undefined, join: (...parts: string[]) => string): VoiceEntry[] {
+    return diffSingerVoicesIn(folder, listDirs, exists, join).map(name => {
+        const character = readText(join(folder, name, 'character.yaml'));
+        const label = (character && characterNameOf(character)) || name;
+        const entry: VoiceEntry = { id: voiceId('diffsinger', name), engine: 'diffsinger', name, label };
+        // The voices sing what their dictionaries spell; this extension reads kana through them (ja) so far.
+        if (exists(join(folder, name, 'dsdur', 'dsdict-ja.yaml'))) { entry.language = 'ja'; }
+        return entry;
+    });
+}
+
+/** What a DiffSinger voices folder must be: a folder (its voices are listed; none is a warning, not an error). */
+export function voicesFolderProblems(folder: string, exists: (p: string) => boolean): string[] {
+    const f = folder.trim();
+    if (!f) { return []; }
+    return exists(f) ? [] : [`the DiffSinger voices folder does not exist: ${f}`];
 }
 
 /** What is wrong with a score's SHAPE, in words; empty when it can be sent. The engine checks
@@ -137,10 +172,12 @@ export function requestLine(id: string, score: CantilenaScore, voice: string, ou
 /** The shutdown request. */
 export const SHUTDOWN_LINE = '{"command":"shutdown"}\n';
 
-/** The arguments of the resident engine: where the WAVs go, the GPU or not, the threads. */
-export function serveArgs(outDir: string, gpu: boolean, threads: number): string[] {
+/** The arguments of the resident engine: where the WAVs go, the GPU or not, the threads, the DiffSinger folders when set. */
+export function serveArgs(outDir: string, gpu: boolean, threads: number, voicesFolder = '', vocoderFolder = ''): string[] {
     const args = ['serve', '--out-dir', outDir, '--threads', String(Math.max(1, Math.floor(threads) || 1))];
     if (!gpu) { args.push('--cpu'); }
+    if (voicesFolder.trim()) { args.push('--voices-dir', voicesFolder.trim()); }
+    if (vocoderFolder.trim()) { args.push('--vocoder-dir', vocoderFolder.trim()); }
     return args;
 }
 
@@ -173,10 +210,10 @@ export function voicesIn(folder: string, listDirs: (dir: string) => string[], ex
     return listDirs(model).filter(name => exists(join(model, name, 'info.toml'))).sort();
 }
 
-/** What a NEUTRINO folder must hold to be one. */
+/** What a NEUTRINO folder must hold to be one; an empty setting is no problem of its own (another engine may be set up). */
 export function neutrinoFolderProblems(folder: string, exists: (p: string) => boolean, join: (...parts: string[]) => string): string[] {
     const f = folder.trim();
-    if (!f) { return ['no NEUTRINO folder is set (Cantilena: Choose NEUTRINO Folder…)']; }
+    if (!f) { return []; }
     const problems: string[] = [];
     if (!exists(f)) { return [`the NEUTRINO folder does not exist: ${f}`]; }
     for (const file of [['bin', 'neutrino_server.exe'], ['bin', 'neutrino_client.exe'], ['bin', 'musicXMLtoLabel.exe'], ['settings', 'dic']]) {

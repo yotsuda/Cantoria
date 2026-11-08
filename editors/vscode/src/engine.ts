@@ -14,8 +14,8 @@ import { CantilenaScore, SHUTDOWN_LINE, parseLine, requestLine, serveArgs, voice
 /** A voice the engine rendered: the WAV's path, its length, its rate. */
 export interface RenderedVoice { wav: string; duration: number; sampleRate: number }
 
-/** How the engine is to run: the program, NEUTRINO's folder (its environment), the GPU, the threads. */
-export interface EngineSetup { program: string; neutrinoFolder: string; gpu: boolean; threads: number }
+/** How the engine is to run: the program, NEUTRINO's folder (its environment), the DiffSinger voices and vocoder folders, the GPU, the threads. */
+export interface EngineSetup { program: string; neutrinoFolder: string; voicesFolder: string; vocoderFolder: string; gpu: boolean; threads: number }
 
 /**
  * The resident engine: started on the first render, spoken to on stdin, answered on stdout one
@@ -37,15 +37,16 @@ export class Engine {
 
     private start(): cp.ChildProcess {
         fs.mkdirSync(this.outDir, { recursive: true });
-        const env = { ...process.env, CANTILENA_NEUTRINO_DIR: this.setup.neutrinoFolder };
-        const child = cp.spawn(this.setup.program, serveArgs(this.outDir, this.setup.gpu, this.setup.threads),
-            { windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'], env });
+        const env = { ...process.env };
+        if (this.setup.neutrinoFolder) { env.CANTILENA_NEUTRINO_DIR = this.setup.neutrinoFolder; } else { delete env.CANTILENA_NEUTRINO_DIR; }
+        const args = serveArgs(this.outDir, this.setup.gpu, this.setup.threads, this.setup.voicesFolder, this.setup.vocoderFolder);
+        const child = cp.spawn(this.setup.program, args, { windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'], env });
         this.child = child;
         readline.createInterface({ input: child.stdout! }).on('line', line => this.answer(line));
         readline.createInterface({ input: child.stderr! }).on('line', line => this.log(line));
         child.on('error', e => this.gone(child, `the engine could not start (${this.setup.program}): ${e.message}`));
         child.on('exit', (code, signal) => this.gone(child, `the engine exited (${signal ?? code})`));
-        this.log(`engine: ${this.setup.program} ${serveArgs(this.outDir, this.setup.gpu, this.setup.threads).join(' ')}`);
+        this.log(`engine: ${this.setup.program} ${args.join(' ')}`);
         return child;
     }
 

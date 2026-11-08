@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.3.0
+
+- **DiffSinger voices**: the setting `cantilena.voicesFolder` (and **Choose Voices Folder… (DiffSinger)**)
+  names a folder whose subfolders are DiffSinger voices in the OpenUtau format; they appear in
+  **Choose Voice…** and `voices()` as `diffsinger/<folder>` (labelled by their `character.yaml`), and the
+  bundled program sings them in-process over ONNX Runtime (the CPU so far). `cantilena.vocoderFolder`
+  for a voice that bundles no vocoder. Either engine alone is a complete setup: a NEUTRINO folder is no
+  longer required.
+- `status().voices` lists every voice as `engine/name` (it listed NEUTRINO's folder names).
+
 ## 0.2.0
 
 - **A voice is named `engine/name`**: `neutrino/MERROW` in the setting `cantilena.voice` (a bare name

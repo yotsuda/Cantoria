@@ -60,8 +60,10 @@ OpenUtau DiffSinger format — a folder the user installs, as a sound font is.
    score (the spike's `analyze`).
 3. **B3 — providers**: CUDA and DirectML on Windows, CoreML on macOS, CPU everywhere; chosen
    by setting, auto by default.
-4. **B4 — `serve` and the extension**: both engines resident; the voices list shows both; the
-   setting `cantilena.voicesFolder` (where DiffSinger voices live) beside `neutrinoFolder`.
+4. **B4 — `serve` and the extension**: *done 2026-11-08* (0.3.0): both engines resident in
+   `serve`; the extension's `cantilena.voicesFolder` (and **Choose Voices Folder…**) beside
+   `neutrinoFolder`, the voices list and the picker show both engines, either engine alone is a
+   complete setup.
 5. **B5 — platform builds**: `linux-x64`, `osx-arm64` (self-contained publish, as `win-x64`
    is), one VSIX per target. CI sings one phrase per platform with a small voice.
 
