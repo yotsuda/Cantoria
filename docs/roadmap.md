@@ -58,8 +58,12 @@ OpenUtau DiffSinger format — a folder the user installs, as a sound font is.
    acoustic, vocoder. `breath` becomes the voice's `AP` phoneme in the gap where its dictionary
    has one, else a rest. A net: a rendered phrase's pitch per note within half a semitone of the
    score (the spike's `analyze`).
-3. **B3 — providers**: CUDA and DirectML on Windows, CoreML on macOS, CPU everywhere; chosen
-   by setting, auto by default.
+3. **B3 — providers**: *DirectML done 2026-11-08* (0.4.0; Lily# session 1139): the Windows
+   program is built on the DirectML package of ONNX Runtime, `Provider` is `Auto` (DirectML
+   where there is a DirectX 12 device, else the CPU, with the reason said), `Cpu` (`--cpu`,
+   `cantilena.gpu` off) or `DirectML`; `design.md` §3.2. CUDA is not planned (the user's CUDA
+   and cuDNN, hundreds of megabytes); CoreML waits for a macOS build (B5), where the standard
+   package already carries it.
 4. **B4 — `serve` and the extension**: *done 2026-11-08* (0.3.0): both engines resident in
    `serve`; the extension's `cantilena.voicesFolder` (and **Choose Voices Folder…**) beside
    `neutrinoFolder`, the voices list and the picker show both engines, either engine alone is a

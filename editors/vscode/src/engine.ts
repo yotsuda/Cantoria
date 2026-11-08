@@ -30,6 +30,8 @@ export class Engine {
     private readonly inFlight = new Map<string, Promise<RenderedVoice>>();
     /** What the engine said on its first line: its voices. */
     voices: string[] = [];
+    /** Where the last DiffSinger render ran (`DirectML` or `CPU`), once one has; logged when it changes. */
+    provider: string | undefined;
 
     constructor(readonly setup: EngineSetup, readonly outDir: string, private readonly log: (line: string) => void) {}
 
@@ -61,6 +63,10 @@ export class Engine {
         const waiting = answer.id ? this.pending.get(answer.id) : undefined;
         if (!waiting || !answer.id) { return; }
         this.pending.delete(answer.id);
+        if (answer.provider && answer.provider !== this.provider) {
+            this.provider = answer.provider;
+            this.log(`diffsinger: the models run on ${answer.provider}`);
+        }
         if (answer.error || !answer.wav) { waiting.reject(new Error(answer.error ?? 'the engine answered no WAV')); }
         else { waiting.resolve({ wav: answer.wav, duration: answer.duration ?? 0, sampleRate: answer.sampleRate ?? 0 }); }
     }

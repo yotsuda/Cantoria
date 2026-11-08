@@ -22,6 +22,7 @@ public sealed class DiffSingerVoice : IDisposable
 {
     private InferenceSession? _acoustic;
     private InferenceSession? _vocoder;
+    private SessionOptions? _sessionOptions;
     private bool _disposed;
 
     public DiffSingerVoice(DiffSingerOptions options)
@@ -33,6 +34,7 @@ public sealed class DiffSingerVoice : IDisposable
         }
         Options = options;
         Folder = options.Folder;
+        Provider = options.Provider == OnnxProvider.Cpu ? OnnxProviders.CpuName : OnnxProviders.DirectMLName + "?";
         Acoustic = DsConfig.Load(Path.Combine(Folder, "dsconfig.yaml"));
         if (Acoustic.Acoustic is null)
         {
@@ -41,11 +43,11 @@ public sealed class DiffSingerVoice : IDisposable
         AcousticPhonemes = LoadPhonemes(Folder, Acoustic);
         AcousticLanguages = LoadLanguages(Folder, Acoustic);
         AcousticSpeaker = LoadSpeaker(Folder, Acoustic, options.Speaker);
-        Dur = new Module(Path.Combine(Folder, "dsdur"), options.Speaker, options.Language);
+        Dur = new Module(Path.Combine(Folder, "dsdur"), options.Speaker, options.Language, Open);
         var pitchDir = Path.Combine(Folder, "dspitch");
-        Pitch = File.Exists(Path.Combine(pitchDir, "dsconfig.yaml")) ? new Module(pitchDir, options.Speaker, options.Language) : null;
+        Pitch = File.Exists(Path.Combine(pitchDir, "dsconfig.yaml")) ? new Module(pitchDir, options.Speaker, options.Language, Open) : null;
         var varianceDir = Path.Combine(Folder, "dsvariance");
-        Variance = File.Exists(Path.Combine(varianceDir, "dsconfig.yaml")) ? new Module(varianceDir, options.Speaker, options.Language) : null;
+        Variance = File.Exists(Path.Combine(varianceDir, "dsconfig.yaml")) ? new Module(varianceDir, options.Speaker, options.Language, Open) : null;
         var own = Path.Combine(Folder, "dsvocoder");
         VocoderFolder = File.Exists(Path.Combine(own, "vocoder.yaml")) ? own : options.VocoderFolder!;
         Vocoder = DsVocoderConfig.Load(Path.Combine(VocoderFolder, "vocoder.yaml"));
@@ -73,19 +75,51 @@ public sealed class DiffSingerVoice : IDisposable
     /// <summary>The dictionary the words are read with: the duration module's.</summary>
     public DsDictionary Dictionary => Dur.Dictionary;
 
+    /// <summary>Where the models run, as settled when the first one was opened: <c>DirectML</c> or
+    /// <c>CPU</c>; <c>DirectML?</c> until then, when that is what will be tried
+    /// (<see cref="OnnxProviders"/>).</summary>
+    public string Provider { get; private set; }
+
+    /// <summary>Why the provider is not the one asked for (DirectML wanted, the CPU sings), or null.</summary>
+    public string? ProviderNote { get; private set; }
+
     public InferenceSession AcousticSession => _acoustic ??= Open(Path.Combine(Folder, Acoustic.Acoustic!));
     public InferenceSession VocoderSession => _vocoder ??= Open(Path.Combine(VocoderFolder, Vocoder.Model));
 
     /// <summary>A phoneme as the acoustic model spells it (itself, else with the language prefix), or null.</summary>
     public string? AcousticSymbol(string symbol) => Known(symbol, AcousticPhonemes, Options.Language);
 
-    internal static InferenceSession Open(string path)
+    /// <summary>
+    /// A model's session on this voice's provider. The provider is settled on the first call
+    /// (<see cref="OnnxProviders.Create"/>); a DirectML session that cannot be created on a
+    /// machine the provider accepted falls back to the CPU for this and every later model, unless
+    /// DirectML was asked for by name.
+    /// </summary>
+    internal InferenceSession Open(string path)
     {
         if (!File.Exists(path))
         {
             throw new FileNotFoundException($"model not found: {path}", path);
         }
-        return new InferenceSession(path);
+        if (_sessionOptions is null)
+        {
+            var (options, name, note) = OnnxProviders.Create(Options.Provider);
+            _sessionOptions = options;
+            Provider = name;
+            ProviderNote = note;
+        }
+        try
+        {
+            return new InferenceSession(path, _sessionOptions);
+        }
+        catch (Exception e) when (Provider == OnnxProviders.DirectMLName && Options.Provider == OnnxProvider.Auto && OnnxProviders.IsUnavailable(e))
+        {
+            _sessionOptions.Dispose();
+            _sessionOptions = new SessionOptions();
+            Provider = OnnxProviders.CpuName;
+            ProviderNote = $"DirectML could not open {Path.GetFileName(path)} ({e.Message.Split('\n')[0].Trim()}); the CPU sings";
+            return new InferenceSession(path, _sessionOptions);
+        }
     }
 
     internal static string? Known(string symbol, IReadOnlyDictionary<string, int> phonemes, string language)
@@ -180,6 +214,7 @@ public sealed class DiffSingerVoice : IDisposable
         Dur.Dispose();
         Pitch?.Dispose();
         Variance?.Dispose();
+        _sessionOptions?.Dispose();
     }
 
     /// <summary>
@@ -190,9 +225,11 @@ public sealed class DiffSingerVoice : IDisposable
     {
         private InferenceSession? _linguistic;
         private InferenceSession? _main;
+        private readonly Func<string, InferenceSession> _open;
 
-        internal Module(string dir, string? speaker, string language)
+        internal Module(string dir, string? speaker, string language, Func<string, InferenceSession> open)
         {
+            _open = open;
             Dir = dir;
             Config = DsConfig.Load(Path.Combine(dir, "dsconfig.yaml"));
             Phonemes = LoadPhonemes(dir, Config);
@@ -216,10 +253,10 @@ public sealed class DiffSingerVoice : IDisposable
         public double FrameMs => Config.FrameMs;
 
         /// <summary>The linguistic encoder (<c>linguistic.onnx</c>).</summary>
-        public InferenceSession Linguistic => _linguistic ??= Open(Path.Combine(Dir, Config.Linguistic ?? throw new InvalidDataException($"{Dir}: dsconfig.yaml names no linguistic model")));
+        public InferenceSession Linguistic => _linguistic ??= _open(Path.Combine(Dir, Config.Linguistic ?? throw new InvalidDataException($"{Dir}: dsconfig.yaml names no linguistic model")));
 
         /// <summary>The module's own model: the duration, pitch or variance predictor.</summary>
-        public InferenceSession Main => _main ??= Open(Path.Combine(Dir, Config.Dur ?? Config.Pitch ?? Config.Variance ?? throw new InvalidDataException($"{Dir}: dsconfig.yaml names no model")));
+        public InferenceSession Main => _main ??= _open(Path.Combine(Dir, Config.Dur ?? Config.Pitch ?? Config.Variance ?? throw new InvalidDataException($"{Dir}: dsconfig.yaml names no model")));
 
         public string? Symbol(string symbol) => Known(symbol, Phonemes, Language);
 

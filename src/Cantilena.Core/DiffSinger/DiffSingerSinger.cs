@@ -37,8 +37,12 @@ public sealed class DiffSingerSinger : ISinger, IDisposable
     /// <summary>The voice this singer sings with.</summary>
     public DiffSingerVoice Voice => _voice;
 
-    /// <summary>What the last render said: the syllables with no entry, the stages' seconds.</summary>
+    /// <summary>What the last render said: the provider, the syllables with no entry, the stages' seconds.</summary>
     public string LastLog { get; private set; } = "";
+
+    /// <summary>Where the models run — <c>DirectML</c> or <c>CPU</c> once the first model is open
+    /// (<see cref="DiffSingerVoice.Provider"/>).</summary>
+    public string Provider => _voice.Provider;
 
     public async Task<SungAudio> SingAsync(SungScore score, CancellationToken ct = default)
     {
@@ -262,6 +266,7 @@ public sealed class DiffSingerSinger : ISinger, IDisposable
         var samples = waveform.First().AsTensor<float>().ToArray();
         int rate = voice.Vocoder.SampleRate;
         log.AppendLine($"vocoder: {samples.Length / (double)rate:0.00} s at {rate} Hz in {clock.Elapsed.TotalSeconds:0.00} s");
+        log.AppendLine($"provider: {voice.Provider}" + (voice.ProviderNote is { } note ? $" ({note})" : ""));
 
         // Sample 0 stands at renderStartMs of the score: cut or pad so the audio's 0 is the score's 0.
         int shift = (int)Math.Round(renderStartMs / 1000 * rate);

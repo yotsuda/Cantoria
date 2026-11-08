@@ -150,6 +150,8 @@ export function voiceKey(score: CantilenaScore, voice: string): string {
 export interface ServeAnswer {
     ready?: boolean; backend?: string; voices?: string[];
     id?: string; wav?: string; duration?: number; sampleRate?: number; seconds?: number; error?: string;
+    /** Where a DiffSinger voice's models ran: `DirectML` or `CPU` (0.4.0); absent for NEUTRINO. */
+    provider?: string;
 }
 
 /** The answer a line holds, or null for a line that is not one. */

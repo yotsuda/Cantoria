@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.4.0
+
+- **DiffSinger voices sing on the GPU**: the bundled program is built on the DirectML build of ONNX
+  Runtime, so a DiffSinger voice's models run on any DirectX 12 GPU (a phrase in a second or two
+  once the models are resident, against ten or more on the CPU) and on the CPU where there is none —
+  the Cantilena output channel says which (`diffsinger: the models run on DirectML`). `cantilena.gpu`
+  off keeps every engine on the CPU. About 21 MB more in the VSIX (DirectML's redistributable).
+
 ## 0.3.0
 
 - **DiffSinger voices**: the setting `cantilena.voicesFolder` (and **Choose Voices Folder… (DiffSinger)**)

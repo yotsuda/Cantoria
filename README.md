@@ -28,7 +28,8 @@ and the one thing this library adds.
     format (a folder with `dsconfig.yaml`, as OpenUtau installs them) through
     ONNX Runtime, after the C# implementation in
     [OpenUtau](https://github.com/stakira/OpenUtau). Japanese lyrics (kana) so
-    far; the CPU so far.
+    far. On Windows the models run on the GPU through DirectML (any DirectX 12
+    device; the CPU where there is none, or with `--cpu`).
 
 Cantilena ships **no voice**. A voice (a trained model, a singing library) is
 its author's work under its author's terms; the user installs one and points
@@ -45,7 +46,8 @@ cantilena voices --neutrino-dir … --voices-dir …
 ```
 
 NEUTRINO writes the 8-second WAV in a few seconds (the first run loads its
-models); a DiffSinger voice takes a few seconds on the CPU. `cantilena serve`
+models); a DiffSinger voice takes a few seconds on the CPU, under a second on a
+GPU once its models are resident. `cantilena serve`
 keeps the engines warm for an editor (JSON lines on stdin and stdout; the next
 NEUTRINO render of a score takes under half a second). See
 [docs/design.md](docs/design.md).

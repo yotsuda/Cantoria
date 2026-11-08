@@ -189,7 +189,7 @@ static async Task<int> Sing(string[] rest)
         }
         await File.WriteAllBytesAsync(a.Output, Wav.Write(audio));
         Console.Error.WriteLine($"cantilena: {singer.Name} sang {score.Notes.Count} notes, {audio.Duration:0.##} s at {audio.SampleRate} Hz, "
-            + $"in {watch.Elapsed.TotalSeconds:0.#} s -> {a.Output}");
+            + $"in {watch.Elapsed.TotalSeconds:0.#} s{ProviderOf(singer)} -> {a.Output}");
         return 0;
     }
     catch (SingerException e)
@@ -319,6 +319,7 @@ static async Task<int> Serve(string[] rest)
                     sampleRate = audio.SampleRate,
                     seconds = Math.Round(watch.Elapsed.TotalSeconds, 2),
                     voice = singer.Name,
+                    provider = (singer as Cantilena.DiffSinger.DiffSingerSinger)?.Provider,
                 }, json));
             }
             catch (Exception e) when (e is SingerException or JsonException or IOException or UnauthorizedAccessException or InvalidDataException or ArgumentException)
@@ -335,6 +336,17 @@ static async Task<int> Serve(string[] rest)
         }
     }
     return 0;
+}
+
+/// <summary>" on DirectML" / " on the CPU" for a DiffSinger singer (and why, when the CPU stood in); nothing for NEUTRINO.</summary>
+static string ProviderOf(ISinger singer)
+{
+    if (singer is not Cantilena.DiffSinger.DiffSingerSinger ds)
+    {
+        return "";
+    }
+    var note = ds.Voice.ProviderNote;
+    return (ds.Provider == "CPU" ? " on the CPU" : $" on {ds.Provider}") + (note is null ? "" : $" ({note})");
 }
 
 /// <summary>A request's id as a file name: letters, digits, '-', '_' and '.', the rest '_'.</summary>

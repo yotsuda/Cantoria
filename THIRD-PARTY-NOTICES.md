@@ -47,7 +47,22 @@ its top. OpenUtau's notice:
 https://github.com/microsoft/onnxruntime
 
 Referenced by `Cantilena.Core` as the NuGet package `Microsoft.ML.OnnxRuntime`
-(the CPU build; a GPU build is planned). Not copied. Its license is in the package.
+(the CPU build: every platform, the tests), or — the Windows program, published with
+`UseDirectML=true` — `Microsoft.ML.OnnxRuntime.DirectML` (the same runtime with the
+DirectML execution provider; its native library runs the CPU provider too). Not
+copied. The license is in each package.
+
+### DirectML — Microsoft Software License Terms (redistributed with the Windows program)
+
+https://www.nuget.org/packages/Microsoft.AI.DirectML
+
+`DirectML.dll`, brought in by `Microsoft.ML.OnnxRuntime.DirectML` as the NuGet package
+`Microsoft.AI.DirectML`, ships beside the Windows program (and so inside the VS Code
+extension's VSIX). It is not open source: Microsoft's license terms for DirectML
+(`LICENSE.txt` in the package) allow its installation, use and distribution within
+applications developed with machine-learning frameworks that run on Windows, which is
+how it is used here. Nothing of it is modified. Its own third-party notices are in
+the package's `ThirdPartyNotices.txt`.
 
 ### YamlDotNet — MIT (referenced)
 
@@ -68,9 +83,7 @@ them, under that person's terms — Cantilena ships none.
 
 ## Planned
 
-Nothing further is planned to be copied. A GPU build of ONNX Runtime
-(`Microsoft.ML.OnnxRuntime.DirectML`, MIT) will be referenced by the Windows
-program when the provider setting arrives.
+Nothing further is planned to be copied.
 
 ## Invoked, not included
 

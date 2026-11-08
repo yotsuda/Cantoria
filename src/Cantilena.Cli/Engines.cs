@@ -114,7 +114,7 @@ sealed class Engines
                         ? " (give --voices-dir, set CANTILENA_VOICES_DIR, or write diffsinger.voices in cantilena.json, or name the voice's folder)"
                         : $" and not under {VoicesFolder} (installed: {string.Join(", ", DiffSingerOptions.Voices(VoicesFolder).DefaultIfEmpty("none"))})")];
                 }
-                return new DiffSingerOptions(folder) { VocoderFolder = VocoderFolder, Steps = Steps }.Validate();
+                return DiffSinger(folder).Validate();
             default:
                 return [$"no engine named {engine} in {voice} (there is: {string.Join(", ", Names)})"];
         }
@@ -146,10 +146,19 @@ sealed class Engines
         return engine switch
         {
             "neutrino" => new NeutrinoSinger(new NeutrinoOptions(NeutrinoFolder!, name) { UseGpu = UseGpu, Threads = Threads, KeepFiles = KeepFiles }),
-            "diffsinger" => new DiffSingerSinger(new DiffSingerOptions(DiffSingerFolder(name)!) { VocoderFolder = VocoderFolder, Steps = Steps }),
+            "diffsinger" => new DiffSingerSinger(DiffSinger(DiffSingerFolder(name)!)),
             _ => throw new SingerException($"no engine named {engine}"),
         };
     }
+
+    /// <summary>A DiffSinger voice's options: <c>--cpu</c> keeps it off the GPU, else DirectML when
+    /// this build and this machine have it (<see cref="OnnxProvider.Auto"/>).</summary>
+    private DiffSingerOptions DiffSinger(string folder) => new(folder)
+    {
+        VocoderFolder = VocoderFolder,
+        Steps = Steps,
+        Provider = UseGpu ? OnnxProvider.Auto : OnnxProvider.Cpu,
+    };
 
     /// <summary>Every voice installed, as <c>engine/name</c>: NEUTRINO's, then the DiffSinger voices folder's.</summary>
     public IReadOnlyList<string> List()

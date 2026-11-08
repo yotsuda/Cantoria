@@ -23,6 +23,10 @@ public sealed record DiffSingerOptions(string Folder)
     /// <summary>Leave the dictionary's language prefix handling to this code (<c>ja</c>).</summary>
     public string Language { get; init; } = "ja";
 
+    /// <summary>Where the models run: DirectML when it is there, else the CPU (<see cref="OnnxProvider.Auto"/>),
+    /// the CPU always, or DirectML or an error.</summary>
+    public OnnxProvider Provider { get; init; } = OnnxProvider.Auto;
+
     /// <summary>The name of the voice: its folder's name.</summary>
     public string Name => Path.GetFileName(Path.TrimEndingDirectorySeparator(Folder));
 

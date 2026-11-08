@@ -51,6 +51,35 @@ public class DiffSingerSingerTests
     }
 
     [Fact]
+    public async Task TheProvider_IsSettledByTheFirstModel_AndTheCpuIsAlwaysThere()
+    {
+        if (Voice is null)
+        {
+            return;
+        }
+        var score = ScoreJson.Read(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "yukiyakonko.json")));
+        // Auto: DirectML where this build and this machine have it, else the CPU — and the log says which.
+        using (var auto = new DiffSingerSinger(new DiffSingerOptions(Voice) { VocoderFolder = Vocoder, Steps = 10 }))
+        {
+            Assert.Equal("DirectML?", auto.Provider);
+            await auto.SingAsync(score);
+            Assert.Contains(auto.Provider, new[] { "DirectML", "CPU" });
+            Assert.Contains("provider: " + auto.Provider, auto.LastLog);
+            if (auto.Provider == "CPU")
+            {
+                Assert.Contains("DirectML", auto.Voice.ProviderNote);
+            }
+        }
+        // Cpu: the CPU, with nothing to explain.
+        using (var cpu = new DiffSingerSinger(new DiffSingerOptions(Voice) { VocoderFolder = Vocoder, Steps = 10, Provider = OnnxProvider.Cpu }))
+        {
+            await cpu.SingAsync(score);
+            Assert.Equal("CPU", cpu.Provider);
+            Assert.Null(cpu.Voice.ProviderNote);
+        }
+    }
+
+    [Fact]
     public async Task Refuses_ASyllableTheDictionaryHasNot_WhenNothingIsLeft()
     {
         if (Voice is null)

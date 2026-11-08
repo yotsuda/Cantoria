@@ -32,8 +32,9 @@ see that all is well.
 
 In Lily#, the preview's Play then sings every part a lyrics row sings (hiragana or katakana on
 each syllable), in time with the other parts. The first phrase takes a while (NEUTRINO loads its
-models — up to a minute; a DiffSinger voice a few seconds on the CPU); the same phrase is sung once
-and kept (**Cantilena: Forget Rendered Voices** clears them).
+models — up to a minute; a DiffSinger voice a couple of seconds on a DirectX 12 GPU through DirectML,
+or ten or more on the CPU where there is none); the same phrase is sung once and kept
+(**Cantilena: Forget Rendered Voices** clears them).
 
 ## For extension authors
 

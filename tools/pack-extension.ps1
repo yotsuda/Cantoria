@@ -13,7 +13,10 @@ $bin = "$ext\bin\win-x64"
 
 if (-not $SkipPublish) {
     if (Test-Path $bin) { Remove-Item -Recurse -Force $bin }
-    cmd /d /s /c "dotnet publish `"$root\src\Cantilena.Cli`" -c Release -r win-x64 --self-contained -o `"$bin`" -v q -nologo < NUL"
+    # The Windows program is built on the DirectML package of ONNX Runtime (roadmap B3): its
+    # native library runs the CPU provider too, so one program sings on DirectML where there is a
+    # DirectX 12 device and on the CPU elsewhere. About 21 MB more than the CPU package.
+    cmd /d /s /c "dotnet publish `"$root\src\Cantilena.Cli`" -c Release -r win-x64 --self-contained -p:UseDirectML=true -o `"$bin`" -v q -nologo < NUL"
     if ($LASTEXITCODE -ne 0) { throw "dotnet publish failed" }
     Get-ChildItem $bin -Filter *.pdb | Remove-Item
 }

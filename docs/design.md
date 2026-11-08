@@ -100,10 +100,24 @@ the user installs (as OpenUtau installs it); Cantilena reads it, never bundles i
   and the model-input check (inputs the model has not are dropped; one it wants
   and was not given is an error naming it).
 
-The CPU so far: a 7 s phrase renders in 4–18 s at 10–20 steps. The GPU provider
-(DirectML on Windows: the same phrase in 0.3 s once the models are resident, in
-the spike) is `roadmap.md` B3. The variance path is written after OpenUtau but
-untested (the voice at hand has no `dsvariance`).
+**Providers** (`roadmap.md` B3, 2026-11-08): `DiffSingerOptions.Provider` is `Auto`
+(DirectML where this build and this machine have it, else the CPU), `Cpu`, or
+`DirectML` (or an error). The Windows program is built on the DirectML package of
+ONNX Runtime (`Microsoft.ML.OnnxRuntime.DirectML`, `UseDirectML=true` in the
+publish; its native library runs the CPU provider too), so one program serves a
+machine with a DirectX 12 device and one without: `OnnxProviders.Create` appends the
+DirectML provider (sequential execution, no memory pattern — what the provider asks),
+and where that fails (no entry point in a CPU build, no device) or the first session
+cannot be created, the voice falls back to the CPU and says why
+(`DiffSingerVoice.ProviderNote`; `cantilena sing` prints "on DirectML" / "on the
+CPU (…)", `serve` answers `provider`). The CLI's `--cpu` (the extension's
+`cantilena.gpu` off) is `Cpu`. CUDA and CoreML are not wired: CUDA needs the
+user's CUDA and cuDNN and a package of hundreds of megabytes; CoreML comes in the
+standard package on macOS and can be appended the same way when a macOS build
+exists. On the CPU a 7 s phrase renders in 4–18 s at 10–20 steps; on DirectML
+the acoustic model takes 0.3 s and the phrase under a second once the models are
+resident. The variance path is written after OpenUtau but untested (the voice at
+hand has no `dsvariance`).
 
 Spike done 2026-11-08 (`roadmap.md` B1): the whole pipeline ran in C# on a real voice and sang
 the README's score in tune (mean 0.19 semitones off the written notes, every note voiced). On the
