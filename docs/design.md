@@ -1,0 +1,122 @@
+# Cantilena — design
+
+## 1. Purpose
+
+A notation program plays its score through a sound font; the lyrics stay
+silent. Cantilena takes the notes a part sings, with their syllables, and
+returns the voice. It is a library and a CLI, not an editor: no piano roll,
+no tuning UI. Tuning (pitch curves, timing) is out of scope until a caller
+needs it.
+
+## 2. The contract
+
+```csharp
+public interface ISinger
+{
+    string Name { get; }
+    Task<SungAudio> SingAsync(SungScore score, CancellationToken ct = default);
+}
+public sealed record SungAudio(float[] Samples, int SampleRate);   // mono, −1..1
+```
+
+`SungScore` is the JSON in the README: seconds, MIDI pitch, syllable,
+melisma flag, breath flag. Decisions:
+
+- **Seconds, not ticks.** Every caller already knows its tempo map; making
+  Cantilena understand tempo, meter, repeats and fermatas would copy the
+  caller's hardest code. A backend that needs a tempo (NEUTRINO's MusicXML)
+  gets a constant one and absolute durations, which is lossless.
+- **Syllable, not phonemes.** Phonemization is language- and voice-specific
+  (a Japanese CV voice, a DiffSinger voice with its own dictionary), so it
+  belongs to the backend. The caller writes what the singer should sing.
+- **Melisma is a flag on the note, not a lyric.** Each backend spells it its
+  own way: `ー` for NEUTRINO, `+` for OpenUtau/DiffSinger, a vowel repeat for
+  a plain CV voice.
+- **Rests are gaps.** No rest objects. Breaths are flags, because a breath is
+  a phrase boundary the singer acts on, not silence.
+
+## 3. Pipeline
+
+Every modern singing synthesizer is these four stages; Cantilena's backends
+are the two ways of running them.
+
+1. **Phonemize**: syllables → phonemes (`こん` → `k o N`).
+2. **Timing and pitch**: note lengths → phoneme times; note pitches → f0 curve
+   (portamento, vibrato).
+3. **Acoustic model**: phonemes, times, f0 → mel-spectrogram. The voice.
+4. **Vocoder**: mel-spectrogram → waveform.
+
+### 3.1 `neutrino` backend (first)
+
+Runs the user's NEUTRINO Tau (v3.2.x) installation. What was learnt driving
+it by hand (Lily# session 1124, 2026-11-08):
+
+- Input is **uncompressed MusicXML**: one part, every note with a hiragana
+  lyric, melisma as `ー`, rests as rests, a constant tempo. NEUTRINO ignores
+  slurs, dynamics, articulations and key signatures, and warns if the score
+  does not start with a rest (it adds one).
+- `bin\musicXMLtoLabel.exe score.musicxml full.lab mono.lab -x settings\dic`
+  writes Sinsy-format labels.
+- The ".ex" package has no `Run.bat`: synthesis is a daemon,
+  `bin\neutrino_server.exe`, started by the caller and bound to the caller's
+  **process id** (the client finds it through its parent process, so the
+  client must be a direct child of the process that started the server), and
+  `bin\neutrino_client.exe full.lab out.lab out.f0 out.melspec out.wav
+  model\<VOICE>\ -n <threads> [-m] -t` for one render. Control commands:
+  `neutrino_client.exe --owner-pid <pid> status|help|shutdown`.
+- Cold start ~45 s (model load, GPU); then **~0.5 s for a 4.5 s phrase** on an
+  RTX 5070 Ti. Cantilena therefore keeps the server alive for the process's
+  lifetime and shuts it down on dispose.
+- The command lines are **configuration**, with these as defaults: NEUTRINO
+  has changed its layout between versions (`Run.bat` → server/client) and
+  will again.
+- Nothing of NEUTRINO is redistributed. Cantilena only needs the folder.
+
+### 3.2 `diffsinger` backend (second)
+
+In-process inference of OpenVPI DiffSinger ONNX exports through
+`Microsoft.ML.OnnxRuntime`, following OpenUtau's `OpenUtau.Core/DiffSinger/`
+(MIT): the voice's `dsconfig.yaml`, the phoneme dictionary, the linguistic,
+duration, pitch and variance models, the acoustic model, the vocoder. Japanese
+phonemization after OpenUtau's phonemizers. GPU through the CUDA or DirectML
+provider when present; CPU otherwise (seconds, not sub-second).
+
+The voice is a folder the user installs. Cantilena reads it, never bundles it.
+
+## 4. CLI
+
+```
+cantilena sing score.json -o out.wav --backend neutrino --voice MERROW
+cantilena sing score.json -o out.wav --backend diffsinger --voice C:\voices\xxx
+cantilena voices --backend neutrino          # what is installed
+cantilena --version
+```
+
+Settings (the NEUTRINO folder, the voices folder, command templates) come from
+`cantilena.json` beside the executable, the user's config directory, or
+options. Exit codes: 0 sung, 1 the backend failed (its message on stderr),
+2 bad arguments or score.
+
+## 5. How a caller uses it (Lily#'s plan)
+
+1. The editor resolves the part that sings (the one the score's `lyrics`
+   follow) into the JSON score: seconds from its own tempo map, the syllable
+   each note carries, `melisma` where the lyric extends, `breath` at a breath
+   mark or a long rest.
+2. It runs `cantilena sing` (or references the library) with a cache key over
+   the score's bytes and the voice, keeps the WAV, and plays it alongside its
+   sound-font synth at the same clock; muting the part mutes the voice;
+   exports mix the WAV in.
+3. The setting names the backend and voice the way a sound font is named:
+   a path the user chose, nothing bundled.
+
+## 6. Licensing boundaries
+
+- Cantilena: Apache-2.0. May include MIT code (OpenUtau) with notices; may
+  reference Apache/MIT packages.
+- Must **not** depend on Lily# (GPL-3.0): the dependency runs one way.
+- Must **not** include any voice, model, NEUTRINO file or dataset. Public
+  singing datasets are mostly research-only; training a voice for
+  distribution needs recordings made for it with the singer's consent.
+- NEUTRINO's agreement forbids its use in ML voice conversion; Cantilena
+  synthesizes from scores only.

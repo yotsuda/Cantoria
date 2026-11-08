@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Cantilena.Cli/Cantilena.Cli.csproj" />
+    <Project Path="src/Cantilena.Core/Cantilena.Core.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Cantilena.Tests/Cantilena.Tests.csproj" />
+  </Folder>
+</Solution>

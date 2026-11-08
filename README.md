@@ -1,0 +1,70 @@
+# Cantilena
+
+A singing engine for notation software: give it notes with lyrics, get back a
+voice singing them.
+
+*Cantilena* (Italian, from Latin *cantilena*, "little song") is the musical
+term for a flowing, vocal melodic line — the kind a singer carries over the
+instruments. That is the one thing a score player cannot do with a sound font,
+and the one thing this library adds.
+
+## What it is
+
+- A **.NET library** (`Cantilena.Core`) with one small contract: a *score* of sung
+  notes in, mono audio out (`ISinger`).
+- A **command-line tool** (`cantilena`) that reads that score as JSON and
+  writes a WAV, so any editor or notation program can call it without linking
+  to it.
+- **Backends** behind the same contract:
+  - `neutrino` — drives a user's own installation of
+    [NEUTRINO](https://studio-neutrino.com/) (closed-source freeware, Japanese
+    voices) as a separate process. Planned first, because it works today.
+  - `diffsinger` — in-process inference of
+    [DiffSinger](https://github.com/openvpi/DiffSinger) ONNX models through
+    ONNX Runtime, after the C# implementation in
+    [OpenUtau](https://github.com/stakira/OpenUtau). Planned second.
+
+Cantilena ships **no voice**. A voice (a trained model, a singing library) is
+its author's work under its author's terms; the user installs one and points
+Cantilena at it, exactly as a score player is pointed at a sound font.
+
+## Status
+
+Skeleton. The contract and the JSON format exist and are tested; no backend
+sings yet. See [docs/design.md](docs/design.md) for the plan.
+
+## The score
+
+```json
+{
+  "sampleRate": 44100,
+  "language": "ja",
+  "notes": [
+    { "start": 0.000, "duration": 0.682, "pitch": 60, "lyric": "ゆ" },
+    { "start": 0.682, "duration": 0.227, "pitch": 62, "melisma": true },
+    { "start": 0.909, "duration": 0.682, "pitch": 60, "lyric": "き" },
+    { "start": 1.591, "duration": 0.227, "pitch": 62, "lyric": "や", "breath": true }
+  ]
+}
+```
+
+- Times are **seconds**: tempo, meter and repeats are the caller's business,
+  already resolved. Gaps between notes are rests.
+- `pitch` is a MIDI note number (60 = C4); fractional values are allowed.
+- `lyric` is the syllable as pronounced, in the language's own script
+  (hiragana or katakana for `ja`). A note with `melisma: true` continues the
+  previous syllable's vowel and has no lyric of its own.
+- `breath: true` marks a phrase end after the note (the singer breathes).
+
+## Relation to Lily#
+
+Cantilena was started for [Lily#](https://github.com/yotsuda/LilySharp), a
+music notation compiler, so that its preview could sing the lyrics. It is a
+separate project on purpose: Lily# is GPL-3.0 and Cantilena is Apache-2.0, so
+Lily# may use Cantilena but Cantilena must never depend on Lily#, and anyone
+else's notation program may use Cantilena too.
+
+## License
+
+Apache License 2.0 — see [LICENSE](LICENSE). Third-party works and how each
+is used are in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).

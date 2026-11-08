@@ -1,0 +1,35 @@
+# .NET
+bin/
+obj/
+*.user
+*.suo
+.vs/
+TestResults/
+*.trx
+artifacts/
+
+# Editors
+.vscode/
+.idea/
+
+# Models and voices are never committed: they are large and they are not ours.
+models/
+voices/
+*.onnx
+*.onnx.data
+*.pt
+*.ckpt
+*.bin
+*.sf2
+*.sf3
+
+# Rendered sound and intermediates
+*.wav
+*.mp3
+*.flac
+*.lab
+*.f0
+*.melspec
+
+# Local scratch
+scratch/

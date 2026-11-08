@@ -1,0 +1,18 @@
+{
+  "sampleRate": 44100,
+  "language": "ja",
+  "notes": [
+    { "start": 0.000, "duration": 0.682, "pitch": 60, "lyric": "ゆ" },
+    { "start": 0.682, "duration": 0.227, "pitch": 62, "melisma": true },
+    { "start": 0.909, "duration": 0.682, "pitch": 60, "lyric": "き" },
+    { "start": 1.591, "duration": 0.227, "pitch": 62, "lyric": "や" },
+    { "start": 1.818, "duration": 0.909, "pitch": 60, "lyric": "こん" },
+    { "start": 2.727, "duration": 0.455, "pitch": 57, "lyric": "こ", "breath": true },
+    { "start": 3.636, "duration": 0.682, "pitch": 57, "lyric": "あ" },
+    { "start": 4.318, "duration": 0.227, "pitch": 58, "lyric": "ら" },
+    { "start": 4.545, "duration": 0.682, "pitch": 57, "lyric": "れ" },
+    { "start": 5.227, "duration": 0.227, "pitch": 58, "lyric": "や" },
+    { "start": 5.455, "duration": 0.909, "pitch": 57, "lyric": "こん" },
+    { "start": 6.364, "duration": 0.455, "pitch": 53, "lyric": "こ", "breath": true }
+  ]
+}
