@@ -10,7 +10,7 @@
     <NoWarn>$(NoWarn);CS1591</NoWarn>
     <RootNamespace>Cantilena</RootNamespace>
     <PackageId>Cantilena.Core</PackageId>
-    <Version>0.1.0-alpha</Version>
+    <Version>0.2.0</Version>
     <Authors>Yoshifumi Tsuda</Authors>
     <Description>A singing engine for notation software: notes with lyrics in, a voice out.</Description>
     <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>

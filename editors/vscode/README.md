@@ -15,7 +15,8 @@ build of their own.
    It is free software of STUDIO NEUTRINO under its own terms, not part of this extension.
    Its bundled voice is MERROW; other voices are their authors' work, installed under its `model\` folder.
 2. **Cantilena: Choose NEUTRINO Folder…** — the folder holding `bin\`, `model\` and `settings\`.
-3. **Cantilena: Choose Voice…** (MERROW by default), and **Cantilena: Check Setup** to see that all is well.
+3. **Cantilena: Choose Voice…** (`neutrino/MERROW` by default — a voice is named `engine/name`),
+   and **Cantilena: Check Setup** to see that all is well.
 
 Then, in Lily#, the preview's Play sings every part a lyrics row sings (hiragana or katakana on
 each syllable), in time with the other parts. The first phrase takes a while (NEUTRINO loads its
@@ -27,7 +28,8 @@ Voices** clears them).
 ```ts
 const ext = vscode.extensions.getExtension('yotsuda.cantilena');
 const api = ext && (ext.isActive ? ext.exports : await ext.activate());
-const { ready, problems } = await api.status();
+const { ready, problems, voice } = await api.status();     // voice: 'neutrino/MERROW'
+const installed = await api.voices();                        // [{ id: 'neutrino/MERROW', engine: 'neutrino', name: 'MERROW', label: 'Merrow', language: 'ja' }]
 const { wav, duration } = await api.sing({
     sampleRate: 48000, language: 'ja',
     notes: [
@@ -43,8 +45,11 @@ const { wav, duration } = await api.sing({
   the Japanese voices); a `melisma` note carries the previous vowel on and has no lyric;
   `breath` marks a phrase end after the note.
 - `sing` answers the WAV's path (48 kHz mono) and its duration; the file stays until the voices
-  are forgotten. It throws with one sentence when it cannot sing (no program, no NEUTRINO folder,
-  a score the engine refused). `release()` lets the engine go; `apiVersion` is `1`.
+  are forgotten. Its `options.voice` is an `id` from `voices()` (`engine/name`; a bare name is a
+  NEUTRINO voice), else the setting's voice. It throws with one sentence when it cannot sing (no
+  program, no NEUTRINO folder, an engine or a voice that is not there, a score the engine
+  refused). `release()` lets the engine go; `apiVersion` is `1` (`voices()` was added in 0.2.0
+  without changing it — an older extension has no `voices`).
 - Everything is local: the engine is a resident child process of this extension, spoken to in
   JSON lines; nothing leaves the machine.
 

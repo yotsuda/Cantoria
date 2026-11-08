@@ -24,6 +24,70 @@ export interface CantilenaScore {
     notes: CantilenaNote[];
 }
 
+/** The engines this extension sings through; the first is what a bare voice name means. */
+export const ENGINES = ['neutrino'] as const;
+export type EngineName = typeof ENGINES[number];
+
+/** A voice as the API names it: `engine/name`, e.g. `neutrino/MERROW` — the form `sing`'s
+ *  `voice`, the setting `cantilena.voice` and `status().voice` take, so a second engine's voice
+ *  needs no new setting. */
+export interface VoiceEntry {
+    /** `engine/name`. */
+    id: string;
+    engine: EngineName;
+    /** The engine's own name for the voice: for NEUTRINO, its folder under `model\`. */
+    name: string;
+    /** What the voice calls itself (NEUTRINO's `info.toml`, the speaker's name), else `name`. */
+    label: string;
+    /** The language it sings, as a BCP-47 tag where known (`ja`). */
+    language?: string;
+    /** The terms it is used under, where the voice or its engine states them; a NEUTRINO voice
+     *  leaves it to NEUTRINO's agreement and says nothing here. */
+    licence?: string;
+}
+
+/** `engine/name`. */
+export function voiceId(engine: string, name: string): string { return `${engine}/${name}`; }
+
+/** The engine and the name a voice setting or option means: `neutrino/MERROW`; a bare `MERROW`
+ *  is the first engine's; empty is its default voice. The engine is not checked here. */
+export function splitVoiceId(text: string | undefined): { engine: string; name: string } {
+    const t = (text ?? '').trim();
+    const slash = t.indexOf('/');
+    if (slash < 0) { return { engine: ENGINES[0], name: t || 'MERROW' }; }
+    return { engine: t.slice(0, slash).trim().toLowerCase() || ENGINES[0], name: t.slice(slash + 1).trim() || 'MERROW' };
+}
+
+/** What a NEUTRINO voice's `info.toml` says of its speaker: `[speaker] name = "Merrow"` and
+ *  `language = "Japanese"`; either missing when the file does not say. */
+export function speakerOf(toml: string): { name?: string; language?: string } {
+    const section = /^\s*\[speaker\]\s*$([\s\S]*?)(?=^\s*\[|(?![\s\S]))/m.exec(toml)?.[1] ?? '';
+    const value = (key: string) => new RegExp(`^\\s*${key}\\s*=\\s*"([^"]*)"`, 'm').exec(section)?.[1]?.trim() || undefined;
+    return { name: value('name'), language: value('language') };
+}
+
+const LANGUAGE_TAGS: Record<string, string> = { japanese: 'ja', english: 'en', chinese: 'zh', mandarin: 'zh', korean: 'ko' };
+
+/** A language as a BCP-47 tag: a name the voices write (`Japanese`), or a tag already (`ja`, `en-US`); undefined otherwise. */
+export function languageTag(name: string | undefined): string | undefined {
+    const n = (name ?? '').trim();
+    if (!n) { return undefined; }
+    return LANGUAGE_TAGS[n.toLowerCase()] ?? (/^[a-z]{2,3}(-[A-Za-z0-9]{2,8})*$/.test(n) ? n : undefined);
+}
+
+/** The voices under a NEUTRINO folder as the API lists them: voicesIn, each read for its speaker. */
+export function voiceEntriesIn(folder: string, listDirs: (dir: string) => string[], exists: (p: string) => boolean,
+    readText: (p: string) => string | undefined, join: (...parts: string[]) => string): VoiceEntry[] {
+    return voicesIn(folder, listDirs, exists, join).map(name => {
+        const info = readText(join(folder, 'model', name, 'info.toml'));
+        const speaker = info ? speakerOf(info) : {};
+        const entry: VoiceEntry = { id: voiceId('neutrino', name), engine: 'neutrino', name, label: speaker.name || name };
+        const language = languageTag(speaker.language);
+        if (language) { entry.language = language; }
+        return entry;
+    });
+}
+
 /** What is wrong with a score's SHAPE, in words; empty when it can be sent. The engine checks
  *  the music (order, overlap, a lyric on every sung note) and answers in its own words. */
 export function scoreProblems(score: unknown): string[] {
@@ -42,7 +106,7 @@ export function scoreProblems(score: unknown): string[] {
     return problems.slice(0, 8);
 }
 
-/** What a rendered voice is cached and named by: the voice and the score's bytes. */
+/** What a rendered voice is cached and named by: the voice (its `engine/name`) and the score's bytes. */
 export function voiceKey(score: CantilenaScore, voice: string): string {
     return createHash('sha1').update(voice).update('\n').update(JSON.stringify(score)).digest('hex');
 }

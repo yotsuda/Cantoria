@@ -12,9 +12,10 @@ Cantilena is a library, a CLI and an editor extension — never an editor.
 ## A. Finish the first release
 
 - **Publish**: the repository on GitHub, the extension on the Marketplace (win-x64).
-- **Voice names are `engine/voice`** everywhere: `neutrino/MERROW`. The CLI prints them so
-  already; the extension's setting and API accept the prefixed form and the API gains
-  `voices()` → `[{ id, engine, language, licence? }]`. Additive, so `apiVersion` stays 1.
+- **Voice names are `engine/voice`** everywhere: `neutrino/MERROW`. *Done 2026-11-08 (0.2.0)*:
+  the CLI printed them so already; the extension's setting, picker, `status().voice` and
+  `sing` take the prefixed form, and the API gained `voices()` → `[{ id, engine, name, label,
+  language?, licence? }]`. Additive, so `apiVersion` stays 1.
 - **One NEUTRINO server for all its voices** (the voice is an argument of the render; today it
   is one server per voice, `design.md` §4.1).
 - **`serve` protocol notes**: a `{"command":"voices"}` request; a `{"command":"status"}` that

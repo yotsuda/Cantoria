@@ -72,10 +72,11 @@ export class Engine {
         this.pending.clear();
     }
 
-    /** The voice for `score` in `voice`: at once when it was sung before (the file still there),
-     *  else when the engine has sung it; a second ask while it is in flight joins the first. */
-    sing(score: CantilenaScore, voice: string): { key: string; rendered: Promise<RenderedVoice>; cached: boolean } {
-        const key = voiceKey(score, voice);
+    /** The voice for `score` in `voice` (the engine's own name for it; `id` its `engine/name`, what
+     *  the render is keyed by): at once when it was sung before (the file still there), else when
+     *  the engine has sung it; a second ask while it is in flight joins the first. */
+    sing(score: CantilenaScore, voice: string, id = voice): { key: string; rendered: Promise<RenderedVoice>; cached: boolean } {
+        const key = voiceKey(score, id);
         const output = path.join(this.outDir, `${key}.wav`);
         const hit = this.done.get(key);
         if (hit && fs.existsSync(hit.wav)) { return { key, rendered: Promise.resolve(hit), cached: true }; }

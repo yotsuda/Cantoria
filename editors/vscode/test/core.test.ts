@@ -6,7 +6,8 @@ import * as assert from 'node:assert/strict';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import {
-    neutrinoFolderProblems, parseLine, programCandidates, requestLine, rid, scoreProblems, serveArgs, voiceKey, voicesIn,
+    ENGINES, languageTag, neutrinoFolderProblems, parseLine, programCandidates, requestLine, rid, scoreProblems, serveArgs,
+    speakerOf, splitVoiceId, voiceEntriesIn, voiceId, voiceKey, voicesIn,
 } from '../src/core';
 
 const join = (...parts: string[]) => parts.join('\\');
@@ -77,6 +78,38 @@ describe('where the program and the voices are', () => {
         assert.deepEqual(voicesIn('X', dirs, p => tree.has(p), join), []);
     });
 
+    // A voice is named engine/name everywhere (docs/roadmap.md A), so a second engine's voice
+    // needs no new setting; a bare name is the first engine's.
+    it('names a voice engine/name, and reads either form', () => {
+        assert.deepEqual(ENGINES, ['neutrino']);
+        assert.equal(voiceId('neutrino', 'MERROW'), 'neutrino/MERROW');
+        assert.deepEqual(splitVoiceId('neutrino/MERROW'), { engine: 'neutrino', name: 'MERROW' });
+        assert.deepEqual(splitVoiceId(' Neutrino/KIRITAN '), { engine: 'neutrino', name: 'KIRITAN' });
+        assert.deepEqual(splitVoiceId('MERROW'), { engine: 'neutrino', name: 'MERROW' });
+        assert.deepEqual(splitVoiceId(''), { engine: 'neutrino', name: 'MERROW' });
+        assert.deepEqual(splitVoiceId(undefined), { engine: 'neutrino', name: 'MERROW' });
+        assert.deepEqual(splitVoiceId('diffsinger/C:/voices/x'), { engine: 'diffsinger', name: 'C:/voices/x' });
+    });
+
+    it('reads a NEUTRINO voice\'s speaker from its info.toml, and lists the voices as entries', () => {
+        const merrow = 'version = "v3.2.2"\ntype = "stable"\n\n[speaker]\nname = "Merrow"\ntype = "standard"\ngender = "female"\nlanguage = "Japanese"\n\n[timing]\nname = "not the speaker"\n';
+        assert.deepEqual(speakerOf(merrow), { name: 'Merrow', language: 'Japanese' });
+        assert.deepEqual(speakerOf('[timing]\nname = "x"\n'), { name: undefined, language: undefined });
+        assert.deepEqual(speakerOf(''), { name: undefined, language: undefined });
+        assert.equal(languageTag('Japanese'), 'ja');
+        assert.equal(languageTag('english'), 'en');
+        assert.equal(languageTag('en-US'), 'en-US');
+        assert.equal(languageTag('Klingon'), undefined);
+        assert.equal(languageTag(undefined), undefined);
+        const tree = new Set(['N\\model', 'N\\model\\MERROW\\info.toml', 'N\\model\\KIRITAN\\info.toml']);
+        const dirs = (d: string) => d === 'N\\model' ? ['MERROW', 'KIRITAN'] : [];
+        const text = (p: string) => p === 'N\\model\\MERROW\\info.toml' ? merrow : undefined;
+        assert.deepEqual(voiceEntriesIn('N', dirs, p => tree.has(p), text, join), [
+            { id: 'neutrino/KIRITAN', engine: 'neutrino', name: 'KIRITAN', label: 'KIRITAN' },
+            { id: 'neutrino/MERROW', engine: 'neutrino', name: 'MERROW', label: 'Merrow', language: 'ja' },
+        ]);
+    });
+
     it('says what a NEUTRINO folder lacks', () => {
         assert.deepEqual(neutrinoFolderProblems('', () => true, join), ['no NEUTRINO folder is set (Cantilena: Choose NEUTRINO Folder…)']);
         assert.deepEqual(neutrinoFolderProblems('N', () => false, join), ['the NEUTRINO folder does not exist: N']);
@@ -97,7 +130,7 @@ describe('the manifest', () => {
             assert.ok(props[name], `${name} is contributed`);
             assert.equal(props[name].scope, 'machine-overridable', name);
         }
-        assert.equal(props['cantilena.voice'].default, 'MERROW');
+        assert.equal(props['cantilena.voice'].default, 'neutrino/MERROW');
         assert.match(props['cantilena.neutrinoFolder'].markdownDescription, /command:cantilena\.chooseNeutrinoFolder/);
         assert.match(props['cantilena.voice'].markdownDescription, /command:cantilena\.chooseVoice/);
     });

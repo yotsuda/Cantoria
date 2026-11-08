@@ -140,10 +140,15 @@ developer's build — with pickers (**Choose NEUTRINO Folder…**, **Choose Voic
 {
   version: string, apiVersion: 1,
   status(): Promise<{ ready, program, backend: 'neutrino', neutrinoFolder, voice, voices, problems }>,
-  sing(score, { voice? }): Promise<{ wav, duration, sampleRate, cached }>,   // the README's score
+  voices(): Promise<{ id, engine, name, label, language?, licence? }[]>,    // id = 'engine/name' (0.2.0)
+  sing(score, { voice? }): Promise<{ wav, duration, sampleRate, cached }>,   // the README's score; voice an id
   release(): void,                                                          // let the engine go
 }
 ```
+
+A voice is named **`engine/name`** everywhere — `neutrino/MERROW` — in the setting, the picker,
+`status().voice` and `sing`'s `voice` (a bare name is NEUTRINO's, the first engine's), so a
+second engine's voice needs no new setting and the rendered WAVs are keyed by it.
 
 Inside, one resident `serve` (§4.1) per extension host (`src/engine.ts`), started on the first
 `sing`, its WAVs named by the key of the score and the voice under the extension's storage, so

@@ -11,7 +11,7 @@ import * as cp from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
-import { CantilenaScore, neutrinoFolderProblems, programCandidates, scoreProblems, voicesIn } from './core';
+import { CantilenaScore, ENGINES, VoiceEntry, neutrinoFolderProblems, programCandidates, scoreProblems, splitVoiceId, voiceEntriesIn, voiceId, voicesIn } from './core';
 import { Engine, EngineSetup, RenderedVoice } from './engine';
 
 /** What `status()` answers: whether a `sing` can succeed now, and why not. */
@@ -20,7 +20,9 @@ export interface CantilenaStatus {
     program: string | undefined;
     backend: 'neutrino';
     neutrinoFolder: string;
+    /** The voice the setting names, as `engine/name`: `neutrino/MERROW`. */
     voice: string;
+    /** The NEUTRINO voices installed, by their folder names; `voices()` has each as an entry. */
     voices: string[];
     problems: string[];
 }
@@ -32,10 +34,13 @@ export interface CantilenaApi {
     /** The API's shape; raised when a call changes incompatibly. */
     readonly apiVersion: 1;
     status(): Promise<CantilenaStatus>;
-    /** Sings `score` (the README's JSON: notes in seconds with syllables) in `options.voice`, else
-     *  the setting's voice. The WAV is kept under the extension's storage until "Forget Rendered
-     *  Voices"; the same score in the same voice is sung once. Throws with a sentence when it
-     *  cannot: no program, no NEUTRINO folder, a score the engine refused. */
+    /** The voices installed, each as `{ id: 'neutrino/MERROW', engine, name, label, language? }`. */
+    voices(): Promise<VoiceEntry[]>;
+    /** Sings `score` (the README's JSON: notes in seconds with syllables) in `options.voice` — an
+     *  `engine/name` from `voices()`, or a bare NEUTRINO voice name — else the setting's voice. The
+     *  WAV is kept under the extension's storage until "Forget Rendered Voices"; the same score in
+     *  the same voice is sung once. Throws with a sentence when it cannot: no program, no NEUTRINO
+     *  folder, a voice or an engine that is not there, a score the engine refused. */
     sing(score: CantilenaScore, options?: { voice?: string }): Promise<RenderedVoice & { cached: boolean }>;
     /** Lets the engine go (NEUTRINO's server with it); the next `sing` starts it again. */
     release(): void;
@@ -47,7 +52,18 @@ let storage: string;
 
 function settings(): vscode.WorkspaceConfiguration { return vscode.workspace.getConfiguration('cantilena'); }
 function neutrinoFolder(): string { return settings().get<string>('neutrinoFolder', '').trim(); }
-function voiceSetting(): string { return settings().get<string>('voice', 'MERROW').trim().replace(/^neutrino\//i, '') || 'MERROW'; }
+/** The setting's voice as its engine and name (`neutrino/MERROW`; a bare name is NEUTRINO's). */
+function voiceSetting(): { engine: string; name: string; id: string } {
+    const v = splitVoiceId(settings().get<string>('voice', ''));
+    return { ...v, id: voiceId(v.engine, v.name) };
+}
+
+function readTextOr(p: string): string | undefined { try { return fs.readFileSync(p, 'utf8'); } catch { return undefined; } }
+function listDirs(dir: string): string[] { return fs.readdirSync(dir, { withFileTypes: true }).filter(d => d.isDirectory()).map(d => d.name); }
+function voices(): VoiceEntry[] {
+    const folder = neutrinoFolder();
+    return folder ? voiceEntriesIn(folder, listDirs, fs.existsSync, readTextOr, path.join) : [];
+}
 
 /** The `cantilena` program: the first candidate that exists (the bare name is trusted to the PATH). */
 function program(context: vscode.ExtensionContext): string | undefined {
@@ -94,20 +110,29 @@ function release(): void {
 async function status(context: vscode.ExtensionContext): Promise<CantilenaStatus> {
     const { setup, problems, program: prog } = setupNow(context);
     const folder = neutrinoFolder();
-    const voices = folder ? voicesIn(folder, dir => fs.readdirSync(dir, { withFileTypes: true }).filter(d => d.isDirectory()).map(d => d.name), fs.existsSync, path.join) : [];
+    const names = folder ? voicesIn(folder, listDirs, fs.existsSync, path.join) : [];
     const voice = voiceSetting();
-    if (setup && !voices.includes(voice)) { problems.push(`the voice ${voice} is not under ${path.join(folder, 'model')} (installed: ${voices.join(', ') || 'none'})`); }
-    return { ready: problems.length === 0, program: prog, backend: 'neutrino', neutrinoFolder: folder, voice, voices, problems };
+    if (setup) { problems.push(...voiceProblems(voice, names, folder)); }
+    return { ready: problems.length === 0, program: prog, backend: 'neutrino', neutrinoFolder: folder, voice: voice.id, voices: names, problems };
+}
+
+/** Why `voice` cannot be sung with: an engine this extension has not, or a NEUTRINO voice not installed. */
+function voiceProblems(voice: { engine: string; name: string; id: string }, names: string[], folder: string): string[] {
+    if (!(ENGINES as readonly string[]).includes(voice.engine)) { return [`no engine named ${voice.engine} in ${voice.id} (there is: ${ENGINES.join(', ')})`]; }
+    if (!names.includes(voice.name)) { return [`the voice ${voice.name} is not under ${path.join(folder, 'model')} (installed: ${names.join(', ') || 'none'})`]; }
+    return [];
 }
 
 async function sing(context: vscode.ExtensionContext, score: CantilenaScore, options?: { voice?: string }): Promise<RenderedVoice & { cached: boolean }> {
     const problems = scoreProblems(score);
     if (problems.length > 0) { throw new Error(problems.join('; ')); }
-    const voice = (options?.voice ?? '').trim().replace(/^neutrino\//i, '') || voiceSetting();
-    const { key, rendered, cached } = engineFor(context).sing(score, voice);
+    const asked = (options?.voice ?? '').trim();
+    const voice = asked ? (() => { const v = splitVoiceId(asked); return { ...v, id: voiceId(v.engine, v.name) }; })() : voiceSetting();
+    if (!(ENGINES as readonly string[]).includes(voice.engine)) { throw new Error(`no engine named ${voice.engine} in ${voice.id} (there is: ${ENGINES.join(', ')})`); }
+    const { key, rendered, cached } = engineFor(context).sing(score, voice.name, voice.id);
     const t0 = Date.now();
     const v = await rendered;
-    if (!cached) { output.appendLine(`sung ${key.slice(0, 8)} in ${voice}: ${v.duration.toFixed(1)} s, ${Date.now() - t0} ms`); }
+    if (!cached) { output.appendLine(`sung ${key.slice(0, 8)} in ${voice.id}: ${v.duration.toFixed(1)} s, ${Date.now() - t0} ms`); }
     return { ...v, cached };
 }
 
@@ -137,8 +162,11 @@ async function chooseVoice(context: vscode.ExtensionContext): Promise<void> {
         return;
     }
     const pick = await vscode.window.showQuickPick(
-        s.voices.map(name => ({ label: name, description: name === s.voice ? '(current)' : '' })),
-        { title: 'Cantilena: Choose Voice', placeHolder: 'The voice the lyrics are sung in' });
+        voices().map(v => ({
+            label: v.id,
+            description: [v.label !== v.name ? v.label : '', v.language ?? '', v.id === s.voice ? '(current)' : ''].filter(Boolean).join(' · '),
+        })),
+        { title: 'Cantilena: Choose Voice', placeHolder: 'The voice the lyrics are sung in (engine/name)' });
     if (!pick) { return; }
     await settings().update('voice', pick.label, vscode.ConfigurationTarget.Global);
     vscode.window.setStatusBarMessage(`Cantilena: the voice is ${pick.label}`, 4000);
@@ -185,6 +213,7 @@ export function activate(context: vscode.ExtensionContext): CantilenaApi {
         version,
         apiVersion: 1,
         status: () => status(context),
+        voices: async () => voices(),
         sing: (score, options) => sing(context, score, options),
         release,
     });

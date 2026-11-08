@@ -2,7 +2,7 @@
   "name": "cantilena",
   "displayName": "Cantilena Singing Voice",
   "description": "Sings the lyrics of a score for notation extensions such as Lily#: notes with syllables in, a voice out — through your own installation of NEUTRINO (Japanese voices). Open source (Apache-2.0); runs locally on Windows.",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "publisher": "yotsuda",
   "preview": true,
   "license": "Apache-2.0",
@@ -42,9 +42,9 @@
         },
         "cantilena.voice": {
           "type": "string",
-          "default": "MERROW",
+          "default": "neutrino/MERROW",
           "scope": "machine-overridable",
-          "markdownDescription": "The voice the lyrics are sung in: a folder under NEUTRINO's `model\\` (MERROW ships with NEUTRINO; other voices are their authors' work under their authors' terms, installed there by you).\n\n**[Choose a voice…](command:cantilena.chooseVoice)**"
+          "markdownDescription": "The voice the lyrics are sung in, as `engine/name`: for NEUTRINO, `neutrino/` and a folder under its `model\\` (MERROW ships with NEUTRINO; other voices are their authors' work under their authors' terms, installed there by you). A bare name means a NEUTRINO voice.\n\n**[Choose a voice…](command:cantilena.chooseVoice)**"
         },
         "cantilena.gpu": {
           "type": "boolean",
