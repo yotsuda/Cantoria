@@ -6,8 +6,8 @@ import * as assert from 'node:assert/strict';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import {
-    ENGINES, characterNameOf, diffSingerEntriesIn, diffSingerVoicesIn, languageTag, neutrinoFolderProblems, parseLine, programCandidates,
-    requestLine, rid, scoreProblems, serveArgs, speakerOf, splitVoiceId, voiceEntriesIn, voiceId, voiceKey, voicesFolderProblems, voicesIn,
+    ENGINES, characterNameOf, diffSingerEntriesIn, diffSingerVoicesIn, languageTag, missingProgramNote, neutrinoFolderProblems, parseLine, programCandidates,
+    requestLine, rid, scoreProblems, serveArgs, speakerOf, splitVoiceId, voiceEntriesIn, voiceId, voiceKey, voicesFolderProblems, voicesIn, vsixTarget,
 } from '../src/core';
 
 const join = (...parts: string[]) => parts.join('\\');
@@ -64,6 +64,17 @@ describe('where the program and the voices are', () => {
         assert.equal(rid('darwin', 'arm64'), 'osx-arm64');
         assert.equal(rid('linux', 'x64'), 'linux-x64');
         assert.equal(rid('freebsd', 'x64'), undefined);
+    });
+
+    it('says which package a machine needs when the bundled program is for another platform', () => {
+        assert.equal(vsixTarget('win-x64'), 'win32-x64');
+        assert.equal(vsixTarget('osx-arm64'), 'darwin-arm64');
+        assert.equal(vsixTarget('linux-x64'), 'linux-x64');
+        assert.equal(missingProgramNote('win32', 'x64', ['osx-arm64']),
+            'the cantilena program was not found: this machine is win32-x64 (win-x64), this VSIX bundles osx-arm64 — it is the package for another platform; install cantilena-win32-x64-<version>.vsix (developers set cantilena.program)');
+        assert.equal(missingProgramNote('linux', 'x64', []),
+            'the cantilena program was not found: this machine is linux-x64 (linux-x64), this VSIX bundles no program — install the linux-x64 package (developers set cantilena.program)');
+        assert.match(missingProgramNote('freebsd', 'x64', ['win-x64']), /which no bundled build is made for/);
     });
 
     it('looks for the program in the setting, the bundle, then the PATH', () => {

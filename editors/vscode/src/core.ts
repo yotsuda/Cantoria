@@ -189,6 +189,25 @@ export function rid(platform: string, arch: string): string | undefined {
     return os && (arch === 'x64' || arch === 'arm64') ? `${os}-${arch}` : undefined;
 }
 
+/** The VS Code platform target a runtime identifier's VSIX is published as (`win-x64` → `win32-x64`). */
+export function vsixTarget(r: string): string {
+    return r.replace(/^win-/, 'win32-').replace(/^osx-/, 'darwin-');
+}
+
+/** The sentence for a missing program: what this machine is, what this VSIX bundles (`bundled`:
+ *  the folders under `bin/`), and which package to install instead — "Install from VSIX…" takes a
+ *  package built for another platform without a word (2026-11-08: the darwin-arm64 one went onto
+ *  a Windows machine, and nothing sang). */
+export function missingProgramNote(platform: string, arch: string, bundled: string[]): string {
+    const r = rid(platform, arch);
+    const machine = `this machine is ${platform}-${arch}` + (r ? ` (${r})` : ', which no bundled build is made for');
+    const has = bundled.length > 0 ? `this VSIX bundles ${bundled.join(', ')}` : 'this VSIX bundles no program';
+    const fix = r && bundled.length > 0 && !bundled.includes(r)
+        ? ` — it is the package for another platform; install cantilena-${vsixTarget(r)}-<version>.vsix`
+        : r ? ` — install the ${vsixTarget(r)} package` : '';
+    return `the cantilena program was not found: ${machine}, ${has}${fix} (developers set cantilena.program)`;
+}
+
 /** Where the `cantilena` program is looked for, in order: the setting (a developer's build), the
  *  one bundled under `bin/<rid>/`, then the bare name on the PATH. */
 export function programCandidates(platform: string, arch: string, extensionPath: string, setting: string | undefined,

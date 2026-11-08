@@ -13,7 +13,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import {
-    CantilenaScore, ENGINES, VoiceEntry, diffSingerEntriesIn, diffSingerVoicesIn, neutrinoFolderProblems, programCandidates,
+    CantilenaScore, ENGINES, VoiceEntry, diffSingerEntriesIn, diffSingerVoicesIn, missingProgramNote, neutrinoFolderProblems, programCandidates,
     scoreProblems, splitVoiceId, voiceEntriesIn, voiceId, voicesFolderProblems, voicesIn,
 } from './core';
 import { Engine, EngineSetup, RenderedVoice } from './engine';
@@ -92,6 +92,11 @@ function program(context: vscode.ExtensionContext): string | undefined {
     return undefined;
 }
 
+/** The runtime identifiers this install bundles a program for: the folders under `bin/`. */
+function bundledBuilds(context: vscode.ExtensionContext): string[] {
+    try { return listDirs(path.join(context.extensionPath, 'bin')); } catch { return []; }
+}
+
 function commandExists(cmd: string): boolean {
     const probe = process.platform === 'win32' ? 'where' : 'which';
     try { return cp.spawnSync(probe, [cmd], { stdio: 'ignore', windowsHide: true }).status === 0; } catch { return false; }
@@ -102,7 +107,7 @@ function setupNow(context: vscode.ExtensionContext): { setup?: EngineSetup; prob
     const prog = program(context);
     const n = neutrinoFolder(), d = voicesFolder();
     const problems: string[] = [];
-    if (!prog) { problems.push(`the cantilena program was not found (the extension bundles it for win-x64, linux-x64 and osx-arm64; this machine is ${process.platform}-${process.arch}; developers set cantilena.program)`); }
+    if (!prog) { problems.push(missingProgramNote(process.platform, process.arch, bundledBuilds(context))); }
     if (!n && !d) { problems.push('no engine is set up: choose a NEUTRINO folder (Cantilena: Choose NEUTRINO Folder…) or a DiffSinger voices folder (Cantilena: Choose Voices Folder…)'); }
     problems.push(...neutrinoFolderProblems(n, fs.existsSync, path.join, process.platform));
     problems.push(...voicesFolderProblems(d, fs.existsSync));
