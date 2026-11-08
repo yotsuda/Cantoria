@@ -36,7 +36,9 @@ Early. The `neutrino` backend sings: with NEUTRINO Tau v3.2.x installed,
 cantilena sing examples/yukiyakonko.json -o yuki.wav --neutrino-dir "C:\path\to\NEUTRINO"
 ```
 
-writes an 8-second WAV in a few seconds (first run loads the models). The
+writes an 8-second WAV in a few seconds (first run loads the models), and
+`cantilena serve` keeps the engine warm for an editor (JSON lines on stdin and
+stdout; the next render of that score takes under half a second). The
 `diffsinger` backend is not started. See [docs/design.md](docs/design.md).
 
 ## The score

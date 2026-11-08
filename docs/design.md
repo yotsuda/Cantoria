@@ -89,6 +89,7 @@ The voice is a folder the user installs. Cantilena reads it, never bundles it.
 cantilena sing score.json -o out.wav --backend neutrino --voice MERROW
 cantilena sing score.json -o out.wav --backend diffsinger --voice C:\voices\xxx
 cantilena voices --backend neutrino          # what is installed
+cantilena serve --backend neutrino           # a resident singer for an editor (below)
 cantilena --version
 ```
 
@@ -97,16 +98,46 @@ Settings (the NEUTRINO folder, the voices folder, command templates) come from
 options. Exit codes: 0 sung, 1 the backend failed (its message on stderr),
 2 bad arguments or score.
 
+### 4.1 `serve` — the resident singer
+
+An editor that renders a voice on every Play cannot pay the engine's warm-up
+each time (NEUTRINO's server binds to the process that started it, and a cold
+start is seconds to a minute), so `cantilena serve` keeps the engine for the
+life of one process and talks **JSON lines** on stdin/stdout, UTF-8 both ways:
+
+```
+→ {"id":"1","score":{ …the README's score… },"voice":"MERROW","output":"C:\\x.wav"}
+→ {"id":"2","scoreFile":"C:\\score.json"}
+→ {"command":"shutdown"}
+← {"ready":true,"backend":"neutrino","voices":["MERROW"],"outDir":"…"}        (first, once)
+← {"id":"1","wav":"C:\\x.wav","duration":8.0,"sampleRate":48000,"seconds":0.42}
+← {"id":"2","error":"note 0 at 0 s: no lyric (write one, or mark the note melisma)"}
+```
+
+- `score`, `voice` (default the `--voice` option, else `MERROW`) and `output`
+  (default `<out-dir>\<id>.wav`, `--out-dir` default `%TEMP%\cantilena`) are
+  optional; `score` or `scoreFile` is required. An `id` is echoed; a request
+  without one gets its ordinal.
+- Requests are answered **in order, one at a time**; the caller may pipeline
+  them. A bad request is an `error` line, never a dead process. End of stdin,
+  or `shutdown`, ends the process and the engine's server with it.
+- One singer per voice named, created on first use (NEUTRINO: one server
+  each — the voice is an argument of the render, so this could be one server;
+  not yet).
+- Measured 2026-11-08 (RTX 5070 Ti, the 8 s example): first request 3.8 s,
+  the next 0.4 s.
+
 ## 5. How a caller uses it (Lily#'s plan)
 
 1. The editor resolves the part that sings (the one the score's `lyrics`
    follow) into the JSON score: seconds from its own tempo map, the syllable
    each note carries, `melisma` where the lyric extends, `breath` at a breath
    mark or a long rest.
-2. It runs `cantilena sing` (or references the library) with a cache key over
-   the score's bytes and the voice, keeps the WAV, and plays it alongside its
-   sound-font synth at the same clock; muting the part mutes the voice;
-   exports mix the WAV in.
+2. It keeps one `cantilena serve` child (§4.1) and sends each voice's score
+   with a cache key over the score's bytes, the voice and the speed, keeps the
+   WAV, and plays it alongside its sound-font synth at the same clock; muting
+   the part mutes the voice; exports mix the WAV in. (Lily#'s side of this is
+   its `docs/singing-design.md`.)
 3. The setting names the backend and voice the way a sound font is named:
    a path the user chose, nothing bundled.
 
