@@ -44,7 +44,11 @@ OpenUtau DiffSinger format — a folder the user installs, as a sound font is.
    `use_lang_id`; a voice may bundle `dsvocoder/`. The voice used (TIGER DS v106, CC BY-NC-ND +
    Commons Clause) and the OpenVPI vocoder (CC BY-NC-SA) were used for the local test only and
    nothing of them is in this repository.
-2. **B2 — the pipeline**: the spike ported into `Cantilena.Core/DiffSinger` as classes behind
+2. **B2 — the pipeline**: *the library and the CLI done 2026-11-08* (Lily# session 1135:
+   `Cantilena.Core/DiffSinger/`, `cantilena sing|voices|serve` with `engine/name` voices and
+   `--voices-dir`; nets `DiffSingerCoreTests` and, where a voice is installed,
+   `DiffSingerSingerTests` with the pitch check; the extension's side is B4). As planned:
+   the spike ported into `Cantilena.Core/DiffSinger` as classes behind
    one `ISinger` (voice folder, speaker, provider): the voice and its modules, the phonemiser
    per the voice's language (Japanese first — kana morae to the dictionary's graphemes, kana or
    romaji; English and others through `dsdict-<lang>.yaml`), the linguistic and duration models

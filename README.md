@@ -22,11 +22,13 @@ and the one thing this library adds.
 - **Backends** behind the same contract:
   - `neutrino` — drives a user's own installation of
     [NEUTRINO](https://studio-neutrino.com/) (closed-source freeware, Japanese
-    voices) as a separate process. Planned first, because it works today.
+    voices) as a separate process.
   - `diffsinger` — in-process inference of
-    [DiffSinger](https://github.com/openvpi/DiffSinger) ONNX models through
+    [DiffSinger](https://github.com/openvpi/DiffSinger) voices in the OpenUtau
+    format (a folder with `dsconfig.yaml`, as OpenUtau installs them) through
     ONNX Runtime, after the C# implementation in
-    [OpenUtau](https://github.com/stakira/OpenUtau). Planned second.
+    [OpenUtau](https://github.com/stakira/OpenUtau). Japanese lyrics (kana) so
+    far; the CPU so far.
 
 Cantilena ships **no voice**. A voice (a trained model, a singing library) is
 its author's work under its author's terms; the user installs one and points
@@ -34,16 +36,19 @@ Cantilena at it, exactly as a score player is pointed at a sound font.
 
 ## Status
 
-Early. The `neutrino` backend sings: with NEUTRINO Tau v3.2.x installed,
+Early. Both backends sing. A voice is named `engine/name`:
 
 ```
-cantilena sing examples/yukiyakonko.json -o yuki.wav --neutrino-dir "C:\path\to\NEUTRINO"
+cantilena sing examples/yukiyakonko.json -o yuki.wav --voice neutrino/MERROW --neutrino-dir "C:\path\to\NEUTRINO"
+cantilena sing examples/yukiyakonko.json -o yuki.wav --voice diffsinger/TIGER --voices-dir "C:\path\to\voices"
+cantilena voices --neutrino-dir … --voices-dir …
 ```
 
-writes an 8-second WAV in a few seconds (first run loads the models), and
-`cantilena serve` keeps the engine warm for an editor (JSON lines on stdin and
-stdout; the next render of that score takes under half a second). The
-`diffsinger` backend is not started. See [docs/design.md](docs/design.md).
+NEUTRINO writes the 8-second WAV in a few seconds (the first run loads its
+models); a DiffSinger voice takes a few seconds on the CPU. `cantilena serve`
+keeps the engines warm for an editor (JSON lines on stdin and stdout; the next
+NEUTRINO render of a score takes under half a second). See
+[docs/design.md](docs/design.md).
 
 ## The score
 

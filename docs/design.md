@@ -72,16 +72,38 @@ it by hand (Lily# session 1124, 2026-11-08):
   will again.
 - Nothing of NEUTRINO is redistributed. Cantilena only needs the folder.
 
-### 3.2 `diffsinger` backend (second)
+### 3.2 `diffsinger` backend (second; sings since 2026-11-08)
 
-In-process inference of OpenVPI DiffSinger ONNX exports through
+In-process inference of DiffSinger voices in the OpenUtau format through
 `Microsoft.ML.OnnxRuntime`, following OpenUtau's `OpenUtau.Core/DiffSinger/`
-(MIT): the voice's `dsconfig.yaml`, the phoneme dictionary, the linguistic,
-duration, pitch and variance models, the acoustic model, the vocoder. Japanese
-phonemization after OpenUtau's phonemizers. GPU through the CUDA or DirectML
-provider when present; CPU otherwise (seconds, not sub-second).
+(MIT, written anew in `src/Cantilena.Core/DiffSinger/`). The voice is a folder
+the user installs (as OpenUtau installs it); Cantilena reads it, never bundles it:
 
-The voice is a folder the user installs. Cantilena reads it, never bundles it.
+- `DiffSingerVoice`: the root `dsconfig.yaml` (acoustic model, phoneme list,
+  speakers, embeds and mel settings), the modules `dsdur/`, `dspitch/`,
+  `dsvariance/` — each with its own config, phoneme list, `.emb` speaker files and
+  dictionaries (`dsdict-ja.yaml`, else `dsdict.yaml`) — and the vocoder (the
+  voice's `dsvocoder/`, else a folder named in the options). The ONNX sessions are
+  created on first use and kept.
+- `KanaPhonemizer`: a syllable's kana morae to the dictionary's graphemes — the
+  kana itself (TIGER's dictionaries) or its romaji — then to the model's symbols
+  (with the `ja/` prefix where a voice uses one); a long-vowel mark repeats the
+  vowel; a melisma note is an extra note of its word.
+- `DiffSingerSinger`: the duration model's timing aligned to the notes (the vowel
+  starts the note; the consonants before it are the model's and may begin before
+  the note), the pitch model (else the notes' pitches flat), the variance model
+  where the acoustic model wants its curves, the acoustic model (`depth`/`steps` or
+  `speedup`, `gender`, `velocity`, `spk_embed`, `languages` as the voice declares),
+  the vocoder; a breath flag becomes the voice's `AP` in the gap after the note;
+  the audio is cut or padded so its 0 is the score's 0.
+- `DsMath`: the frame rounding, word division, duration fitting, sampling speedup
+  and the model-input check (inputs the model has not are dropped; one it wants
+  and was not given is an error naming it).
+
+The CPU so far: a 7 s phrase renders in 4–18 s at 10–20 steps. The GPU provider
+(DirectML on Windows: the same phrase in 0.3 s once the models are resident, in
+the spike) is `roadmap.md` B3. The variance path is written after OpenUtau but
+untested (the voice at hand has no `dsvariance`).
 
 Spike done 2026-11-08 (`roadmap.md` B1): the whole pipeline ran in C# on a real voice and sang
 the README's score in tune (mean 0.19 semitones off the written notes, every note voiced). On the
@@ -92,17 +114,19 @@ NEUTRINO does, and the GPU provider is worth its separate package.
 ## 4. CLI
 
 ```
-cantilena sing score.json -o out.wav --backend neutrino --voice MERROW
-cantilena sing score.json -o out.wav --backend diffsinger --voice C:\voices\xxx
-cantilena voices --backend neutrino          # what is installed
-cantilena serve --backend neutrino           # a resident singer for an editor (below)
+cantilena sing score.json -o out.wav --voice neutrino/MERROW --neutrino-dir C:\NEUTRINO
+cantilena sing score.json -o out.wav --voice diffsinger/TIGER --voices-dir C:\voices
+cantilena sing score.json -o out.wav --voice C:\voices\TIGER        # a path holding dsconfig.yaml
+cantilena voices [--neutrino-dir …] [--voices-dir …]                 # what is installed, as engine/name
+cantilena serve [the same]                                           # a resident singer for an editor (below)
 cantilena --version
 ```
 
-Settings (the NEUTRINO folder, the voices folder, command templates) come from
-`cantilena.json` beside the executable, the user's config directory, or
-options. Exit codes: 0 sung, 1 the backend failed (its message on stderr),
-2 bad arguments or score.
+A voice is `engine/name`; a bare name is NEUTRINO's. The folders come from the
+options, else the environment (`CANTILENA_NEUTRINO_DIR`, `CANTILENA_VOICES_DIR`,
+`CANTILENA_VOCODER_DIR`), else `%APPDATA%\cantilena\cantilena.json`
+(`neutrino.folder`, `diffsinger.voices`, `diffsinger.vocoder`). Exit codes: 0 sung,
+1 the backend failed (its message on stderr), 2 bad arguments, score or settings.
 
 ### 4.1 `serve` — the resident singer
 
@@ -120,16 +144,17 @@ life of one process and talks **JSON lines** on stdin/stdout, UTF-8 both ways:
 ← {"id":"2","error":"note 0 at 0 s: no lyric (write one, or mark the note melisma)"}
 ```
 
-- `score`, `voice` (default the `--voice` option, else `MERROW`) and `output`
-  (default `<out-dir>\<id>.wav`, `--out-dir` default `%TEMP%\cantilena`) are
-  optional; `score` or `scoreFile` is required. An `id` is echoed; a request
-  without one gets its ordinal.
+- `score`, `voice` (an `engine/name`; default the `--voice` option, else
+  `neutrino/MERROW`) and `output` (default `<out-dir>\<id>.wav`, `--out-dir`
+  default `%TEMP%\cantilena`) are optional; `score` or `scoreFile` is required.
+  An `id` is echoed; a request without one gets its ordinal. The answer names
+  the `voice` that sang. `{"command":"voices"}` answers `{"voices":[…]}`.
 - Requests are answered **in order, one at a time**; the caller may pipeline
   them. A bad request is an `error` line, never a dead process. End of stdin,
-  or `shutdown`, ends the process and the engine's server with it.
+  or `shutdown`, ends the process and the engines' servers and sessions with it.
 - One singer per voice named, created on first use (NEUTRINO: one server
   each — the voice is an argument of the render, so this could be one server;
-  not yet).
+  not yet. DiffSinger: one set of sessions per voice).
 - Measured 2026-11-08 (RTX 5070 Ti, the 8 s example): first request 3.8 s,
   the next 0.4 s.
 

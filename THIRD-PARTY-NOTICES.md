@@ -6,20 +6,19 @@ into this repository keeps its copyright notice here and in the file; a
 library referenced as a package keeps its own license in the package; a
 program invoked as a separate process is not part of Cantilena at all.
 
-## Included or referenced (none yet)
+## Included or referenced
 
-Nothing has been copied or referenced yet. When code is taken from OpenUtau,
-or a package is referenced, its entry moves up here with the verbatim notice.
-
-## Planned
-
-### OpenUtau — MIT
+### OpenUtau — MIT (adapted)
 
 https://github.com/stakira/OpenUtau
 
-The C# DiffSinger inference (`OpenUtau.Core/DiffSinger/`) and the Japanese
-phonemizers are the model for Cantilena's own. Code copied or adapted from
-OpenUtau carries this notice at the top of the file and here:
+The `diffsinger` backend (`src/Cantilena.Core/DiffSinger/`) follows OpenUtau's
+C# DiffSinger inference (`OpenUtau.Core/DiffSinger/`: the configuration keys,
+the frame arithmetic, the word division, the duration alignment, the inputs of
+the duration, pitch, variance, acoustic and vocoder models) and its Japanese
+phonemizer's reading of a voice's dictionary. It was written anew in Cantilena's
+own shape, not copied line for line; each file that follows OpenUtau says so at
+its top. OpenUtau's notice:
 
     MIT License
 
@@ -43,23 +42,35 @@ OpenUtau carries this notice at the top of the file and here:
     OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
     SOFTWARE.
 
-(The copyright year and holder are to be checked against the file copied from.)
-
-### DiffSinger (OpenVPI) — Apache-2.0
-
-https://github.com/openvpi/DiffSinger
-
-The model architecture and the ONNX export format Cantilena's in-process
-backend will run. Cantilena does not include DiffSinger's code; it reads
-models exported with it. Model files (voices) trained with DiffSinger belong
-to whoever trained them, under that person's terms — Cantilena ships none.
-
-### ONNX Runtime — MIT
+### ONNX Runtime — MIT (referenced)
 
 https://github.com/microsoft/onnxruntime
 
-Referenced as the NuGet package `Microsoft.ML.OnnxRuntime` (and the GPU
-variant where available). Not copied.
+Referenced by `Cantilena.Core` as the NuGet package `Microsoft.ML.OnnxRuntime`
+(the CPU build; a GPU build is planned). Not copied. Its license is in the package.
+
+### YamlDotNet — MIT (referenced)
+
+https://github.com/aaubry/YamlDotNet
+
+Referenced by `Cantilena.Core` as the NuGet package `YamlDotNet`, to read the
+voices' `dsconfig.yaml`, `vocoder.yaml` and dictionaries. Not copied. Its
+license is in the package.
+
+### DiffSinger (OpenVPI) — Apache-2.0 (format only)
+
+https://github.com/openvpi/DiffSinger
+
+The model architecture and the ONNX export format the `diffsinger` backend
+runs. Cantilena does not include DiffSinger's code; it reads models exported
+with it. Model files (voices) trained with DiffSinger belong to whoever trained
+them, under that person's terms — Cantilena ships none.
+
+## Planned
+
+Nothing further is planned to be copied. A GPU build of ONNX Runtime
+(`Microsoft.ML.OnnxRuntime.DirectML`, MIT) will be referenced by the Windows
+program when the provider setting arrives.
 
 ## Invoked, not included
 
