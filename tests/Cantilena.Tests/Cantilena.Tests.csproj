@@ -20,4 +20,8 @@
     <ProjectReference Include="..\..\src\Cantilena.Core\Cantilena.Core.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Include="..\..\examples\yukiyakonko.json" Link="yukiyakonko.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

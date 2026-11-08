@@ -30,8 +30,14 @@ Cantilena at it, exactly as a score player is pointed at a sound font.
 
 ## Status
 
-Skeleton. The contract and the JSON format exist and are tested; no backend
-sings yet. See [docs/design.md](docs/design.md) for the plan.
+Early. The `neutrino` backend sings: with NEUTRINO Tau v3.2.x installed,
+
+```
+cantilena sing examples/yukiyakonko.json -o yuki.wav --neutrino-dir "C:\path\to\NEUTRINO"
+```
+
+writes an 8-second WAV in a few seconds (first run loads the models). The
+`diffsinger` backend is not started. See [docs/design.md](docs/design.md).
 
 ## The score
 
