@@ -83,6 +83,12 @@ provider when present; CPU otherwise (seconds, not sub-second).
 
 The voice is a folder the user installs. Cantilena reads it, never bundles it.
 
+Spike done 2026-11-08 (`roadmap.md` B1): the whole pipeline ran in C# on a real voice and sang
+the README's score in tune (mean 0.19 semitones off the written notes, every note voiced). On the
+CPU a 7 s phrase took 5–18 s; on DirectML, with the models resident, 3 s for the process and
+0.3 s for the acoustic model — so this backend wants `serve`'s resident engine as much as
+NEUTRINO does, and the GPU provider is worth its separate package.
+
 ## 4. CLI
 
 ```

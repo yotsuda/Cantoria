@@ -29,15 +29,31 @@ The main step: open voices in many languages, CPU or GPU, every platform. After 
 C# implementation (MIT; notice in `THIRD-PARTY-NOTICES.md`), reading voices exported in the
 OpenUtau DiffSinger format — a folder the user installs, as a sound font is.
 
-1. **B1 — spike**: load one voice folder (`dsconfig.yaml`, `phonemes.txt`, the dictionary,
-   acoustic model, vocoder), hand-write the phoneme sequence for one phrase, run it through
-   `Microsoft.ML.OnnxRuntime` on the CPU, hear it. Record times, memory, and the licence of
-   the voice used. *Done when* there is a WAV and a page of numbers.
-2. **B2 — the pipeline**: phonemiser per the voice's language (Japanese first, after
-   OpenUtau's), the linguistic and duration models for phoneme timing, the pitch model (or a
-   plain curve from the notes when the voice has none), variance where present, acoustic,
-   vocoder. The contract's `melisma` becomes the `+` continuation; `breath` becomes the
-   voice's breath phoneme where it has one, else a rest.
+1. **B1 — spike**: *done 2026-11-08* (Lily# session 1134; the probe and the numbers are in the
+   owner's private lab, `sessions/p1134/`). A C# console over `Microsoft.ML.OnnxRuntime`
+   (1.23.0) sang Cantilena's `examples/yukiyakonko.json` through a DiffSinger voice in the
+   OpenUtau format, every stage included (dsdur linguistic + duration → timing aligned to the
+   notes; dspitch → f0; acoustic → mel; the voice's bundled vocoder → samples). Checked by an
+   autocorrelation pitch tracker per note: all 12 notes voiced, mean |sung − written| 0.19
+   semitones. Times for 7 s of audio: CPU 5–18 s whole process (acoustic 1.3–14 s at 10–20
+   steps; it swings), **DirectML warm 3.0 s whole process with the acoustic at 0.29 s** and the
+   models' load being most of it → keep the sessions resident, as for NEUTRINO. What the format
+   is, as met: each module (`dsdur/`, `dspitch/`, `dsvariance/`) has its own `dsconfig.yaml`,
+   `phonemes.txt`, `.emb` speaker files and dictionaries; a Japanese dictionary's graphemes may
+   be the kana themselves (TIGER) or romaji — try the kana first; `languages.json` only with
+   `use_lang_id`; a voice may bundle `dsvocoder/`. The voice used (TIGER DS v106, CC BY-NC-ND +
+   Commons Clause) and the OpenVPI vocoder (CC BY-NC-SA) were used for the local test only and
+   nothing of them is in this repository.
+2. **B2 — the pipeline**: the spike ported into `Cantilena.Core/DiffSinger` as classes behind
+   one `ISinger` (voice folder, speaker, provider): the voice and its modules, the phonemiser
+   per the voice's language (Japanese first — kana morae to the dictionary's graphemes, kana or
+   romaji; English and others through `dsdict-<lang>.yaml`), the linguistic and duration models
+   for phoneme timing (a melisma note is an extra note of its word, done in the spike), the
+   pitch model (or a plain curve from the notes when the voice has none), variance where present
+   (untested in the spike: TIGER has none — test with a voice that has `dsvariance` first),
+   acoustic, vocoder. `breath` becomes the voice's `AP` phoneme in the gap where its dictionary
+   has one, else a rest. A net: a rendered phrase's pitch per note within half a semitone of the
+   score (the spike's `analyze`).
 3. **B3 — providers**: CUDA and DirectML on Windows, CoreML on macOS, CPU everywhere; chosen
    by setting, auto by default.
 4. **B4 — `serve` and the extension**: both engines resident; the voices list shows both; the
