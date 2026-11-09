@@ -209,6 +209,12 @@ function chooseVoicesFolder(): Promise<void> {
         folder => `Cantilena: the DiffSinger voices are under ${folder}`);
 }
 
+function chooseVocoderFolder(): Promise<void> {
+    return chooseFolder('Cantilena: the vocoder folder (holding vocoder.yaml and its model)', 'vocoderFolder',
+        folder => fs.existsSync(path.join(folder, 'vocoder.yaml')) ? [] : [`no vocoder.yaml in ${folder}`],
+        folder => `Cantilena: the vocoder is ${folder}`);
+}
+
 async function chooseVoice(context: vscode.ExtensionContext): Promise<void> {
     const s = await status(context);
     const all = voices();
@@ -253,6 +259,7 @@ export function activate(context: vscode.ExtensionContext): CantilenaApi {
         output,
         vscode.commands.registerCommand('cantilena.chooseNeutrinoFolder', () => chooseNeutrinoFolder()),
         vscode.commands.registerCommand('cantilena.chooseVoicesFolder', () => chooseVoicesFolder()),
+        vscode.commands.registerCommand('cantilena.chooseVocoderFolder', () => chooseVocoderFolder()),
         vscode.commands.registerCommand('cantilena.chooseVoice', () => chooseVoice(context)),
         vscode.commands.registerCommand('cantilena.checkSetup', () => checkSetup(context)),
         vscode.commands.registerCommand('cantilena.forgetVoices', () => {

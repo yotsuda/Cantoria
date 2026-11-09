@@ -51,7 +51,7 @@
           "type": "string",
           "default": "",
           "scope": "machine-overridable",
-          "markdownDescription": "A vocoder folder (holding `vocoder.yaml` and its model) for DiffSinger voices that bundle none. Most voices bundle their own; leave this empty then."
+          "markdownDescription": "A vocoder folder (holding `vocoder.yaml` and its model) for DiffSinger voices that bundle none. Most voices bundle their own; leave this empty then.\n\n**[Choose the folder…](command:cantilena.chooseVocoderFolder)**"
         },
         "cantilena.voice": {
           "type": "string",
@@ -98,6 +98,11 @@
         "command": "cantilena.chooseVoicesFolder",
         "category": "Cantilena",
         "title": "Choose Voices Folder… (DiffSinger)"
+      },
+      {
+        "command": "cantilena.chooseVocoderFolder",
+        "category": "Cantilena",
+        "title": "Choose Vocoder Folder… (DiffSinger)"
       },
       {
         "command": "cantilena.chooseVoice",

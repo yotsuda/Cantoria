@@ -215,10 +215,11 @@ describe('the manifest', () => {
         assert.match(props['cantilena.neutrinoFolder'].markdownDescription, /command:cantilena\.chooseNeutrinoFolder/);
         assert.match(props['cantilena.voice'].markdownDescription, /command:cantilena\.chooseVoice/);
         assert.match(props['cantilena.voicesFolder'].markdownDescription, /command:cantilena\.chooseVoicesFolder/);
+        assert.match(props['cantilena.vocoderFolder'].markdownDescription, /command:cantilena\.chooseVocoderFolder/);
     });
 
-    it('contributes the five commands and starts on nothing but them and the API', () => {
-        assert.deepEqual(commands.sort(), ['cantilena.checkSetup', 'cantilena.chooseNeutrinoFolder', 'cantilena.chooseVoice', 'cantilena.chooseVoicesFolder', 'cantilena.forgetVoices']);
+    it('contributes the six commands and starts on nothing but them and the API', () => {
+        assert.deepEqual(commands.sort(), ['cantilena.checkSetup', 'cantilena.chooseNeutrinoFolder', 'cantilena.chooseVocoderFolder', 'cantilena.chooseVoice', 'cantilena.chooseVoicesFolder', 'cantilena.forgetVoices']);
         assert.deepEqual(manifest.activationEvents, []);
         assert.equal(manifest.main, './out/extension.js');
         assert.equal(manifest.license, 'Apache-2.0');
