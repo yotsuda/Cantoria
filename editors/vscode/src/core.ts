@@ -15,6 +15,10 @@ export interface CantilenaNote {
     lyric?: string;
     melisma?: boolean;
     breath?: boolean;
+    /** The note's loudness as a factor on the sung audio (a score's dynamics); absent is 1. */
+    level?: number;
+    /** The factor at the note's end, for a swell across it; absent is `level`. */
+    levelEnd?: number;
 }
 
 /** The score a caller hands `sing`: notes in seconds; the sample rate and language optional. */

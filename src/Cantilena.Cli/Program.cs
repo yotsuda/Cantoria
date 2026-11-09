@@ -198,7 +198,7 @@ static async Task<int> Sing(string[] rest)
     try
     {
         var watch = Stopwatch.StartNew();
-        var audio = await singer.SingAsync(score);
+        var audio = SungLevels.Apply(await singer.SingAsync(score), score);
         var dirName = Path.GetDirectoryName(Path.GetFullPath(a.Output));
         if (!string.IsNullOrEmpty(dirName))
         {
@@ -320,7 +320,7 @@ static async Task<int> Serve(string[] rest)
                 }
                 var singer = SingerOf(request.Voice);
                 var watch = Stopwatch.StartNew();
-                var audio = await singer.SingAsync(score);
+                var audio = SungLevels.Apply(await singer.SingAsync(score), score);
                 var output = request.Output ?? Path.Combine(outDir, FileNameOf(id) + ".wav");
                 var dirName = Path.GetDirectoryName(Path.GetFullPath(output));
                 if (!string.IsNullOrEmpty(dirName))

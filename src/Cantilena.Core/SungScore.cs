@@ -14,13 +14,18 @@ namespace Cantilena;
 /// <param name="Lyric">The syllable as pronounced, in the language's own script; null on a melisma note.</param>
 /// <param name="Melisma">True when the note continues the previous syllable's vowel and carries no lyric.</param>
 /// <param name="Breath">True when the singer breathes after this note (a phrase ends).</param>
+/// <param name="Level">The note's loudness as a factor on the sung audio, 1 for as sung; null is 1.
+/// The engines do not sing louder or softer for a marking, so it is applied to what they sang.</param>
+/// <param name="LevelEnd">The factor at the note's end, for a swell across it; null is <see cref="Level"/>.</param>
 public sealed record SungNote(
     double Start,
     double Duration,
     double Pitch,
     string? Lyric = null,
     bool Melisma = false,
-    bool Breath = false)
+    bool Breath = false,
+    double? Level = null,
+    double? LevelEnd = null)
 {
     /// <summary>Seconds at which the note ends.</summary>
     public double End => Start + Duration;
