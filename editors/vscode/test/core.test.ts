@@ -212,6 +212,11 @@ describe('the manifest', () => {
     const manifest = JSON.parse(fs.readFileSync(path.join(__dirname, '..', '..', 'package.json'), 'utf8'));
     const props = Object.assign({}, ...manifest.contributes.configuration.map((c: { properties: object }) => c.properties));
 
+    it('puts the general settings first, the engines in alphabetical order, the developer\'s last', () => {
+        const sections = [...manifest.contributes.configuration].sort((a: { order: number }, b: { order: number }) => a.order - b.order);
+        assert.deepEqual(sections.map((c: { title: string }) => c.title), ['General', 'DiffSinger', 'NEUTRINO', 'Developer']);
+    });
+
     it('groups the settings by what they are for', () => {
         const groups = Object.fromEntries(manifest.contributes.configuration.map((c: { title: string; properties: object }) => [c.title, Object.keys(c.properties).map(k => k.replace('cantilena.', '')).sort()]));
         assert.deepEqual(groups, {
