@@ -4,6 +4,7 @@
   "description": "Sings the lyrics of a score for notation extensions such as Lily#: notes with syllables in, a voice out — through your own installation of NEUTRINO, or DiffSinger voices in the OpenUtau format. Open source (Apache-2.0); runs locally on Windows.",
   "version": "0.4.0",
   "publisher": "yotsuda",
+  "author": "Yoshifumi Tsuda",
   "preview": true,
   "license": "Apache-2.0",
   "repository": {
