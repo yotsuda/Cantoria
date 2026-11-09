@@ -24,6 +24,7 @@ public sealed class DiffSingerVoice : IDisposable
     private InferenceSession? _vocoder;
     private SessionOptions? _sessionOptions;
     private bool _disposed;
+    private string _language;
 
     public DiffSingerVoice(DiffSingerOptions options)
     {
@@ -33,6 +34,7 @@ public sealed class DiffSingerVoice : IDisposable
             throw new ArgumentException(string.Join("; ", problems), nameof(options));
         }
         Options = options;
+        _language = options.Language;
         Folder = options.Folder;
         Provider = options.Provider switch
         {
@@ -93,7 +95,17 @@ public sealed class DiffSingerVoice : IDisposable
     public InferenceSession VocoderSession => _vocoder ??= Open(Path.Combine(VocoderFolder, Vocoder.Model));
 
     /// <summary>A phoneme as the acoustic model spells it (itself, else with the language prefix), or null.</summary>
-    public string? AcousticSymbol(string symbol) => Known(symbol, AcousticPhonemes, Options.Language);
+    public string? AcousticSymbol(string symbol) => Known(symbol, AcousticPhonemes, _language);
+
+    /// <summary>Reads the next score's words in <paramref name="language"/> (its dictionaries, the
+    /// prefix of its phonemes). A voice's models sing every language it has a dictionary for.</summary>
+    internal void UseLanguage(string language)
+    {
+        _language = language;
+        Dur.UseLanguage(language);
+        Pitch?.UseLanguage(language);
+        Variance?.UseLanguage(language);
+    }
 
     /// <summary>
     /// A model's session on this voice's provider. The provider is settled on the first call
@@ -232,6 +244,7 @@ public sealed class DiffSingerVoice : IDisposable
         private InferenceSession? _linguistic;
         private InferenceSession? _main;
         private readonly Func<string, InferenceSession> _open;
+        private readonly Dictionary<string, (DsDictionary Dictionary, string File)> _dictionaries = new();
 
         internal Module(string dir, string? speaker, string language, Func<string, InferenceSession> open)
         {
@@ -242,10 +255,21 @@ public sealed class DiffSingerVoice : IDisposable
             Languages = LoadLanguages(dir, Config);
             Speaker = LoadSpeaker(dir, Config, speaker);
             Language = language;
-            var dictPath = new[] { $"dsdict-{language}.yaml", "dsdict.yaml" }.Select(n => Path.Combine(dir, n)).FirstOrDefault(File.Exists)
-                ?? throw new FileNotFoundException($"no dictionary (dsdict-{language}.yaml or dsdict.yaml) under {dir}");
-            Dictionary = DsDictionary.Load(dictPath);
-            DictionaryFile = Path.GetFileName(dictPath);
+            UseLanguage(language);
+        }
+
+        /// <summary>This language's dictionary, read once.</summary>
+        internal void UseLanguage(string language)
+        {
+            Language = language;
+            if (!_dictionaries.TryGetValue(language, out var loaded))
+            {
+                var dictPath = new[] { $"dsdict-{language}.yaml", "dsdict.yaml" }.Select(n => Path.Combine(Dir, n)).FirstOrDefault(File.Exists)
+                    ?? throw new FileNotFoundException($"no dictionary (dsdict-{language}.yaml or dsdict.yaml) under {Dir}");
+                loaded = (DsDictionary.Load(dictPath), Path.GetFileName(dictPath));
+                _dictionaries[language] = loaded;
+            }
+            (Dictionary, DictionaryFile) = loaded;
         }
 
         public string Dir { get; }
@@ -253,9 +277,9 @@ public sealed class DiffSingerVoice : IDisposable
         public IReadOnlyDictionary<string, int> Phonemes { get; }
         public IReadOnlyDictionary<string, int> Languages { get; }
         public float[]? Speaker { get; }
-        public string Language { get; }
-        public DsDictionary Dictionary { get; }
-        public string DictionaryFile { get; }
+        public string Language { get; private set; }
+        public DsDictionary Dictionary { get; private set; } = null!;
+        public string DictionaryFile { get; private set; } = "";
         public double FrameMs => Config.FrameMs;
 
         /// <summary>The linguistic encoder (<c>linguistic.onnx</c>).</summary>

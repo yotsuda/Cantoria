@@ -19,6 +19,7 @@ namespace Cantilena;
 /// <param name="LevelEnd">The factor at the note's end, for a swell across it; null is <see cref="Level"/>.</param>
 /// <param name="Inhale">True when the singer takes an audible breath between this note and the next,
 /// which follows closely (a breath mark), where a rest is only silence.</param>
+/// <param name="Hyphen">True when the next syllable is of the same word (<c>Twin- kle</c>).</param>
 public sealed record SungNote(
     double Start,
     double Duration,
@@ -28,7 +29,8 @@ public sealed record SungNote(
     bool Breath = false,
     double? Level = null,
     double? LevelEnd = null,
-    bool Inhale = false)
+    bool Inhale = false,
+    bool Hyphen = false)
 {
     /// <summary>Seconds at which the note ends.</summary>
     public double End => Start + Duration;

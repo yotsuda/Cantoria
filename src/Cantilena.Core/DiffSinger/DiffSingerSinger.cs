@@ -80,8 +80,18 @@ public sealed class DiffSingerSinger : ISinger, IDisposable
         var log = new System.Text.StringBuilder();
         var clock = System.Diagnostics.Stopwatch.StartNew();
         var voice = _voice;
+        string language = score.Language.Split('-')[0];
+        if (language is not ("ja" or "en"))
+        {
+            throw new SingerException($"{Name} cannot sing {score.Language} yet (it reads Japanese and English)");
+        }
+        voice.UseLanguage(language);
         var dur = voice.Dur;
         var notes = score.Notes;
+        var english = language == "en"
+            ? EnglishPhonemizer.Syllables(notes.Where(n => !n.Melisma).Select(n => (n.Lyric!, n.Hyphen)).ToList(), dur.Dictionary, dur.Symbol)
+            : null;
+        int syllable = 0;
 
         // ---- words: a note with words, and the melisma notes that carry its vowel on ----
         var words = new List<Word>();
@@ -94,11 +104,29 @@ public sealed class DiffSingerSinger : ISinger, IDisposable
                 words[^1].Notes.Add(n);
                 continue;
             }
-            var missing = new List<string>();
-            var phonemes = KanaPhonemizer.Phonemes(n.Lyric!, dur.Dictionary, dur.Symbol, missing);
-            if (missing.Count > 0)
+            List<string> phonemes;
+            if (english is not null)
             {
-                unknown.Add($"{n.Lyric} ({string.Join(" ", missing)})");
+                var sung = english[syllable++];
+                if (sung.Phonemes.Count == 0 && !sung.Missing && words.Count > 0)
+                {
+                    words[^1].Notes.Add(n);     // a word with fewer vowels than notes: this one holds the last
+                    continue;
+                }
+                phonemes = sung.Phonemes;
+                if (sung.Missing)
+                {
+                    unknown.Add(n.Lyric!);
+                }
+            }
+            else
+            {
+                var missing = new List<string>();
+                phonemes = KanaPhonemizer.Phonemes(n.Lyric!, dur.Dictionary, dur.Symbol, missing);
+                if (missing.Count > 0)
+                {
+                    unknown.Add($"{n.Lyric} ({string.Join(" ", missing)})");
+                }
             }
             if (phonemes.Count == 0)
             {

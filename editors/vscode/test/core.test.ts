@@ -73,6 +73,9 @@ describe('a score\'s singer on this machine', () => {
     it('refuses words in a language the voice says it does not sing, and lets a silent voice try', () => {
         assert.match(languageProblem({ id: 'neutrino/MERROW', language: 'ja' }, 'en')!, /sings ja, and these words are en/);
         assert.equal(languageProblem({ id: 'neutrino/MERROW', language: 'ja' }, 'ja'), undefined);
+        assert.equal(languageProblem({ id: 'd/T', language: 'ja', languages: ['ja', 'en'] }, 'en'), undefined, 'a voice of several languages');
+        assert.match(languageProblem({ id: 'd/T', language: 'ja', languages: ['ja', 'en'] }, 'ko')!, /sings ja, en, and these words are ko/);
+        assert.deepEqual(resolveSinger('male', [{ id: 'd/M', gender: 'male', language: 'ja', languages: ['ja', 'en'] }], { female: '', male: '' }, { language: 'en' }), { voice: 'd/M' });
         assert.equal(languageProblem({ id: 'x/y' }, 'en'), undefined);
         assert.equal(languageProblem(undefined, 'en'), undefined);
     });
@@ -197,7 +200,7 @@ describe('where the program and the voices are', () => {
         assert.deepEqual(diffSingerVoicesIn('', dirs, p => tree.has(p), join), []);
         assert.deepEqual(diffSingerEntriesIn('V', dirs, p => tree.has(p), text, join), [
             { id: 'diffsinger/Plain', engine: 'diffsinger', name: 'Plain', label: 'Plain' },
-            { id: 'diffsinger/TIGER', engine: 'diffsinger', name: 'TIGER', label: 'TIGER DS v106', language: 'ja' },
+            { id: 'diffsinger/TIGER', engine: 'diffsinger', name: 'TIGER', label: 'TIGER DS v106', language: 'ja', languages: ['ja'] },
         ]);
         assert.equal(characterNameOf("name: 'Momo'\n"), 'Momo');
         assert.equal(characterNameOf('singer_type: diffsinger\n'), undefined);

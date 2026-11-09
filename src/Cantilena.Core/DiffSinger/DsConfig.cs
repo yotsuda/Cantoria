@@ -138,7 +138,15 @@ public static class DsYaml
         .IgnoreUnmatchedProperties()
         .Build();
 
-    public static T Parse<T>(string yaml) => Deserializer.Deserialize<T>(yaml) ?? throw new InvalidDataException("the YAML is empty");
+    /// <remarks>One at a time: the deserializer fills a type cache that two threads corrupt, and two
+    /// voices load their files at once.</remarks>
+    public static T Parse<T>(string yaml)
+    {
+        lock (Deserializer)
+        {
+            return Deserializer.Deserialize<T>(yaml) ?? throw new InvalidDataException("the YAML is empty");
+        }
+    }
 
     public static T Read<T>(string path)
     {

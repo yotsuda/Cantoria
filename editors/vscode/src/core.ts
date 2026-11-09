@@ -21,6 +21,8 @@ export interface CantilenaNote {
     levelEnd?: number;
     /** An audible breath between this note and the next (a breath mark), where a rest is only silence. */
     inhale?: boolean;
+    /** The next syllable is of the same word (`Twin- kle`): an English voice looks up the whole word. */
+    hyphen?: boolean;
 }
 
 /** The score a caller hands `sing`: notes in seconds; the sample rate and language optional. */
@@ -45,8 +47,10 @@ export interface VoiceEntry {
     name: string;
     /** What the voice calls itself (NEUTRINO's `info.toml` speaker name, a DiffSinger voice's `character.yaml` name), else `name`. */
     label: string;
-    /** The language it sings, as a BCP-47 tag where known (`ja`). */
+    /** The language it sings, as a BCP-47 tag where known (`ja`); the first of `languages` when it has several. */
     language?: string;
+    /** Every language it sings, where it says (a DiffSinger voice's dictionaries the engine can read). */
+    languages?: string[];
     /** `male` or `female`, where the voice says (NEUTRINO's `info.toml`). */
     gender?: string;
     /** The terms it is used under, where the voice or its engine states them; a NEUTRINO voice
@@ -57,10 +61,15 @@ export interface VoiceEntry {
 /** `engine/name`. */
 export function voiceId(engine: string, name: string): string { return `${engine}/${name}`; }
 
+/** Whether a voice says it sings `language`. */
+export function singsLanguage(voice: Pick<VoiceEntry, 'language' | 'languages'>, language: string): boolean {
+    return voice.languages?.includes(language) ?? voice.language === language;
+}
+
 /** The first voice listed that says it is `gender` and sings `language` (the same one every time,
  *  so a score sounds alike from one playing to the next). A voice that does not say is not guessed at. */
-export function firstOfGender(voices: readonly Pick<VoiceEntry, 'id' | 'gender' | 'language'>[], gender: string, language?: string): string | undefined {
-    return voices.find(v => v.gender === gender && (!language || v.language === language))?.id;
+export function firstOfGender(voices: readonly Listed[], gender: string, language?: string): string | undefined {
+    return voices.find(v => v.gender === gender && (!language || singsLanguage(v, language)))?.id;
 }
 
 export type VoiceGender = 'female' | 'male';
@@ -68,7 +77,7 @@ export type VoiceGender = 'female' | 'male';
 /** The settings `cantilena.defaultFemaleVoice` and `cantilena.defaultMaleVoice`; '' is not set. */
 export type DefaultVoices = Readonly<Record<VoiceGender, string>>;
 
-type Listed = Pick<VoiceEntry, 'id' | 'gender' | 'language'>;
+type Listed = Pick<VoiceEntry, 'id' | 'gender' | 'language' | 'languages'>;
 
 /** The gender a word of a score's `singer` says, or undefined when it says none. */
 export function genderOfWord(word: string): VoiceGender | undefined {
@@ -96,7 +105,7 @@ export function defaultVoiceFor(voices: readonly Listed[], defaults: DefaultVoic
     }
     const other: VoiceGender = gender === 'male' ? 'female' : 'male';
     const spare = installed(other) ?? firstOfGender(voices, other, language)
-        ?? voices.find(v => !language || !v.language || v.language === language)?.id ?? voices[0]?.id ?? normalVoice('');
+        ?? voices.find(v => !language || !v.language || singsLanguage(v, language))?.id ?? voices[0]?.id ?? normalVoice('');
     return { voice: spare, note: `no installed voice for these words says it is ${gender}; singing with ${spare}` };
 }
 
@@ -119,9 +128,9 @@ export function resolveSinger(written: string, voices: readonly Listed[], defaul
 }
 
 /** Why `voice` cannot sing words in `language`, or undefined — a voice that does not say what it sings is let try. */
-export function languageProblem(voice: Pick<VoiceEntry, 'id' | 'language'> | undefined, language: string | undefined): string | undefined {
-    return voice?.language && language && voice.language !== language
-        ? `${voice.id} sings ${voice.language}, and these words are ${language}` : undefined;
+export function languageProblem(voice: Pick<VoiceEntry, 'id' | 'language' | 'languages'> | undefined, language: string | undefined): string | undefined {
+    return voice?.language && language && !singsLanguage(voice, language)
+        ? `${voice.id} sings ${(voice.languages ?? [voice.language]).join(', ')}, and these words are ${language}` : undefined;
 }
 
 /** The engine and the name a voice setting or option means: `neutrino/MERROW`; a bare `MERROW`
@@ -187,7 +196,8 @@ export function diffSingerEntriesIn(folder: string, listDirs: (dir: string) => s
         const label = (character && characterNameOf(character)) || name;
         const entry: VoiceEntry = { id: voiceId('diffsinger', name), engine: 'diffsinger', name, label };
         // The voices sing what their dictionaries spell; this extension reads kana through them (ja) so far.
-        if (exists(join(folder, name, 'dsdur', 'dsdict-ja.yaml'))) { entry.language = 'ja'; }
+        const languages = ['ja', 'en'].filter(l => exists(join(folder, name, 'dsdur', `dsdict-${l}.yaml`)));
+        if (languages.length > 0) { entry.language = languages[0]; entry.languages = languages; }
         return entry;
     });
 }
