@@ -225,9 +225,8 @@ describe('the manifest', () => {
         assert.match(props['cantilena.vocoderFolder'].markdownDescription, /command:cantilena\.chooseVocoderFolder/);
     });
 
-    it('tells the cast from the voices folder, with a way to each', () => {
-        assert.match(props['cantilena.voices'].markdownDescription, /Not the folder/);
-        assert.match(props['cantilena.voices'].markdownDescription, /command:cantilena\.chooseVoicesFolder/);
+    it('offers the cast its own command, and no way to a folder', () => {
+        assert.doesNotMatch(props['cantilena.voices'].markdownDescription, /chooseVoicesFolder/);
         assert.match(props['cantilena.voices'].markdownDescription, /command:cantilena\.castVoice/);
     });
 

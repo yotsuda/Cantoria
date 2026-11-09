@@ -64,7 +64,7 @@
           "additionalProperties": { "type": "string" },
           "default": {},
           "scope": "machine-overridable",
-          "markdownDescription": "**Not the folder of the voices**: that is *Voices Folder*. **[Choose the voices folder…](command:cantilena.chooseVoicesFolder)**\n\n**[Cast a singer…](command:cantilena.castVoice)**\n\nThe cast: who sings what a score's `singer` names, on this machine. A role to a voice (`\"soprano\": \"neutrino/MERROW\"`), or a voice to another you prefer (`\"neutrino/MERROW\": \"diffsinger/TIGER\"`): this setting has the last say over what a score writes. A singer that is neither cast here nor installed is sung by `cantilena.voice`, and the editor says so once."
+          "markdownDescription": "**[Cast a singer…](command:cantilena.castVoice)**\n\nThe cast: who sings what a score's `singer` names, on this machine. A role to a voice (`\"soprano\": \"neutrino/MERROW\"`), or a voice to another you prefer (`\"neutrino/MERROW\": \"diffsinger/TIGER\"`): this setting has the last say over what a score writes. A singer that is neither cast here nor installed is sung by `cantilena.voice`, and the editor says so once."
         },
         "cantilena.gpu": {
           "type": "boolean",
