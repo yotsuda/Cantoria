@@ -6,7 +6,7 @@ import * as assert from 'node:assert/strict';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import {
-    ENGINES, characterNameOf, diffSingerEntriesIn, diffSingerVoicesIn, languageProblem, languageTag, missingProgramNote, neutrinoFolderProblems, parseLine, programCandidates,
+    ENGINES, characterNameOf, diffSingerEntriesIn, diffSingerSpeakersOf, diffSingerVoicesIn, languageProblem, languageTag, missingProgramNote, neutrinoFolderProblems, parseLine, programCandidates,
     defaultVoiceFor, firstOfGender, genderOfWord, requestLine, resolveSinger, rid, scoreProblems, serveArgs, speakerOf, splitVoiceId, voiceEntriesIn, voiceId, voiceKey, voicePieces, voicesFolderProblems, voicesIn, voicevoxEntriesFrom, vsixTarget,
 } from '../src/core';
 
@@ -198,6 +198,19 @@ describe('where the program and the voices are', () => {
         assert.deepEqual(voiceEntriesIn('N', dirs, p => tree.has(p), text, join), [
             { id: 'neutrino/KIRITAN', engine: 'neutrino', name: 'KIRITAN', label: 'KIRITAN' },
             { id: 'neutrino/MERROW', engine: 'neutrino', name: 'MERROW', label: 'Merrow', language: 'ja', gender: 'female' },
+        ]);
+    });
+
+    it("lists the other speakers of a voice after it, named as its character.yaml names them", () => {
+        const yaml = 'hidden_size: 256\nspeakers:\n  - dsacoustic/tiger_fresh\n  - dsacoustic/tiger_disco\n  - dsacoustic/plain\n\nnext: 1\n';
+        assert.deepEqual(diffSingerSpeakersOf(yaml), ['tiger_fresh', 'tiger_disco', 'plain']);
+        assert.deepEqual(diffSingerSpeakersOf('hidden_size: 256\n'), []);
+        const text = (p: string) => p.endsWith('dsconfig.yaml') ? yaml : `name: "T"\nsubbanks:\n- {color: '02 Disco', suffix: dsacoustic/tiger_disco} # soft\n`;
+        const entries = diffSingerEntriesIn('V', d => d === 'V' ? ['T'] : [], p => p === 'V' || p.endsWith('dsconfig.yaml') || p.endsWith('dsdict-en.yaml'), text, join);
+        assert.deepEqual(entries.map(e => [e.id, e.label, e.languages]), [
+            ['diffsinger/T', 'T', ['en']],
+            ['diffsinger/T/tiger_disco', 'T (Disco)', ['en']],
+            ['diffsinger/T/plain', 'T (plain)', ['en']],
         ]);
     });
 

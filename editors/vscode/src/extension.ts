@@ -180,7 +180,7 @@ function voiceProblems(voice: Voice): string[] {
     if (fs.existsSync(path.join(voice.name, 'dsconfig.yaml'))) { return []; }   // a folder named outright
     const d = voicesFolder();
     if (!d) { return [`${voice.id} needs a DiffSinger voices folder (Cantilena: Choose Voices Folder…)`]; }
-    const names = diffSingerVoicesIn(d, listDirs, fs.existsSync, path.join);
+    const names = diffSingerEntriesIn(d, listDirs, fs.existsSync, readTextOr, path.join).map(v => v.name);
     return names.includes(voice.name) ? [] : [`the voice ${voice.name} is not under ${d} (installed: ${names.join(', ') || 'none'})`];
 }
 

@@ -199,17 +199,35 @@ export function characterNameOf(yaml: string): string | undefined {
     return v || undefined;
 }
 
-/** The DiffSinger voices under a folder as the API lists them: the voices' folders, each read for its name. */
+/** The speakers a voice's root `dsconfig.yaml` lists, by the last segment of each. */
+export function diffSingerSpeakersOf(dsconfig: string): string[] {
+    const block = /^speakers:[ \t]*\n((?:[ \t]*-[^\n]*(?:\n|$))+)/m.exec(dsconfig.replace(/\r/g, ''))?.[1] ?? '';
+    return block.split('\n').map(l => l.replace(/^\s*-\s*/, '').replace(/["']/g, '').replace(/\s+#.*$/, '').trim()).filter(Boolean).map(s => s.split(/[/\\]/).pop()!);
+}
+
+/** What a voice's `character.yaml` calls each speaker: `subbanks` of `color` and `suffix`, by the suffix's last segment. */
+function speakerColors(character: string | undefined): Map<string, string> {
+    const colors = new Map<string, string>();
+    for (const m of (character ?? '').matchAll(/color:\s*['"]?([^'",}\n]+?)['"]?\s*,\s*suffix:\s*['"]?([^'"}\s]+)/g)) {
+        colors.set(m[2].split(/[/\\]/).pop()!, m[1].replace(/^\d+\s+/, '').trim());
+    }
+    return colors;
+}
+
+/** The DiffSinger voices under a folder as the API lists them: the voices' folders, each read for its name,
+ *  and after each voice its other speakers (`TIGER/tiger_disco`), the plain name being the first. */
 export function diffSingerEntriesIn(folder: string, listDirs: (dir: string) => string[], exists: (p: string) => boolean,
     readText: (p: string) => string | undefined, join: (...parts: string[]) => string): VoiceEntry[] {
-    return diffSingerVoicesIn(folder, listDirs, exists, join).map(name => {
+    return diffSingerVoicesIn(folder, listDirs, exists, join).flatMap(name => {
         const character = readText(join(folder, name, 'character.yaml'));
         const label = (character && characterNameOf(character)) || name;
         const entry: VoiceEntry = { id: voiceId('diffsinger', name), engine: 'diffsinger', name, label };
         // The voices sing what their dictionaries spell; this extension reads kana through them (ja) so far.
         const languages = ['ja', 'en'].filter(l => exists(join(folder, name, 'dsdur', `dsdict-${l}.yaml`)));
         if (languages.length > 0) { entry.language = languages[0]; entry.languages = languages; }
-        return entry;
+        const colors = speakerColors(character);
+        return [entry, ...diffSingerSpeakersOf(readText(join(folder, name, 'dsconfig.yaml')) ?? '').slice(1).map(speaker =>
+            ({ ...entry, id: voiceId('diffsinger', `${name}/${speaker}`), name: `${name}/${speaker}`, label: `${label} (${colors.get(speaker) ?? speaker})` }))];
     });
 }
 

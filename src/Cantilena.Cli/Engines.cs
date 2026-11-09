@@ -11,7 +11,7 @@ namespace Cantilena.Cli;
 /// <summary>
 /// The engines the command line makes singers of, and where their voices are. A voice is named
 /// <c>engine/name</c>: <c>neutrino/MERROW</c> (a folder under NEUTRINO's <c>model\</c>),
-/// <c>diffsinger/TIGER</c> (a folder under the voices folder, or a path holding <c>dsconfig.yaml</c>),
+/// <c>diffsinger/TIGER</c> (a folder under the voices folder, or a path holding <c>dsconfig.yaml</c>; <c>diffsinger/TIGER/tiger_disco</c> one of its speakers),
 /// <c>voicevox/ずんだもん-ノーマル</c> (a singing style of the running VOICEVOX).
 /// A bare name is NEUTRINO's, unless it is such a path.
 /// </summary>
@@ -140,14 +140,21 @@ sealed class Engines
                 }
                 return new NeutrinoOptions(NeutrinoFolder, name) { UseGpu = UseGpu, Threads = Threads, KeepFiles = KeepFiles }.Validate();
             case "diffsinger":
-                var folder = DiffSingerFolder(name);
+                var (voiceName, speaker) = SpeakerOf(name);
+                var folder = DiffSingerFolder(voiceName);
                 if (folder is null)
                 {
                     return [$"the DiffSinger voice {name} is not a folder with dsconfig.yaml" + (VoicesFolder is null
                         ? " (give --voices-dir, set CANTILENA_VOICES_DIR, or write diffsinger.voices in cantilena.json, or name the voice's folder)"
                         : $" and not under {VoicesFolder} (installed: {string.Join(", ", DiffSingerOptions.Voices(VoicesFolder).DefaultIfEmpty("none"))})")];
                 }
-                return DiffSinger(folder).Validate();
+                var invalid = DiffSinger(folder).Validate();
+                if (invalid.Count > 0 || speaker is null)
+                {
+                    return invalid;
+                }
+                var speakers = Speakers(folder);
+                return speakers.Contains(speaker) ? [] : [$"{voiceName} has no speaker {speaker} (there is: {string.Join(", ", speakers.DefaultIfEmpty("none"))})"];
             case "voicevox":
                 var singers = VoicevoxEngine.Singers(VoicevoxUrl);
                 if (singers is null)
@@ -195,11 +202,36 @@ sealed class Engines
         return engine switch
         {
             "neutrino" => new NeutrinoSinger(new NeutrinoOptions(NeutrinoFolder!, name) { UseGpu = UseGpu, Threads = Threads, KeepFiles = KeepFiles }),
-            "diffsinger" => new DiffSingerSinger(DiffSinger(DiffSingerFolder(name)!)),
+            "diffsinger" => DiffSingerOf(name),
             "voicevox" => Voicevox(name),
             _ => throw new SingerException($"no engine named {engine}"),
         };
     }
+
+    /// <summary>A voice's speakers share its models, which are large: one singer a folder.</summary>
+    private readonly Dictionary<string, DiffSingerSinger> _diffSingers = new(StringComparer.OrdinalIgnoreCase);
+
+    private ISinger DiffSingerOf(string name)
+    {
+        var (voice, speaker) = SpeakerOf(name);
+        var folder = DiffSingerFolder(voice)!;
+        if (!_diffSingers.TryGetValue(folder, out var shared))
+        {
+            _diffSingers[folder] = shared = new DiffSingerSinger(DiffSinger(folder));
+        }
+        return speaker is null ? shared : new DiffSingerSpeaker(shared, speaker);
+    }
+
+    /// <summary>A voice's folder name and its speaker: <c>TIGER/tiger_disco</c>. A path to a voice is a voice.</summary>
+    private static (string Voice, string? Speaker) SpeakerOf(string name)
+    {
+        int slash = name.LastIndexOf('/');
+        return slash < 0 || File.Exists(Path.Combine(name, "dsconfig.yaml")) ? (name, null) : (name[..slash], name[(slash + 1)..]);
+    }
+
+    /// <summary>The speakers a voice lists, by the last segment of each.</summary>
+    private static IReadOnlyList<string> Speakers(string folder)
+        => (DsConfig.Load(Path.Combine(folder, "dsconfig.yaml")).Speakers ?? []).Select(s => s.Split('/', '\\')[^1]).ToList();
 
     private VoicevoxSinger Voicevox(string name)
     {
@@ -226,7 +258,11 @@ sealed class Engines
         }
         if (VoicesFolder is not null)
         {
-            voices.AddRange(DiffSingerOptions.Voices(VoicesFolder).Select(v => "diffsinger/" + v));
+            foreach (var v in DiffSingerOptions.Voices(VoicesFolder))
+            {
+                voices.Add("diffsinger/" + v);
+                voices.AddRange(Speakers(Path.Combine(VoicesFolder, v)).Skip(1).Select(s => $"diffsinger/{v}/{s}"));
+            }
         }
         if (VoicevoxEngine.Singers(VoicevoxUrl) is { } singers)
         {

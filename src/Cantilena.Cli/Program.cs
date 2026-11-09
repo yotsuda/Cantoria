@@ -346,7 +346,7 @@ static async Task<int> Serve(string[] rest)
                     sampleRate = audio.SampleRate,
                     seconds = Math.Round(watch.Elapsed.TotalSeconds, 2),
                     voice = singer.Name,
-                    provider = (singer as Cantilena.DiffSinger.DiffSingerSinger)?.Provider,
+                    provider = DiffSingerOf(singer)?.Provider,
                 }, json));
             }
             catch (Exception e) when (e is SingerException or JsonException or IOException or UnauthorizedAccessException or InvalidDataException or ArgumentException)
@@ -365,10 +365,13 @@ static async Task<int> Serve(string[] rest)
     return 0;
 }
 
+static Cantilena.DiffSinger.DiffSingerSinger? DiffSingerOf(ISinger singer)
+    => singer as Cantilena.DiffSinger.DiffSingerSinger ?? (singer as Cantilena.DiffSinger.DiffSingerSpeaker)?.Shared;
+
 /// <summary>" on DirectML" / " on the CPU" for a DiffSinger singer (and why, when the CPU stood in); nothing for NEUTRINO.</summary>
 static string ProviderOf(ISinger singer)
 {
-    if (singer is not Cantilena.DiffSinger.DiffSingerSinger ds)
+    if (DiffSingerOf(singer) is not { } ds)
     {
         return "";
     }

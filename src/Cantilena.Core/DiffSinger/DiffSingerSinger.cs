@@ -44,7 +44,10 @@ public sealed class DiffSingerSinger : ISinger, IDisposable
     /// (<see cref="DiffSingerVoice.Provider"/>).</summary>
     public string Provider => _voice.Provider;
 
-    public async Task<SungAudio> SingAsync(SungScore score, CancellationToken ct = default)
+    public Task<SungAudio> SingAsync(SungScore score, CancellationToken ct = default) => SingAsync(score, _voice.Options.Speaker, ct);
+
+    /// <summary>Sings the score as one of the voice's speakers.</summary>
+    public async Task<SungAudio> SingAsync(SungScore score, string? speaker, CancellationToken ct = default)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         var problems = score.Validate();
@@ -55,7 +58,7 @@ public sealed class DiffSingerSinger : ISinger, IDisposable
         await _oneAtATime.WaitAsync(ct).ConfigureAwait(false);
         try
         {
-            return await Task.Run(() => Render(score, ct), ct).ConfigureAwait(false);
+            return await Task.Run(() => { _voice.UseSpeaker(speaker); return Render(score, ct); }, ct).ConfigureAwait(false);
         }
         finally
         {

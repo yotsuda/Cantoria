@@ -3,6 +3,7 @@
 ## 0.4.0
 
 - **A score can name its singer, or just its gender**: the settings `cantilena.defaultFemaleVoice` and `cantilena.defaultMaleVoice` take the place of `cantilena.voice`, with a picker each; empty is the first voice of that gender for the words' language. The API has `resolveSinger`. `sing` refuses words in a language the voice says it does not sing. `voices()` gives a voice's `gender` where its `info.toml` says.
+- **A DiffSinger voice's speakers are voices**: each speaker its `dsconfig.yaml` lists after the first is offered as `diffsinger/TIGER/tiger_disco`, named by the voice's `character.yaml`; they share the voice's models.
 - **Several voices can sing one part**: `sing` takes voices joined by `+` (`neutrino/MERROW+diffsinger/TIGER`), each singing the score, their sounds laid together.
 - **Cantilena can start VOICEVOX**: with `cantilena.voicevoxFolder` set, its engine starts when one of its voices is needed and none is running, on a port of its own, and stops with VS Code. A VOICEVOX you opened yourself is used and left alone.
 - **VOICEVOX sings**: start VOICEVOX and its singing voices are listed as `voicevox/name-style`, Japanese only. The new setting `cantilena.voicevoxUrl` says where it answers.

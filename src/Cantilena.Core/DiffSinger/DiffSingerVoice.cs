@@ -71,7 +71,7 @@ public sealed class DiffSingerVoice : IDisposable
     public IReadOnlyDictionary<string, int> AcousticPhonemes { get; }
     public IReadOnlyDictionary<string, int> AcousticLanguages { get; }
     /// <summary>The speaker embedding the acoustic model takes, or null for a single-speaker voice.</summary>
-    public float[]? AcousticSpeaker { get; }
+    public float[]? AcousticSpeaker { get; private set; }
     public Module Dur { get; }
     public Module? Pitch { get; }
     public Module? Variance { get; }
@@ -105,6 +105,16 @@ public sealed class DiffSingerVoice : IDisposable
         Dur.UseLanguage(language);
         Pitch?.UseLanguage(language);
         Variance?.UseLanguage(language);
+    }
+
+    /// <summary>Sings the next score as <paramref name="speaker"/> (null for the first): the models are
+    /// shared, a speaker being only an embedding each model is given.</summary>
+    internal void UseSpeaker(string? speaker)
+    {
+        AcousticSpeaker = LoadSpeaker(Folder, Acoustic, speaker);
+        Dur.UseSpeaker(speaker);
+        Pitch?.UseSpeaker(speaker);
+        Variance?.UseSpeaker(speaker);
     }
 
     /// <summary>
@@ -258,6 +268,8 @@ public sealed class DiffSingerVoice : IDisposable
             UseLanguage(language);
         }
 
+        internal void UseSpeaker(string? speaker) => Speaker = LoadSpeaker(Dir, Config, speaker);
+
         /// <summary>This language's dictionary, read once.</summary>
         internal void UseLanguage(string language)
         {
@@ -276,7 +288,7 @@ public sealed class DiffSingerVoice : IDisposable
         public DsConfig Config { get; }
         public IReadOnlyDictionary<string, int> Phonemes { get; }
         public IReadOnlyDictionary<string, int> Languages { get; }
-        public float[]? Speaker { get; }
+        public float[]? Speaker { get; private set; }
         public string Language { get; private set; }
         public DsDictionary Dictionary { get; private set; } = null!;
         public string DictionaryFile { get; private set; } = "";
