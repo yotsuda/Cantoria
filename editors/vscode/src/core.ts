@@ -49,6 +49,35 @@ export interface VoiceEntry {
 /** `engine/name`. */
 export function voiceId(engine: string, name: string): string { return `${engine}/${name}`; }
 
+/**
+ * The voice a score's `singer` string comes to on this machine (Lily#'s `singer "…"`): the cast's
+ * binding of it when there is one — a role, or a voice's name the listener replaces, the listener
+ * having the last say; else the string itself when it names an installed voice; else `fallback`,
+ * with a sentence saying so. A missing voice never stops the music.
+ */
+export function resolveSinger(written: string, cast: Readonly<Record<string, string>>, installed: readonly string[],
+    fallback: string): { voice: string; note?: string } {
+    const asked = written.trim();
+    if (!asked) { return { voice: fallback }; }
+    const normal = (text: string) => { const v = splitVoiceId(text); return voiceId(v.engine, v.name); };
+    const bound = cast[asked];
+    if (bound) {
+        const voice = normal(bound);
+        return installed.includes(voice) ? { voice } : { voice: fallback, note: `the singer "${asked}" is cast to ${voice}, which is not installed; singing with ${fallback}` };
+    }
+    if (asked.includes('/')) {
+        const voice = normal(asked);
+        return installed.includes(voice) ? { voice } : { voice: fallback, note: `${voice} is not installed; singing with ${fallback}` };
+    }
+    return { voice: fallback, note: `the singer "${asked}" is not cast (cantilena.voices); singing with ${fallback}` };
+}
+
+/** Why `voice` cannot sing words in `language`, or undefined — a voice that does not say what it sings is let try. */
+export function languageProblem(voice: Pick<VoiceEntry, 'id' | 'language'> | undefined, language: string | undefined): string | undefined {
+    return voice?.language && language && voice.language !== language
+        ? `${voice.id} sings ${voice.language}, and these words are ${language}` : undefined;
+}
+
 /** The engine and the name a voice setting or option means: `neutrino/MERROW`; a bare `MERROW`
  *  is the first engine's; empty is its default voice. The engine is not checked here. */
 export function splitVoiceId(text: string | undefined): { engine: string; name: string } {

@@ -6,11 +6,40 @@ import * as assert from 'node:assert/strict';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import {
-    ENGINES, characterNameOf, diffSingerEntriesIn, diffSingerVoicesIn, languageTag, missingProgramNote, neutrinoFolderProblems, parseLine, programCandidates,
-    requestLine, rid, scoreProblems, serveArgs, speakerOf, splitVoiceId, voiceEntriesIn, voiceId, voiceKey, voicesFolderProblems, voicesIn, vsixTarget,
+    ENGINES, characterNameOf, diffSingerEntriesIn, diffSingerVoicesIn, languageProblem, languageTag, missingProgramNote, neutrinoFolderProblems, parseLine, programCandidates,
+    requestLine, resolveSinger, rid, scoreProblems, serveArgs, speakerOf, splitVoiceId, voiceEntriesIn, voiceId, voiceKey, voicesFolderProblems, voicesIn, vsixTarget,
 } from '../src/core';
 
 const join = (...parts: string[]) => parts.join('\\');
+
+describe('a score\'s singer on this machine', () => {
+    const installed = ['neutrino/MERROW', 'diffsinger/TIGER'];
+    const fallback = 'neutrino/MERROW';
+
+    it('takes the cast first: a role, or a voice the listener replaces', () => {
+        assert.deepEqual(resolveSinger('soprano', { soprano: 'diffsinger/TIGER' }, installed, fallback), { voice: 'diffsinger/TIGER' });
+        assert.deepEqual(resolveSinger('neutrino/MERROW', { 'neutrino/MERROW': 'diffsinger/TIGER' }, installed, fallback), { voice: 'diffsinger/TIGER' });
+    });
+
+    it('then a voice\'s own name, when it is installed', () => {
+        assert.deepEqual(resolveSinger('diffsinger/TIGER', {}, installed, fallback), { voice: 'diffsinger/TIGER' });
+    });
+
+    it('else sings with the default and says why', () => {
+        assert.equal(resolveSinger('alto', {}, installed, fallback).voice, fallback);
+        assert.match(resolveSinger('alto', {}, installed, fallback).note!, /"alto" is not cast/);
+        assert.match(resolveSinger('diffsinger/NOPE', {}, installed, fallback).note!, /not installed/);
+        assert.match(resolveSinger('alto', { alto: 'diffsinger/NOPE' }, installed, fallback).note!, /cast to diffsinger\/NOPE, which is not installed/);
+        assert.deepEqual(resolveSinger('  ', {}, installed, fallback), { voice: fallback });
+    });
+
+    it('refuses words in a language the voice says it does not sing, and lets a silent voice try', () => {
+        assert.match(languageProblem({ id: 'neutrino/MERROW', language: 'ja' }, 'en')!, /sings ja, and these words are en/);
+        assert.equal(languageProblem({ id: 'neutrino/MERROW', language: 'ja' }, 'ja'), undefined);
+        assert.equal(languageProblem({ id: 'x/y' }, 'en'), undefined);
+        assert.equal(languageProblem(undefined, 'en'), undefined);
+    });
+});
 
 describe('the score a caller hands sing', () => {
     const score = { sampleRate: 48000, language: 'ja', notes: [

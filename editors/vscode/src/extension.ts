@@ -13,8 +13,8 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import {
-    CantilenaScore, ENGINES, VoiceEntry, diffSingerEntriesIn, diffSingerVoicesIn, missingProgramNote, neutrinoFolderProblems, programCandidates,
-    scoreProblems, splitVoiceId, voiceEntriesIn, voiceId, voicesFolderProblems, voicesIn,
+    CantilenaScore, ENGINES, VoiceEntry, diffSingerEntriesIn, diffSingerVoicesIn, languageProblem, missingProgramNote, neutrinoFolderProblems, programCandidates,
+    resolveSinger, scoreProblems, splitVoiceId, voiceEntriesIn, voiceId, voicesFolderProblems, voicesIn,
 } from './core';
 import { Engine, EngineSetup, RenderedVoice } from './engine';
 
@@ -51,6 +51,11 @@ export interface CantilenaApi {
     sing(score: CantilenaScore, options?: { voice?: string }): Promise<RenderedVoice & { cached: boolean }>;
     /** Lets the engine go (NEUTRINO's server and the DiffSinger sessions with it); the next `sing` starts it again. */
     release(): void;
+    /** The voice a score's `singer` string comes to here (`cantilena.voices`, then the installed
+     *  voices, then the setting's voice), and a sentence when it is not the one asked for. */
+    resolveSinger(singer: string): Promise<{ voice: string; note?: string }>;
+    /** `cantilena.voices`: role or voice → voice. */
+    cast(): Promise<Record<string, string>>;
 }
 
 let output: vscode.OutputChannel;
@@ -70,6 +75,8 @@ function voiceOf(text: string | undefined): Voice {
 }
 /** The setting's voice (`neutrino/MERROW`; a bare name is NEUTRINO's). */
 function voiceSetting(): Voice { return voiceOf(settings().get<string>('voice', '')); }
+/** `cantilena.voices`: the cast, role or voice → voice. */
+function castSetting(): Record<string, string> { return settings().get<Record<string, string>>('voices', {}); }
 
 function readTextOr(p: string): string | undefined { try { return fs.readFileSync(p, 'utf8'); } catch { return undefined; } }
 function listDirs(dir: string): string[] { try { return fs.readdirSync(dir, { withFileTypes: true }).filter(d => d.isDirectory()).map(d => d.name); } catch { return []; } }
@@ -167,6 +174,8 @@ async function sing(context: vscode.ExtensionContext, score: CantilenaScore, opt
     const voice = asked ? voiceOf(asked) : voiceSetting();
     const wrong = voiceProblems(voice);
     if (wrong.length > 0) { throw new Error(wrong.join('; ')); }
+    const language = languageProblem(voices().find(v => v.id === voice.id), score.language);
+    if (language) { throw new Error(language); }
     const { key, rendered, cached } = engineFor(context).sing(score, voice.id);
     const t0 = Date.now();
     const v = await rendered;
@@ -266,6 +275,8 @@ export function activate(context: vscode.ExtensionContext): CantilenaApi {
         voices: async () => voices(),
         sing: (score, options) => sing(context, score, options),
         release,
+        resolveSinger: async singer => resolveSinger(singer, castSetting(), voices().map(v => v.id), voiceSetting().id),
+        cast: async () => castSetting(),
     });
 }
 
