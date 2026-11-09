@@ -1,7 +1,7 @@
 {
   "name": "cantoria",
   "displayName": "Cantoria Singing Voice",
-  "description": "Sings the lyrics of a score for notation extensions such as Lily#: notes with syllables in, a voice out — through your own installation of NEUTRINO, or DiffSinger voices in the OpenUtau format. Open source (Apache-2.0); runs locally on Windows.",
+  "description": "Sings the lyrics of a score for notation extensions such as Lily#: notes with syllables in, a voice out, through your own NEUTRINO or VOICEVOX, or DiffSinger voices in the OpenUtau format. Voices from different engines can sing together. Open source (Apache-2.0); runs locally.",
   "version": "0.4.0",
   "publisher": "yotsuda",
   "icon": "icon.png",
@@ -29,7 +29,8 @@
     "sheet music",
     "lilysharp",
     "neutrino",
-    "diffsinger"
+    "diffsinger",
+    "voicevox"
   ],
   "activationEvents": [],
   "main": "./out/extension.js",

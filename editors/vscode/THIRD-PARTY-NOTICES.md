@@ -13,6 +13,10 @@ Cantoria's, Apache License 2.0 (LICENSE).
 - **NEUTRINO** (STUDIO NEUTRINO / SHACHI, closed-source freeware) — installed by the user and
   named in `cantoria.neutrinoFolder`; nothing of it is redistributed. Its agreement forbids use
   for machine-learning voice conversion; Cantoria synthesizes from scores only.
+- **VOICEVOX** (Hiroshiba Kazuyuki and contributors) — installed by the user, its engine started from
+  `cantoria.voicevoxFolder` or reached at `cantoria.voicevoxUrl`; nothing of it is redistributed.
+  It is used under <https://voicevox.hiroshiba.jp/term/>; each character has its own terms, and a
+  published work credits `VOICEVOX:name`.
 - **Voices** (MERROW ships with NEUTRINO; others are their authors') — read from the user's
   NEUTRINO folder, never included.
 
