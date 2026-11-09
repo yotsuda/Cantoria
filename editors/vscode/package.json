@@ -37,18 +37,18 @@
         "title": "General",
         "order": 1,
         "properties": {
-            "cantilena.voice": {
+            "cantilena.defaultVoice": {
               "type": "string",
               "default": "neutrino/MERROW",
               "scope": "machine-overridable",
-              "markdownDescription": "The voice the lyrics are sung in, as `engine/name`: `neutrino/` and a folder under NEUTRINO's `model\\` (MERROW ships with NEUTRINO), or `diffsinger/` and a folder under the voices folder. Other voices are their authors' work under their authors' terms, installed there by you. A bare name means a NEUTRINO voice.\n\n**[Choose a voice…](command:cantilena.chooseVoice)**"
+              "markdownDescription": "The voice lyrics are sung in when the score names no singer, as `engine/name`: `neutrino/` and a folder under NEUTRINO's `model\\` (MERROW ships with NEUTRINO), or `diffsinger/` and a folder under the voices folder. Other voices are their authors' work under their authors' terms, installed there by you. A bare name means a NEUTRINO voice.\n\n**[Choose a voice…](command:cantilena.chooseVoice)**"
             },
             "cantilena.voices": {
               "type": "object",
               "additionalProperties": { "type": "string" },
               "default": {},
               "scope": "machine-overridable",
-              "markdownDescription": "**[Cast a singer…](command:cantilena.castVoice)**\n\nThe cast: who sings what a score's `singer` names, on this machine. A role to a voice (`\"soprano\": \"neutrino/MERROW\"`), or a voice to another you prefer (`\"neutrino/MERROW\": \"diffsinger/TIGER\"`): this setting has the last say over what a score writes. A singer that is neither cast here nor installed is sung by `cantilena.voice`, and the editor says so once."
+              "markdownDescription": "**[Cast a singer…](command:cantilena.castVoice)**\n\nThe cast: who sings what a score's `singer` names, on this machine. A role to a voice (`\"soprano\": \"neutrino/MERROW\"`), or a voice to another you prefer (`\"neutrino/MERROW\": \"diffsinger/TIGER\"`): this setting has the last say over what a score writes. A singer that is neither cast here nor installed is sung by `cantilena.defaultVoice`, and the editor says so once."
             },
             "cantilena.gpu": {
               "type": "boolean",

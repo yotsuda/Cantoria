@@ -75,7 +75,7 @@ function voiceOf(text: string | undefined): Voice {
     return { ...v, id: voiceId(v.engine, v.name) };
 }
 /** The setting's voice (`neutrino/MERROW`; a bare name is NEUTRINO's). */
-function voiceSetting(): Voice { return voiceOf(settings().get<string>('voice', '')); }
+function voiceSetting(): Voice { return voiceOf(settings().get<string>('defaultVoice', '')); }
 /** `cantilena.voices`: the cast, role or voice → voice. */
 function castSetting(): Record<string, string> { return settings().get<Record<string, string>>('voices', {}); }
 
@@ -232,7 +232,7 @@ async function chooseVoice(context: vscode.ExtensionContext): Promise<void> {
         })),
         { title: 'Cantilena: Choose Voice', placeHolder: 'The voice the lyrics are sung in (engine/name)' });
     if (!pick) { return; }
-    await settings().update('voice', pick.label, vscode.ConfigurationTarget.Global);
+    await settings().update('defaultVoice', pick.label, vscode.ConfigurationTarget.Global);
     vscode.window.setStatusBarMessage(`Cantilena: the voice is ${pick.label}`, 4000);
 }
 

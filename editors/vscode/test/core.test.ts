@@ -220,7 +220,7 @@ describe('the manifest', () => {
     it('groups the settings by what they are for', () => {
         const groups = Object.fromEntries(manifest.contributes.configuration.map((c: { title: string; properties: object }) => [c.title, Object.keys(c.properties).map(k => k.replace('cantilena.', '')).sort()]));
         assert.deepEqual(groups, {
-            General: ['gpu', 'voice', 'voices'],
+            General: ['defaultVoice', 'gpu', 'voices'],
             NEUTRINO: ['neutrinoFolder', 'threads'],
             DiffSinger: ['vocoderFolder', 'voicesFolder'],
             Developer: ['program'],
@@ -230,13 +230,13 @@ describe('the manifest', () => {
     const commands = (manifest.contributes.commands as { command: string }[]).map(c => c.command);
 
     it('holds the settings, each engine setting machine-overridable', () => {
-        for (const name of ['cantilena.neutrinoFolder', 'cantilena.voicesFolder', 'cantilena.vocoderFolder', 'cantilena.voice', 'cantilena.gpu', 'cantilena.threads', 'cantilena.program']) {
+        for (const name of ['cantilena.neutrinoFolder', 'cantilena.voicesFolder', 'cantilena.vocoderFolder', 'cantilena.defaultVoice', 'cantilena.gpu', 'cantilena.threads', 'cantilena.program']) {
             assert.ok(props[name], `${name} is contributed`);
             assert.equal(props[name].scope, 'machine-overridable', name);
         }
-        assert.equal(props['cantilena.voice'].default, 'neutrino/MERROW');
+        assert.equal(props['cantilena.defaultVoice'].default, 'neutrino/MERROW');
         assert.match(props['cantilena.neutrinoFolder'].markdownDescription, /command:cantilena\.chooseNeutrinoFolder/);
-        assert.match(props['cantilena.voice'].markdownDescription, /command:cantilena\.chooseVoice/);
+        assert.match(props['cantilena.defaultVoice'].markdownDescription, /command:cantilena\.chooseVoice/);
         assert.match(props['cantilena.voicesFolder'].markdownDescription, /command:cantilena\.chooseVoicesFolder/);
         assert.match(props['cantilena.vocoderFolder'].markdownDescription, /command:cantilena\.chooseVocoderFolder/);
     });

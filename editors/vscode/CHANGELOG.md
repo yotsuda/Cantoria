@@ -2,7 +2,7 @@
 
 ## 0.4.0
 
-- **A score can name its singer, and you decide who that is**: the setting `cantilena.voices` casts a score's roles (`"soprano": "neutrino/MERROW"`) and may replace a voice it names; the API has `resolveSinger` and `cast`. A singer neither cast nor installed sings as `cantilena.voice`. `sing` refuses words in a language the voice says it does not sing. `voices()` gives a voice's `gender` where its `info.toml` says, and a score's `singer male` or `singer female` sings with the first such voice for its words' language, unless `cantilena.voices` casts one.
+- **A score can name its singer, and you decide who that is**: the setting `cantilena.voices` casts a score's roles (`"soprano": "neutrino/MERROW"`) and may replace a voice it names; the API has `resolveSinger` and `cast`. A singer neither cast nor installed sings as `cantilena.defaultVoice`. `sing` refuses words in a language the voice says it does not sing. `voices()` gives a voice's `gender` where its `info.toml` says, and a score's `singer male` or `singer female` sings with the first such voice for its words' language, unless `cantilena.voices` casts one.
 - **A score's dynamics are heard**: a note's `level` and `levelEnd` scale what the engine sang (NEUTRINO reads a dynamic and sings no louder for it), eased between notes.
 - **The settings are grouped**: General, DiffSinger, NEUTRINO and Developer.
 - **Cast a Singer…**: `cantilena.voices` filled from two lists, a link beside the setting. A **Choose the folder…** link for the vocoder folder.

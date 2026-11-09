@@ -35,7 +35,7 @@ export const ENGINES = ['neutrino', 'diffsinger'] as const;
 export type EngineName = typeof ENGINES[number];
 
 /** A voice as the API names it: `engine/name`, e.g. `neutrino/MERROW` — the form `sing`'s
- *  `voice`, the setting `cantilena.voice` and `status().voice` take, so a second engine's voice
+ *  `voice`, the setting `cantilena.defaultVoice` and `status().voice` take, so a second engine's voice
  *  needs no new setting. */
 export interface VoiceEntry {
     /** `engine/name`. */
