@@ -3,7 +3,8 @@
 Cantoria is Apache-2.0. The works below are, or are planned to be, used by it.
 Each entry says how it is used, because the obligations differ: code copied
 into this repository keeps its copyright notice here and in the file; a
-library referenced as a package keeps its own license in the package; a
+library referenced as a package keeps its own license in the package
+(the VS Code extension carries a copy of each under `bin/<rid>/licenses/`); a
 program invoked as a separate process is not part of Cantoria at all.
 
 ## Included or referenced
@@ -97,6 +98,15 @@ backend runs the user's own installation as a separate process
 The sound produced is subject to the terms of the voice library used. The
 agreement forbids using NEUTRINO in machine-learning voice-conversion tools;
 Cantoria does nothing of the kind.
+
+### VOICEVOX
+
+https://voicevox.hiroshiba.jp/
+
+Installed by the user and never redistributed. Cantoria starts the user's own
+engine, or talks to a VOICEVOX already running, over its local API. It is used
+under https://voicevox.hiroshiba.jp/term/, which asks for a credit that
+VOICEVOX was used; each character has its own terms.
 
 ## Voices
 

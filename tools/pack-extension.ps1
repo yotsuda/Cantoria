@@ -46,6 +46,32 @@ try {
             cmd /d /s /c "dotnet publish `"$root\src\Cantoria.Cli`" -c Release -r $rid --self-contained $dml -o `"$bin`" -v q -nologo < NUL"
             if ($LASTEXITCODE -ne 0) { throw "dotnet publish $rid failed" }
             Get-ChildItem $bin -Filter *.pdb | Remove-Item
+            # The licenses of what is bundled: the VSIX is all a user receives, and the packages' copies stay on this machine.
+            $packages = if ($env:NUGET_PACKAGES) { $env:NUGET_PACKAGES } else { "$HOME\.nuget\packages" }
+            $libraries = (Get-Content "$bin\cantoria.deps.json" -Raw | ConvertFrom-Json).libraries.PSObject.Properties.Name
+            function Script:PackageDir([string]$id) {
+                $found = $libraries | Where-Object { $_ -like "$id/*" } | Select-Object -First 1
+                if (-not $found) { throw "$id is not among the program's libraries" }
+                "$packages\$($id.ToLowerInvariant())\$($found.Split('/')[1])"
+            }
+            $runtime = (Get-Content "$bin\cantoria.runtimeconfig.json" -Raw | ConvertFrom-Json).runtimeOptions.includedFrameworks[0].version
+            $onnxId = if ($rid -eq 'win-x64') { 'Microsoft.ML.OnnxRuntime.DirectML' } else { 'Microsoft.ML.OnnxRuntime' }
+            $copies = @{
+                'dotnet-LICENSE.txt'                 = "$packages\microsoft.netcore.app.runtime.$rid\$runtime\LICENSE.TXT"
+                'dotnet-THIRD-PARTY-NOTICES.txt'     = "$packages\microsoft.netcore.app.runtime.$rid\$runtime\THIRD-PARTY-NOTICES.TXT"
+                'onnxruntime-LICENSE.txt'            = "$(PackageDir $onnxId)\LICENSE"
+                'onnxruntime-ThirdPartyNotices.txt'  = "$(PackageDir $onnxId)\ThirdPartyNotices.txt"
+                'YamlDotNet-LICENSE.txt'             = "$(PackageDir 'YamlDotNet')\LICENSE.txt"
+            }
+            if ($rid -eq 'win-x64') {
+                # (DirectML reaches the program as a native file, so the program's libraries do not name it: ONNX Runtime's package says which)
+                $directMl = [regex]::Match((Get-Content "$(PackageDir $onnxId)\$($onnxId.ToLowerInvariant()).nuspec" -Raw), '<dependency id="Microsoft\.AI\.DirectML" version="\[?([^",\]]+)').Groups[1].Value
+                if (-not $directMl) { throw "no DirectML version in the $onnxId package" }
+                $copies['DirectML-LICENSE.txt'] = "$packages\microsoft.ai.directml\$directMl\LICENSE.txt"
+                $copies['DirectML-ThirdPartyNotices.txt'] = "$packages\microsoft.ai.directml\$directMl\ThirdPartyNotices.txt"
+            }
+            New-Item -ItemType Directory -Force "$bin\licenses" | Out-Null
+            foreach ($name in $copies.Keys) { Copy-Item -LiteralPath $copies[$name] "$bin\licenses\$name" }
         }
         $exe = if ($rid.StartsWith('win')) { 'cantoria.exe' } else { 'cantoria' }
         if (-not (Test-Path "$bin\$exe")) { throw "$bin\$exe is missing" }
