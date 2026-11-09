@@ -7,7 +7,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import {
     ENGINES, characterNameOf, diffSingerEntriesIn, diffSingerVoicesIn, languageProblem, languageTag, missingProgramNote, neutrinoFolderProblems, parseLine, programCandidates,
-    requestLine, resolveSinger, rid, scoreProblems, serveArgs, speakerOf, splitVoiceId, voiceEntriesIn, voiceId, voiceKey, voicesFolderProblems, voicesIn, vsixTarget,
+    firstOfGender, requestLine, resolveSinger, rid, scoreProblems, serveArgs, speakerOf, splitVoiceId, voiceEntriesIn, voiceId, voiceKey, voicesFolderProblems, voicesIn, vsixTarget,
 } from '../src/core';
 
 const join = (...parts: string[]) => parts.join('\\');
@@ -23,6 +23,25 @@ describe('a score\'s singer on this machine', () => {
 
     it('then a voice\'s own name, when it is installed', () => {
         assert.deepEqual(resolveSinger('diffsinger/TIGER', {}, installed, fallback), { voice: 'diffsinger/TIGER' });
+    });
+
+    it('picks a voice for male or female, the cast first, the same one every time', () => {
+        const list = [
+            { id: 'n/A', gender: 'female', language: 'ja' },
+            { id: 'n/B', language: 'ja' },
+            { id: 'n/C', gender: 'male', language: 'en' },
+            { id: 'n/D', gender: 'male', language: 'ja' },
+            { id: 'n/E', gender: 'male', language: 'ja' },
+        ];
+        const ids = list.map(v => v.id);
+        const pick = (language?: string) => (gender: string) => firstOfGender(list, gender, language);
+        assert.deepEqual(resolveSinger('male', {}, ids, 'n/A', pick('ja')), { voice: 'n/D' });
+        assert.deepEqual(resolveSinger('male', {}, ids, 'n/A', pick('en')), { voice: 'n/C' });
+        assert.deepEqual(resolveSinger('female', {}, ids, 'n/D', pick('ja')), { voice: 'n/A' });
+        assert.deepEqual(resolveSinger('male', { male: 'n/E' }, ids, 'n/A', pick('ja')), { voice: 'n/E' });
+        const none = resolveSinger('female', {}, ids, 'n/D', pick('en'));
+        assert.equal(none.voice, 'n/D');
+        assert.match(none.note!, /no installed voice for these words says it is female/);
     });
 
     it('else sings with the default and says why', () => {

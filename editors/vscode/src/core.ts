@@ -51,14 +51,21 @@ export interface VoiceEntry {
 /** `engine/name`. */
 export function voiceId(engine: string, name: string): string { return `${engine}/${name}`; }
 
+/** The first voice listed that says it is `gender` and sings `language` (the same one every time,
+ *  so a score sounds alike from one playing to the next). A voice that does not say is not guessed at. */
+export function firstOfGender(voices: readonly Pick<VoiceEntry, 'id' | 'gender' | 'language'>[], gender: string, language?: string): string | undefined {
+    return voices.find(v => v.gender === gender && (!language || v.language === language))?.id;
+}
+
 /**
  * The voice a score's `singer` string comes to on this machine (Lily#'s `singer "…"`): the cast's
  * binding of it when there is one — a role, or a voice's name the listener replaces, the listener
- * having the last say; else the string itself when it names an installed voice; else `fallback`,
- * with a sentence saying so. A missing voice never stops the music.
+ * having the last say; else the string itself when it names an installed voice; `male` or `female`
+ * (Lily#'s bare `singer male`) the voice `ofGender` picks; else `fallback`, with a sentence saying
+ * so. A missing voice never stops the music.
  */
 export function resolveSinger(written: string, cast: Readonly<Record<string, string>>, installed: readonly string[],
-    fallback: string): { voice: string; note?: string } {
+    fallback: string, ofGender?: (gender: string) => string | undefined): { voice: string; note?: string } {
     const asked = written.trim();
     if (!asked) { return { voice: fallback }; }
     const normal = (text: string) => { const v = splitVoiceId(text); return voiceId(v.engine, v.name); };
@@ -70,6 +77,10 @@ export function resolveSinger(written: string, cast: Readonly<Record<string, str
     if (asked.includes('/')) {
         const voice = normal(asked);
         return installed.includes(voice) ? { voice } : { voice: fallback, note: `${voice} is not installed; singing with ${fallback}` };
+    }
+    if (asked === 'male' || asked === 'female') {
+        const voice = ofGender?.(asked);
+        return voice ? { voice } : { voice: fallback, note: `no installed voice for these words says it is ${asked}; singing with ${fallback}` };
     }
     return { voice: fallback, note: `the singer "${asked}" is not cast (cantilena.voices); singing with ${fallback}` };
 }

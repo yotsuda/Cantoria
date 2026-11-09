@@ -13,7 +13,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import {
-    CantilenaScore, ENGINES, VoiceEntry, diffSingerEntriesIn, diffSingerVoicesIn, languageProblem, missingProgramNote, neutrinoFolderProblems, programCandidates,
+    CantilenaScore, ENGINES, VoiceEntry, diffSingerEntriesIn, diffSingerVoicesIn, firstOfGender, languageProblem, missingProgramNote, neutrinoFolderProblems, programCandidates,
     resolveSinger, scoreProblems, splitVoiceId, voiceEntriesIn, voiceId, voicesFolderProblems, voicesIn,
 } from './core';
 import { Engine, EngineSetup, RenderedVoice } from './engine';
@@ -52,8 +52,9 @@ export interface CantilenaApi {
     /** Lets the engine go (NEUTRINO's server and the DiffSinger sessions with it); the next `sing` starts it again. */
     release(): void;
     /** The voice a score's `singer` string comes to here (`cantilena.voices`, then the installed
-     *  voices, then the setting's voice), and a sentence when it is not the one asked for. */
-    resolveSinger(singer: string): Promise<{ voice: string; note?: string }>;
+     *  voices, for `male` or `female` the first such voice that sings `language`, then the setting's
+     *  voice), and a sentence when it is not the one asked for. */
+    resolveSinger(singer: string, options?: { language?: string }): Promise<{ voice: string; note?: string }>;
     /** `cantilena.voices`: role or voice → voice. */
     cast(): Promise<Record<string, string>>;
 }
@@ -275,7 +276,8 @@ export function activate(context: vscode.ExtensionContext): CantilenaApi {
         voices: async () => voices(),
         sing: (score, options) => sing(context, score, options),
         release,
-        resolveSinger: async singer => resolveSinger(singer, castSetting(), voices().map(v => v.id), voiceSetting().id),
+        resolveSinger: async (singer, options) => resolveSinger(singer, castSetting(), voices().map(v => v.id), voiceSetting().id,
+            gender => firstOfGender(voices(), gender, options?.language)),
         cast: async () => castSetting(),
     });
 }

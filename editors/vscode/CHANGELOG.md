@@ -2,7 +2,7 @@
 
 ## 0.4.0
 
-- **A score can name its singer, and you decide who that is**: the setting `cantilena.voices` casts a score's roles (`"soprano": "neutrino/MERROW"`) and may replace a voice it names; the API has `resolveSinger` and `cast`. A singer neither cast nor installed sings as `cantilena.voice`. `sing` refuses words in a language the voice says it does not sing. `voices()` gives a voice's `gender` where its `info.toml` says.
+- **A score can name its singer, and you decide who that is**: the setting `cantilena.voices` casts a score's roles (`"soprano": "neutrino/MERROW"`) and may replace a voice it names; the API has `resolveSinger` and `cast`. A singer neither cast nor installed sings as `cantilena.voice`. `sing` refuses words in a language the voice says it does not sing. `voices()` gives a voice's `gender` where its `info.toml` says, and a score's `singer male` or `singer female` sings with the first such voice for its words' language, unless `cantilena.voices` casts one.
 - **DiffSinger voices sing on the GPU**: the bundled program is built on the DirectML build of ONNX
   Runtime, so a DiffSinger voice's models run on any DirectX 12 GPU (a phrase in a second or two
   once the models are resident, against ten or more on the CPU) and on the CPU where there is none —
