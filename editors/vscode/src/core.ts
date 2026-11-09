@@ -41,6 +41,8 @@ export interface VoiceEntry {
     label: string;
     /** The language it sings, as a BCP-47 tag where known (`ja`). */
     language?: string;
+    /** `male` or `female`, where the voice says (NEUTRINO's `info.toml`). */
+    gender?: string;
     /** The terms it is used under, where the voice or its engine states them; a NEUTRINO voice
      *  leaves it to NEUTRINO's agreement and says nothing here. */
     licence?: string;
@@ -88,11 +90,11 @@ export function splitVoiceId(text: string | undefined): { engine: string; name: 
 }
 
 /** What a NEUTRINO voice's `info.toml` says of its speaker: `[speaker] name = "Merrow"` and
- *  `language = "Japanese"`; either missing when the file does not say. */
-export function speakerOf(toml: string): { name?: string; language?: string } {
+ *  `language = "Japanese"`, `gender = "female"`; any missing when the file does not say. */
+export function speakerOf(toml: string): { name?: string; language?: string; gender?: string } {
     const section = /^\s*\[speaker\]\s*$([\s\S]*?)(?=^\s*\[|(?![\s\S]))/m.exec(toml)?.[1] ?? '';
     const value = (key: string) => new RegExp(`^\\s*${key}\\s*=\\s*"([^"]*)"`, 'm').exec(section)?.[1]?.trim() || undefined;
-    return { name: value('name'), language: value('language') };
+    return { name: value('name'), language: value('language'), gender: value('gender') };
 }
 
 const LANGUAGE_TAGS: Record<string, string> = { japanese: 'ja', english: 'en', chinese: 'zh', mandarin: 'zh', korean: 'ko' };
@@ -113,6 +115,7 @@ export function voiceEntriesIn(folder: string, listDirs: (dir: string) => string
         const entry: VoiceEntry = { id: voiceId('neutrino', name), engine: 'neutrino', name, label: speaker.name || name };
         const language = languageTag(speaker.language);
         if (language) { entry.language = language; }
+        if (speaker.gender) { entry.gender = speaker.gender.toLowerCase(); }
         return entry;
     });
 }

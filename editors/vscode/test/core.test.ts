@@ -135,9 +135,9 @@ describe('where the program and the voices are', () => {
 
     it('reads a NEUTRINO voice\'s speaker from its info.toml, and lists the voices as entries', () => {
         const merrow = 'version = "v3.2.2"\ntype = "stable"\n\n[speaker]\nname = "Merrow"\ntype = "standard"\ngender = "female"\nlanguage = "Japanese"\n\n[timing]\nname = "not the speaker"\n';
-        assert.deepEqual(speakerOf(merrow), { name: 'Merrow', language: 'Japanese' });
-        assert.deepEqual(speakerOf('[timing]\nname = "x"\n'), { name: undefined, language: undefined });
-        assert.deepEqual(speakerOf(''), { name: undefined, language: undefined });
+        assert.deepEqual(speakerOf(merrow), { name: 'Merrow', language: 'Japanese', gender: 'female' });
+        assert.deepEqual(speakerOf('[timing]\nname = "x"\n'), { name: undefined, language: undefined, gender: undefined });
+        assert.deepEqual(speakerOf(''), { name: undefined, language: undefined, gender: undefined });
         assert.equal(languageTag('Japanese'), 'ja');
         assert.equal(languageTag('english'), 'en');
         assert.equal(languageTag('en-US'), 'en-US');
@@ -148,7 +148,7 @@ describe('where the program and the voices are', () => {
         const text = (p: string) => p === 'N\\model\\MERROW\\info.toml' ? merrow : undefined;
         assert.deepEqual(voiceEntriesIn('N', dirs, p => tree.has(p), text, join), [
             { id: 'neutrino/KIRITAN', engine: 'neutrino', name: 'KIRITAN', label: 'KIRITAN' },
-            { id: 'neutrino/MERROW', engine: 'neutrino', name: 'MERROW', label: 'Merrow', language: 'ja' },
+            { id: 'neutrino/MERROW', engine: 'neutrino', name: 'MERROW', label: 'Merrow', language: 'ja', gender: 'female' },
         ]);
     });
 
