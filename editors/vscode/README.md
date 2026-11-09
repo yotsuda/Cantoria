@@ -2,7 +2,7 @@
 
 Sings the lyrics of a score for notation extensions such as
 [Lily#](https://marketplace.visualstudio.com/items?itemName=yotsuda.lilysharp), through the singing
-engines you have installed: **NEUTRINO**, **DiffSinger** voices and **VOICEVOX**. Voices from
+engines you have installed: **DiffSinger** voices, **NEUTRINO** and **VOICEVOX**. Voices from
 different engines can sing together in one score, even in one part. The extension carries the
 `cantoria` program, holds the settings and sings for other extensions through its API. It has no
 editor of its own.
@@ -16,12 +16,6 @@ point `cantoria.program` at a build of their own.
 
 Three engines; set up any of them. A voice is named `engine/name`.
 
-**NEUTRINO** (Japanese voices; Windows):
-1. Install **NEUTRINO** (Tau, v3.2 or later) from [studio-neutrino.com](https://studio-neutrino.com/).
-   It is free software of STUDIO NEUTRINO under its own terms, not part of this extension.
-   Its bundled voice is MERROW; other voices are their authors' work, installed under its `model\` folder.
-2. **Cantoria: Choose NEUTRINO Folder…**: the folder holding `bin\`, `model\` and `settings\`.
-
 **DiffSinger** (voices in the OpenUtau format, each a folder with a `dsconfig.yaml`):
 1. Put the voices you have installed, under their authors' terms, side by side in one folder
    (OpenUtau's `Singers` folder is one).
@@ -32,6 +26,12 @@ A voice sings Japanese through its dictionary, and English where it has a `dsdic
 English word the dictionary lacks is sung from its spelling; the guess can be wrong, and the
 Cantoria output channel names each word sung this way. A voice with several speakers offers each
 as a voice of its own, such as `diffsinger/TIGER/tiger_disco`.
+
+**NEUTRINO** (Japanese voices; Windows):
+1. Install **NEUTRINO** (Tau, v3.2 or later) from [studio-neutrino.com](https://studio-neutrino.com/).
+   It is free software of STUDIO NEUTRINO under its own terms, not part of this extension.
+   Its bundled voice is MERROW; other voices are their authors' work, installed under its `model\` folder.
+2. **Cantoria: Choose NEUTRINO Folder…**: the folder holding `bin\`, `model\` and `settings\`.
 
 **VOICEVOX** (Japanese voices, named `voicevox/name-style`):
 1. Install **VOICEVOX** from [voicevox.hiroshiba.jp](https://voicevox.hiroshiba.jp/). It is not part
