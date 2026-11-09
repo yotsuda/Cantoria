@@ -37,18 +37,17 @@
         "title": "General",
         "order": 1,
         "properties": {
-            "cantilena.defaultVoice": {
+            "cantilena.defaultFemaleVoice": {
               "type": "string",
-              "default": "neutrino/MERROW",
+              "default": "",
               "scope": "machine-overridable",
-              "markdownDescription": "The voice lyrics are sung in when the score names no singer, as `engine/name`: `neutrino/` and a folder under NEUTRINO's `model\\` (MERROW ships with NEUTRINO), or `diffsinger/` and a folder under the voices folder. Other voices are their authors' work under their authors' terms, installed there by you. A bare name means a NEUTRINO voice.\n\n**[Choose a voice…](command:cantilena.chooseVoice)**"
+              "markdownDescription": "The voice that sings a female part when the score names no voice, as `engine/name` (`neutrino/MERROW`, `diffsinger/TIGER`). Empty: the first installed voice that says it is female and sings the words' language.\n\n**[Choose a voice…](command:cantilena.chooseFemaleVoice)**"
             },
-            "cantilena.voices": {
-              "type": "object",
-              "additionalProperties": { "type": "string" },
-              "default": {},
+            "cantilena.defaultMaleVoice": {
+              "type": "string",
+              "default": "",
               "scope": "machine-overridable",
-              "markdownDescription": "**[Cast a singer…](command:cantilena.castVoice)**\n\nThe cast: who sings what a score's `singer` names, on this machine. A role to a voice (`\"soprano\": \"neutrino/MERROW\"`), or a voice to another you prefer (`\"neutrino/MERROW\": \"diffsinger/TIGER\"`): this setting has the last say over what a score writes. A singer that is neither cast here nor installed is sung by `cantilena.defaultVoice`, and the editor says so once."
+              "markdownDescription": "The voice that sings a male part when the score names no voice, as `engine/name`. Empty: the first installed voice that says it is male and sings the words' language.\n\n**[Choose a voice…](command:cantilena.chooseMaleVoice)**"
             },
             "cantilena.gpu": {
               "type": "boolean",
@@ -126,14 +125,14 @@
         "title": "Choose Vocoder Folder… (DiffSinger)"
       },
       {
-        "command": "cantilena.castVoice",
+        "command": "cantilena.chooseFemaleVoice",
         "category": "Cantilena",
-        "title": "Cast a Singer…"
+        "title": "Choose Default Female Voice…"
       },
       {
-        "command": "cantilena.chooseVoice",
+        "command": "cantilena.chooseMaleVoice",
         "category": "Cantilena",
-        "title": "Choose Voice…"
+        "title": "Choose Default Male Voice…"
       },
       {
         "command": "cantilena.checkSetup",

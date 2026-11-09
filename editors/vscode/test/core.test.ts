@@ -7,56 +7,67 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import {
     ENGINES, characterNameOf, diffSingerEntriesIn, diffSingerVoicesIn, languageProblem, languageTag, missingProgramNote, neutrinoFolderProblems, parseLine, programCandidates,
-    castNames, firstOfGender, requestLine, resolveSinger, rid, withCast, scoreProblems, serveArgs, speakerOf, splitVoiceId, voiceEntriesIn, voiceId, voiceKey, voicesFolderProblems, voicesIn, vsixTarget,
+    defaultVoiceFor, firstOfGender, genderOfWord, requestLine, resolveSinger, rid, scoreProblems, serveArgs, speakerOf, splitVoiceId, voiceEntriesIn, voiceId, voiceKey, voicesFolderProblems, voicesIn, vsixTarget,
 } from '../src/core';
 
 const join = (...parts: string[]) => parts.join('\\');
 
 describe('a score\'s singer on this machine', () => {
-    const installed = ['neutrino/MERROW', 'diffsinger/TIGER'];
-    const fallback = 'neutrino/MERROW';
+    const list = [
+        { id: 'n/A', gender: 'female', language: 'ja' },
+        { id: 'n/B', language: 'ja' },
+        { id: 'n/C', gender: 'male', language: 'en' },
+        { id: 'n/D', gender: 'male', language: 'ja' },
+        { id: 'n/E', gender: 'male', language: 'ja' },
+        { id: 'n/F', gender: 'female', language: 'ja' },
+    ];
+    const unset = { female: '', male: '' };
 
-    it('takes the cast first: a role, or a voice the listener replaces', () => {
-        assert.deepEqual(resolveSinger('soprano', { soprano: 'diffsinger/TIGER' }, installed, fallback), { voice: 'diffsinger/TIGER' });
-        assert.deepEqual(resolveSinger('neutrino/MERROW', { 'neutrino/MERROW': 'diffsinger/TIGER' }, installed, fallback), { voice: 'diffsinger/TIGER' });
+    it('sings a voice that is named and installed', () => {
+        assert.deepEqual(resolveSinger('n/B', list, unset), { voice: 'n/B' });
     });
 
-    it('then a voice\'s own name, when it is installed', () => {
-        assert.deepEqual(resolveSinger('diffsinger/TIGER', {}, installed, fallback), { voice: 'diffsinger/TIGER' });
+    it('takes the setting for a gender, else the first such voice for the words\' language', () => {
+        assert.deepEqual(resolveSinger('male', list, unset, { language: 'ja' }), { voice: 'n/D' });
+        assert.deepEqual(resolveSinger('male', list, unset, { language: 'en' }), { voice: 'n/C' });
+        assert.deepEqual(resolveSinger('female', list, unset, { language: 'ja' }), { voice: 'n/A' });
+        assert.deepEqual(resolveSinger('male', list, { female: '', male: 'n/E' }, { language: 'ja' }), { voice: 'n/E' });
+        assert.deepEqual(resolveSinger('female', list, { female: 'n/F', male: '' }, { language: 'ja' }), { voice: 'n/F' });
     });
 
-    it('offers the names to cast and edits the cast', () => {
-        assert.deepEqual(castNames({ soprano: 'n/A', lead: 'n/B' }), ['male', 'female', 'soprano', 'alto', 'tenor', 'bass', 'lead']);
-        assert.deepEqual(withCast({ a: 'n/A' }, 'b', 'n/B'), { a: 'n/A', b: 'n/B' });
-        assert.deepEqual(withCast({ a: 'n/A' }, 'a', 'n/C'), { a: 'n/C' });
-        assert.deepEqual(withCast({ a: 'n/A', b: 'n/B' }, 'a', undefined), { b: 'n/B' });
+    it('reads a part\'s words, and with no singer the gender the score\'s reader says', () => {
+        assert.equal(genderOfWord('soprano'), 'female');
+        assert.equal(genderOfWord('alto'), 'female');
+        assert.equal(genderOfWord('tenor'), 'male');
+        assert.equal(genderOfWord('bass'), 'male');
+        assert.equal(genderOfWord('lead'), undefined);
+        assert.deepEqual(resolveSinger('tenor', list, unset, { language: 'ja', gender: 'female' }), { voice: 'n/D' });
+        assert.deepEqual(resolveSinger('', list, unset, { language: 'ja', gender: 'male' }), { voice: 'n/D' });
+        assert.deepEqual(resolveSinger('  ', list, unset, { language: 'ja' }), { voice: 'n/A' });
     });
 
-    it('picks a voice for male or female, the cast first, the same one every time', () => {
-        const list = [
-            { id: 'n/A', gender: 'female', language: 'ja' },
-            { id: 'n/B', language: 'ja' },
-            { id: 'n/C', gender: 'male', language: 'en' },
-            { id: 'n/D', gender: 'male', language: 'ja' },
-            { id: 'n/E', gender: 'male', language: 'ja' },
-        ];
-        const ids = list.map(v => v.id);
-        const pick = (language?: string) => (gender: string) => firstOfGender(list, gender, language);
-        assert.deepEqual(resolveSinger('male', {}, ids, 'n/A', pick('ja')), { voice: 'n/D' });
-        assert.deepEqual(resolveSinger('male', {}, ids, 'n/A', pick('en')), { voice: 'n/C' });
-        assert.deepEqual(resolveSinger('female', {}, ids, 'n/D', pick('ja')), { voice: 'n/A' });
-        assert.deepEqual(resolveSinger('male', { male: 'n/E' }, ids, 'n/A', pick('ja')), { voice: 'n/E' });
-        const none = resolveSinger('female', {}, ids, 'n/D', pick('en'));
-        assert.equal(none.voice, 'n/D');
-        assert.match(none.note!, /no installed voice for these words says it is female/);
+    it('falls to the other gender, and to a voice that names none, and says so', () => {
+        const femaleOnly = list.filter(v => v.gender !== 'male');
+        const r = resolveSinger('male', femaleOnly, unset, { language: 'ja' });
+        assert.equal(r.voice, 'n/A');
+        assert.match(r.note!, /no installed voice for these words says it is male/);
+        const silent = defaultVoiceFor([{ id: 'x/Y' }], unset, 'male');
+        assert.equal(silent.voice, 'x/Y');
+        assert.ok(silent.note);
     });
 
-    it('else sings with the default and says why', () => {
-        assert.equal(resolveSinger('alto', {}, installed, fallback).voice, fallback);
-        assert.match(resolveSinger('alto', {}, installed, fallback).note!, /"alto" is not cast/);
-        assert.match(resolveSinger('diffsinger/NOPE', {}, installed, fallback).note!, /not installed/);
-        assert.match(resolveSinger('alto', { alto: 'diffsinger/NOPE' }, installed, fallback).note!, /cast to diffsinger\/NOPE, which is not installed/);
-        assert.deepEqual(resolveSinger('  ', {}, installed, fallback), { voice: fallback });
+    it('says when a name or a setting is not there, or a word names no voice', () => {
+        const missing = resolveSinger('diffsinger/NOPE', list, unset, { language: 'ja', gender: 'male' });
+        assert.equal(missing.voice, 'n/D');
+        assert.match(missing.note!, /diffsinger\/NOPE is not installed; singing with n\/D/);
+        const setting = resolveSinger('male', list, { female: '', male: 'n/GONE' }, { language: 'ja' });
+        assert.equal(setting.voice, 'n/D');
+        assert.match(setting.note!, /n\/GONE is not installed/);
+        assert.match(resolveSinger('lead', list, unset, { language: 'ja' }).note!, /"lead" names no voice; singing with n\/A/);
+    });
+
+    it('lists no one for a gender no voice says', () => {
+        assert.equal(firstOfGender(list, 'male', 'ko'), undefined);
     });
 
     it('refuses words in a language the voice says it does not sing, and lets a silent voice try', () => {
@@ -220,7 +231,7 @@ describe('the manifest', () => {
     it('groups the settings by what they are for', () => {
         const groups = Object.fromEntries(manifest.contributes.configuration.map((c: { title: string; properties: object }) => [c.title, Object.keys(c.properties).map(k => k.replace('cantilena.', '')).sort()]));
         assert.deepEqual(groups, {
-            General: ['defaultVoice', 'gpu', 'voices'],
+            General: ['defaultFemaleVoice', 'defaultMaleVoice', 'gpu'],
             NEUTRINO: ['neutrinoFolder', 'threads'],
             DiffSinger: ['vocoderFolder', 'voicesFolder'],
             Developer: ['program'],
@@ -230,24 +241,21 @@ describe('the manifest', () => {
     const commands = (manifest.contributes.commands as { command: string }[]).map(c => c.command);
 
     it('holds the settings, each engine setting machine-overridable', () => {
-        for (const name of ['cantilena.neutrinoFolder', 'cantilena.voicesFolder', 'cantilena.vocoderFolder', 'cantilena.defaultVoice', 'cantilena.gpu', 'cantilena.threads', 'cantilena.program']) {
+        for (const name of ['cantilena.neutrinoFolder', 'cantilena.voicesFolder', 'cantilena.vocoderFolder', 'cantilena.defaultFemaleVoice', 'cantilena.defaultMaleVoice', 'cantilena.gpu', 'cantilena.threads', 'cantilena.program']) {
             assert.ok(props[name], `${name} is contributed`);
             assert.equal(props[name].scope, 'machine-overridable', name);
         }
-        assert.equal(props['cantilena.defaultVoice'].default, 'neutrino/MERROW');
+        assert.equal(props['cantilena.defaultFemaleVoice'].default, '');
+        assert.equal(props['cantilena.defaultMaleVoice'].default, '');
         assert.match(props['cantilena.neutrinoFolder'].markdownDescription, /command:cantilena\.chooseNeutrinoFolder/);
-        assert.match(props['cantilena.defaultVoice'].markdownDescription, /command:cantilena\.chooseVoice/);
+        assert.match(props['cantilena.defaultFemaleVoice'].markdownDescription, /command:cantilena\.chooseFemaleVoice/);
+        assert.match(props['cantilena.defaultMaleVoice'].markdownDescription, /command:cantilena\.chooseMaleVoice/);
         assert.match(props['cantilena.voicesFolder'].markdownDescription, /command:cantilena\.chooseVoicesFolder/);
         assert.match(props['cantilena.vocoderFolder'].markdownDescription, /command:cantilena\.chooseVocoderFolder/);
     });
 
-    it('offers the cast its own command, and no way to a folder', () => {
-        assert.doesNotMatch(props['cantilena.voices'].markdownDescription, /chooseVoicesFolder/);
-        assert.match(props['cantilena.voices'].markdownDescription, /command:cantilena\.castVoice/);
-    });
-
     it('contributes the seven commands and starts on nothing but them and the API', () => {
-        assert.deepEqual(commands.sort(), ['cantilena.castVoice', 'cantilena.checkSetup', 'cantilena.chooseNeutrinoFolder', 'cantilena.chooseVocoderFolder', 'cantilena.chooseVoice', 'cantilena.chooseVoicesFolder', 'cantilena.forgetVoices']);
+        assert.deepEqual(commands.sort(), ['cantilena.checkSetup', 'cantilena.chooseFemaleVoice', 'cantilena.chooseMaleVoice', 'cantilena.chooseNeutrinoFolder', 'cantilena.chooseVocoderFolder', 'cantilena.chooseVoicesFolder', 'cantilena.forgetVoices']);
         assert.deepEqual(manifest.activationEvents, []);
         assert.equal(manifest.main, './out/extension.js');
         assert.equal(manifest.license, 'Apache-2.0');

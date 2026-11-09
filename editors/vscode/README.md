@@ -28,7 +28,7 @@ Two engines; set up either or both. A voice is named `engine/name`.
    through the voice's dictionary so far; a voice without a bundled vocoder needs
    `cantilena.vocoderFolder`.
 
-Then **Cantilena: Choose Voice…** (`neutrino/MERROW` by default) and **Cantilena: Check Setup** to
+Then **Cantilena: Choose Default Female Voice…** and **Choose Default Male Voice…** if you want particular voices (empty: the first of each), and **Cantilena: Check Setup** to
 see that all is well.
 
 In Lily#, the preview's Play then sings every part a lyrics row sings (hiragana or katakana on

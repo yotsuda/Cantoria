@@ -186,8 +186,8 @@ life of one process and talks **JSON lines** on stdin/stdout, UTF-8 both ways:
 The engine's home for editors (the owner's decision 2026-11-08, the shape the Lily#
 OMR reader took): it carries the `cantilena` program (under `bin/<rid>/`: one VSIX per
 platform target — win-x64, linux-x64, osx-arm64 — since 0.4.0, roadmap B5), holds the settings an engine needs — `cantilena.neutrinoFolder`,
-`cantilena.defaultVoice`, `cantilena.gpu`, `cantilena.threads`, and `cantilena.program` for a
-developer's build — with pickers (**Choose NEUTRINO Folder…**, **Choose Voice…**) and a
+`cantilena.defaultFemaleVoice`, `cantilena.defaultMaleVoice`, `cantilena.gpu`, `cantilena.threads`, and `cantilena.program` for a
+developer's build — with pickers (**Choose NEUTRINO Folder…**, **Choose Default Female Voice…**, **Choose Default Male Voice…**) and a
 **Check Setup**, and sings for other extensions through the API its `activate` returns:
 
 ```ts

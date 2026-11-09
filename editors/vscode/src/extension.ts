@@ -13,7 +13,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import {
-    CantilenaScore, ENGINES, VoiceEntry, castNames, withCast, diffSingerEntriesIn, diffSingerVoicesIn, firstOfGender, languageProblem, missingProgramNote, neutrinoFolderProblems, programCandidates,
+    CantilenaScore, DefaultVoices, ENGINES, VoiceEntry, VoiceGender, defaultVoiceFor, diffSingerEntriesIn, diffSingerVoicesIn, languageProblem, missingProgramNote, neutrinoFolderProblems, programCandidates,
     resolveSinger, scoreProblems, splitVoiceId, voiceEntriesIn, voiceId, voicesFolderProblems, voicesIn,
 } from './core';
 import { Engine, EngineSetup, RenderedVoice } from './engine';
@@ -51,12 +51,9 @@ export interface CantilenaApi {
     sing(score: CantilenaScore, options?: { voice?: string }): Promise<RenderedVoice & { cached: boolean }>;
     /** Lets the engine go (NEUTRINO's server and the DiffSinger sessions with it); the next `sing` starts it again. */
     release(): void;
-    /** The voice a score's `singer` string comes to here (`cantilena.voices`, then the installed
-     *  voices, for `male` or `female` the first such voice that sings `language`, then the setting's
-     *  voice), and a sentence when it is not the one asked for. */
-    resolveSinger(singer: string, options?: { language?: string }): Promise<{ voice: string; note?: string }>;
-    /** `cantilena.voices`: role or voice → voice. */
-    cast(): Promise<Record<string, string>>;
+    /** The voice a score's `singer` string comes to here: the voice it names when installed, else the
+     *  default voice of the gender it says or of `options.gender`; and a sentence when it is not the one asked for. */
+    resolveSinger(singer: string, options?: { language?: string; gender?: string }): Promise<{ voice: string; note?: string }>;
 }
 
 let output: vscode.OutputChannel;
@@ -74,10 +71,12 @@ function voiceOf(text: string | undefined): Voice {
     const v = splitVoiceId(text);
     return { ...v, id: voiceId(v.engine, v.name) };
 }
-/** The setting's voice (`neutrino/MERROW`; a bare name is NEUTRINO's). */
-function voiceSetting(): Voice { return voiceOf(settings().get<string>('defaultVoice', '')); }
-/** `cantilena.voices`: the cast, role or voice → voice. */
-function castSetting(): Record<string, string> { return settings().get<Record<string, string>>('voices', {}); }
+/** The two default-voice settings; '' is not set. */
+function defaultVoices(): DefaultVoices {
+    return { female: settings().get<string>('defaultFemaleVoice', ''), male: settings().get<string>('defaultMaleVoice', '') };
+}
+/** The voice a caller who names none gets, and what `status().voice` says. */
+function voiceSetting(): Voice { return voiceOf(defaultVoiceFor(voices(), defaultVoices(), 'female').voice); }
 
 function readTextOr(p: string): string | undefined { try { return fs.readFileSync(p, 'utf8'); } catch { return undefined; } }
 function listDirs(dir: string): string[] { try { return fs.readdirSync(dir, { withFileTypes: true }).filter(d => d.isDirectory()).map(d => d.name); } catch { return []; } }
@@ -215,7 +214,8 @@ function chooseVocoderFolder(): Promise<void> {
         folder => `Cantilena: the vocoder is ${folder}`);
 }
 
-async function chooseVoice(context: vscode.ExtensionContext): Promise<void> {
+/** A default voice from a list: every voice but those that say they are the other gender. */
+async function chooseDefaultVoice(context: vscode.ExtensionContext, gender: VoiceGender): Promise<void> {
     const s = await status(context);
     const all = voices();
     if (all.length === 0) {
@@ -225,47 +225,16 @@ async function chooseVoice(context: vscode.ExtensionContext): Promise<void> {
         else if (choice === ds) { await chooseVoicesFolder(); }
         return;
     }
+    const current = defaultVoiceFor(all, defaultVoices(), gender).voice;
     const pick = await vscode.window.showQuickPick(
-        all.map(v => ({
+        all.filter(v => !v.gender || v.gender === gender).map(v => ({
             label: v.id,
-            description: [v.label !== v.name ? v.label : '', v.language ?? '', v.id === s.voice ? '(current)' : ''].filter(Boolean).join(' · '),
+            description: [v.label !== v.name ? v.label : '', v.gender ?? '', v.language ?? '', v.id === current ? '(current)' : ''].filter(Boolean).join(' · '),
         })),
-        { title: 'Cantilena: Choose Voice', placeHolder: 'The voice the lyrics are sung in (engine/name)' });
+        { title: `Cantilena: Default ${gender === 'male' ? 'Male' : 'Female'} Voice`, placeHolder: `The voice that sings a ${gender} part when the score names none` });
     if (!pick) { return; }
-    await settings().update('defaultVoice', pick.label, vscode.ConfigurationTarget.Global);
-    vscode.window.setStatusBarMessage(`Cantilena: the voice is ${pick.label}`, 4000);
-}
-
-/** `cantilena.voices` from two lists: which name a score writes, and who sings it here. */
-async function castVoice(): Promise<void> {
-    const all = voices();
-    if (all.length === 0) {
-        const neutrino = 'Choose NEUTRINO Folder…', ds = 'Choose Voices Folder…';
-        const choice = await vscode.window.showWarningMessage('Cantilena: no voice is installed to cast yet', neutrino, ds);
-        if (choice === neutrino) { await chooseNeutrinoFolder(); }
-        else if (choice === ds) { await chooseVoicesFolder(); }
-        return;
-    }
-    const cast = castSetting();
-    const typed = 'Another name…';
-    const named = await vscode.window.showQuickPick(
-        [...castNames(cast).map(name => ({ label: name, description: cast[name] ?? '' })), { label: typed, description: 'A role of your own, or a voice to replace' }],
-        { title: 'Cantilena: Cast a Singer', placeHolder: 'The name a score writes after singer' });
-    if (!named) { return; }
-    const name = named.label === typed
-        ? (await vscode.window.showInputBox({ title: 'Cantilena: Cast a Singer', prompt: 'The name a score writes after singer' }))?.trim()
-        : named.label;
-    if (!name) { return; }
-    const remove = 'Sing it as the score says';
-    const items = [
-        ...all.map(v => ({ label: v.id, description: [v.label !== v.name ? v.label : '', v.gender ?? '', v.language ?? '', v.id === cast[name] ? '(current)' : ''].filter(Boolean).join(' · ') })),
-        ...(cast[name] ? [{ label: remove, description: 'Take this name out of the cast' }] : []),
-    ];
-    const pick = await vscode.window.showQuickPick(items, { title: `Cantilena: who sings "${name}" on this machine` });
-    if (!pick) { return; }
-    const voice = pick.label === remove ? undefined : pick.label;
-    await settings().update('voices', withCast(cast, name, voice), vscode.ConfigurationTarget.Global);
-    vscode.window.setStatusBarMessage(voice ? `Cantilena: "${name}" is sung by ${voice}` : `Cantilena: "${name}" is out of the cast`, 4000);
+    await settings().update(gender === 'male' ? 'defaultMaleVoice' : 'defaultFemaleVoice', pick.label, vscode.ConfigurationTarget.Global);
+    vscode.window.setStatusBarMessage(`Cantilena: the default ${gender} voice is ${pick.label}`, 4000);
 }
 
 async function checkSetup(context: vscode.ExtensionContext): Promise<void> {
@@ -292,8 +261,8 @@ export function activate(context: vscode.ExtensionContext): CantilenaApi {
         vscode.commands.registerCommand('cantilena.chooseNeutrinoFolder', () => chooseNeutrinoFolder()),
         vscode.commands.registerCommand('cantilena.chooseVoicesFolder', () => chooseVoicesFolder()),
         vscode.commands.registerCommand('cantilena.chooseVocoderFolder', () => chooseVocoderFolder()),
-        vscode.commands.registerCommand('cantilena.castVoice', () => castVoice()),
-        vscode.commands.registerCommand('cantilena.chooseVoice', () => chooseVoice(context)),
+        vscode.commands.registerCommand('cantilena.chooseFemaleVoice', () => chooseDefaultVoice(context, 'female')),
+        vscode.commands.registerCommand('cantilena.chooseMaleVoice', () => chooseDefaultVoice(context, 'male')),
         vscode.commands.registerCommand('cantilena.checkSetup', () => checkSetup(context)),
         vscode.commands.registerCommand('cantilena.forgetVoices', () => {
             const e = engine ?? new Engine({ program: '', neutrinoFolder: '', voicesFolder: '', vocoderFolder: '', gpu: true, threads: 1 }, path.join(storage, 'voices'), () => undefined);
@@ -316,9 +285,7 @@ export function activate(context: vscode.ExtensionContext): CantilenaApi {
         voices: async () => voices(),
         sing: (score, options) => sing(context, score, options),
         release,
-        resolveSinger: async (singer, options) => resolveSinger(singer, castSetting(), voices().map(v => v.id), voiceSetting().id,
-            gender => firstOfGender(voices(), gender, options?.language)),
-        cast: async () => castSetting(),
+        resolveSinger: async (singer, options) => resolveSinger(singer, voices(), defaultVoices(), options),
     });
 }
 
