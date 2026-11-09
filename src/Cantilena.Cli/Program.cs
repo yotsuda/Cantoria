@@ -48,12 +48,14 @@ static int Help(int code)
         a voice is named engine/name:
           neutrino/MERROW             a folder under NEUTRINO's model\ (a bare name means this)
           diffsinger/TIGER            a folder under the DiffSinger voices folder, or a path holding dsconfig.yaml
+          voicevox/ずんだもん-ノーマル  a singing style of the running VOICEVOX
 
         sing options:
           --voice <engine/name>       the voice (default neutrino/MERROW)
           --neutrino-dir <folder>     NEUTRINO's folder (holds bin\, model\, settings\)
           --voices-dir <folder>       the folder whose subfolders are DiffSinger voices
           --vocoder-dir <folder>      a vocoder folder for DiffSinger voices that bundle none
+          --voicevox-url <url>        where the running VOICEVOX answers (default http://127.0.0.1:50021)
           --steps <n>                 DiffSinger sampling steps (default 20; fewer is faster)
           --provider <name>           DiffSinger: auto (default: DirectML on Windows where there is a
                                       DirectX 12 device, else the CPU), cpu, directml, coreml (macOS; untested)
@@ -248,9 +250,9 @@ static async Task<int> Serve(string[] rest)
             return 2;
         }
     }
-    else if (engines.NeutrinoFolder is null && engines.VoicesFolder is null)
+    else if (engines.NeutrinoFolder is null && engines.VoicesFolder is null && engines.List().Count == 0)
     {
-        Console.Error.WriteLine("cantilena: no engine configured: give --neutrino-dir or --voices-dir (or the environment, or cantilena.json)");
+        Console.Error.WriteLine("cantilena: no engine configured: give --neutrino-dir or --voices-dir (or the environment, or cantilena.json), or start VOICEVOX");
         return 2;
     }
     var outDir = a.OutDir ?? Path.Combine(Path.GetTempPath(), "cantilena");
@@ -376,7 +378,7 @@ static string FileNameOf(string id)
 /// <summary>The options the engines share, read off the arguments; what is not one is kept for the command.</summary>
 sealed class EngineArgs
 {
-    public string? Voice, Backend, NeutrinoDir, VoicesDir, VocoderDir, Output, OutDir, Path;
+    public string? Voice, Backend, NeutrinoDir, VoicesDir, VocoderDir, VoicevoxUrl, Output, OutDir, Path;
     public bool Keep;
     public OnnxProvider Provider = OnnxProvider.Auto;
     public int Threads = 4, Steps = 20;
@@ -396,6 +398,7 @@ sealed class EngineArgs
                 case "--neutrino-dir" when i + 1 < rest.Length: a.NeutrinoDir = rest[++i]; break;
                 case "--voices-dir" when i + 1 < rest.Length: a.VoicesDir = rest[++i]; break;
                 case "--vocoder-dir" when i + 1 < rest.Length: a.VocoderDir = rest[++i]; break;
+                case "--voicevox-url" when i + 1 < rest.Length: a.VoicevoxUrl = rest[++i]; break;
                 case "--threads" when i + 1 < rest.Length && int.TryParse(rest[i + 1], out a.Threads): i++; break;
                 case "--steps" when i + 1 < rest.Length && int.TryParse(rest[i + 1], out a.Steps): i++; break;
                 case "--cpu": a.Provider = OnnxProvider.Cpu; break;
@@ -433,7 +436,7 @@ sealed class EngineArgs
         return a;
     }
 
-    public Engines Engines() => Cantilena.Cli.Engines.Configure(NeutrinoDir, VoicesDir, VocoderDir, Provider, Threads, Steps, Keep);
+    public Engines Engines() => Cantilena.Cli.Engines.Configure(NeutrinoDir, VoicesDir, VocoderDir, Provider, Threads, Steps, Keep, VoicevoxUrl);
 }
 
 /// <summary>One line of <c>cantilena serve</c>'s stdin.</summary>

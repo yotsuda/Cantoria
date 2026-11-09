@@ -33,7 +33,7 @@ export interface CantilenaScore {
 }
 
 /** The engines this extension sings through; the first is what a bare voice name means. */
-export const ENGINES = ['neutrino', 'diffsinger'] as const;
+export const ENGINES = ['neutrino', 'diffsinger', 'voicevox'] as const;
 export type EngineName = typeof ENGINES[number];
 
 /** A voice as the API names it: `engine/name`, e.g. `neutrino/MERROW` — the form `sing`'s
@@ -202,6 +202,24 @@ export function diffSingerEntriesIn(folder: string, listDirs: (dir: string) => s
     });
 }
 
+/** Where VOICEVOX answers unless the setting says otherwise. */
+export const VOICEVOX_URL = 'http://127.0.0.1:50021';
+
+/** The singing styles of a running VOICEVOX (its `GET /singers`) as the API lists them. The credit
+ *  VOICEVOX's terms ask of a published work is the voice's `licence`. */
+export function voicevoxEntriesFrom(singers: unknown): VoiceEntry[] {
+    if (!Array.isArray(singers)) { return []; }
+    const entries: VoiceEntry[] = [];
+    for (const singer of singers as { name?: string; styles?: { name?: string; type?: string }[] }[]) {
+        for (const style of singer.styles ?? []) {
+            if ((style.type !== 'sing' && style.type !== 'frame_decode') || !singer.name || !style.name) { continue; }
+            const name = `${singer.name}-${style.name}`;
+            entries.push({ id: voiceId('voicevox', name), engine: 'voicevox', name, label: `${singer.name} (${style.name})`, language: 'ja', licence: `Credit "VOICEVOX:${singer.name}" and follow the character's terms` });
+        }
+    }
+    return entries;
+}
+
 /** What a DiffSinger voices folder must be: a folder (its voices are listed; none is a warning, not an error). */
 export function voicesFolderProblems(folder: string, exists: (p: string) => boolean): string[] {
     const f = folder.trim();
@@ -261,11 +279,12 @@ export function requestLine(id: string, score: CantilenaScore, voice: string, ou
 export const SHUTDOWN_LINE = '{"command":"shutdown"}\n';
 
 /** The arguments of the resident engine: where the WAVs go, the GPU or not, the threads, the DiffSinger folders when set. */
-export function serveArgs(outDir: string, gpu: boolean, threads: number, voicesFolder = '', vocoderFolder = ''): string[] {
+export function serveArgs(outDir: string, gpu: boolean, threads: number, voicesFolder = '', vocoderFolder = '', voicevoxUrl = ''): string[] {
     const args = ['serve', '--out-dir', outDir, '--threads', String(Math.max(1, Math.floor(threads) || 1))];
     if (!gpu) { args.push('--cpu'); }
     if (voicesFolder.trim()) { args.push('--voices-dir', voicesFolder.trim()); }
     if (vocoderFolder.trim()) { args.push('--vocoder-dir', vocoderFolder.trim()); }
+    if (voicevoxUrl.trim()) { args.push('--voicevox-url', voicevoxUrl.trim()); }
     return args;
 }
 

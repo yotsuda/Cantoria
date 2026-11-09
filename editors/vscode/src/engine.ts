@@ -15,7 +15,7 @@ import { CantilenaScore, SHUTDOWN_LINE, parseLine, requestLine, serveArgs, voice
 export interface RenderedVoice { wav: string; duration: number; sampleRate: number }
 
 /** How the engine is to run: the program, NEUTRINO's folder (its environment), the DiffSinger voices and vocoder folders, the GPU, the threads. */
-export interface EngineSetup { program: string; neutrinoFolder: string; voicesFolder: string; vocoderFolder: string; gpu: boolean; threads: number }
+export interface EngineSetup { program: string; neutrinoFolder: string; voicesFolder: string; vocoderFolder: string; gpu: boolean; threads: number; voicevoxUrl?: string }
 
 /**
  * The resident engine: started on the first render, spoken to on stdin, answered on stdout one
@@ -41,7 +41,7 @@ export class Engine {
         fs.mkdirSync(this.outDir, { recursive: true });
         const env = { ...process.env };
         if (this.setup.neutrinoFolder) { env.CANTILENA_NEUTRINO_DIR = this.setup.neutrinoFolder; } else { delete env.CANTILENA_NEUTRINO_DIR; }
-        const args = serveArgs(this.outDir, this.setup.gpu, this.setup.threads, this.setup.voicesFolder, this.setup.vocoderFolder);
+        const args = serveArgs(this.outDir, this.setup.gpu, this.setup.threads, this.setup.voicesFolder, this.setup.vocoderFolder, this.setup.voicevoxUrl);
         // The bundled program is packed on Windows, where a VSIX carries no file modes: on Linux and
         // macOS it arrives without its execute bit, so it is given one before the first start.
         if (process.platform !== 'win32' && path.isAbsolute(this.setup.program)) {

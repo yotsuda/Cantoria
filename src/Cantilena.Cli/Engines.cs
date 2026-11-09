@@ -4,19 +4,21 @@
 using System.Text.Json;
 using Cantilena.DiffSinger;
 using Cantilena.Neutrino;
+using Cantilena.Voicevox;
 
 namespace Cantilena.Cli;
 
 /// <summary>
 /// The engines the command line makes singers of, and where their voices are. A voice is named
 /// <c>engine/name</c>: <c>neutrino/MERROW</c> (a folder under NEUTRINO's <c>model\</c>),
-/// <c>diffsinger/TIGER</c> (a folder under the voices folder, or a path holding <c>dsconfig.yaml</c>).
+/// <c>diffsinger/TIGER</c> (a folder under the voices folder, or a path holding <c>dsconfig.yaml</c>),
+/// <c>voicevox/ずんだもん-ノーマル</c> (a singing style of the running VOICEVOX).
 /// A bare name is NEUTRINO's, unless it is such a path.
 /// </summary>
 sealed class Engines
 {
     public const string DefaultNeutrinoVoice = "MERROW";
-    public static readonly string[] Names = ["neutrino", "diffsinger"];
+    public static readonly string[] Names = ["neutrino", "diffsinger", "voicevox"];
 
     /// <summary>NEUTRINO's folder (<c>bin\</c>, <c>model\</c>, <c>settings\</c>).</summary>
     public string? NeutrinoFolder { get; init; }
@@ -24,6 +26,8 @@ sealed class Engines
     public string? VoicesFolder { get; init; }
     /// <summary>A vocoder folder for DiffSinger voices that bundle none.</summary>
     public string? VocoderFolder { get; init; }
+    /// <summary>Where the running VOICEVOX answers.</summary>
+    public string VoicevoxUrl { get; init; } = VoicevoxEngine.DefaultUrl;
     /// <summary>NEUTRINO on its GPU (CUDA); false with <c>--cpu</c> / <c>--provider cpu</c>.</summary>
     public bool UseGpu => Provider != OnnxProvider.Cpu;
     /// <summary>Where a DiffSinger voice's models run (<c>--provider</c>; <c>--cpu</c> is <c>cpu</c>).</summary>
@@ -39,7 +43,7 @@ sealed class Engines
     /// <c>%APPDATA%\cantilena</c> on Windows, <c>~/.config/cantilena</c> elsewhere). NEUTRINO runs on
     /// Windows only: elsewhere its folder is read as not set, whatever says it.
     /// </summary>
-    public static Engines Configure(string? neutrinoDir, string? voicesDir, string? vocoderDir, OnnxProvider provider, int threads, int steps, bool keep)
+    public static Engines Configure(string? neutrinoDir, string? voicesDir, string? vocoderDir, OnnxProvider provider, int threads, int steps, bool keep, string? voicevoxUrl = null)
     {
         var settings = Settings();
         return new Engines
@@ -49,6 +53,7 @@ sealed class Engines
                 : null,
             VoicesFolder = First(voicesDir, Environment.GetEnvironmentVariable("CANTILENA_VOICES_DIR"), settings("diffsinger", "voices")),
             VocoderFolder = First(vocoderDir, Environment.GetEnvironmentVariable("CANTILENA_VOCODER_DIR"), settings("diffsinger", "vocoder")),
+            VoicevoxUrl = First(voicevoxUrl, Environment.GetEnvironmentVariable("CANTILENA_VOICEVOX_URL"), settings("voicevox", "url")) ?? VoicevoxEngine.DefaultUrl,
             Provider = provider,
             Threads = threads,
             Steps = steps,
@@ -126,6 +131,17 @@ sealed class Engines
                         : $" and not under {VoicesFolder} (installed: {string.Join(", ", DiffSingerOptions.Voices(VoicesFolder).DefaultIfEmpty("none"))})")];
                 }
                 return DiffSinger(folder).Validate();
+            case "voicevox":
+                var singers = VoicevoxEngine.Singers(VoicevoxUrl);
+                if (singers is null)
+                {
+                    return [$"VOICEVOX is not answering at {VoicevoxUrl}: start VOICEVOX, or give --voicevox-url"];
+                }
+                if (singers.Teacher is null)
+                {
+                    return [$"the VOICEVOX at {VoicevoxUrl} has no singing style: it needs a version that sings"];
+                }
+                return singers.Voices.Any(v => v.Name == name) ? [] : [$"VOICEVOX has no voice {name} (there is: {string.Join(", ", singers.Voices.Select(v => v.Name).DefaultIfEmpty("none"))})"];
             default:
                 return [$"no engine named {engine} in {voice} (there is: {string.Join(", ", Names)})"];
         }
@@ -158,8 +174,15 @@ sealed class Engines
         {
             "neutrino" => new NeutrinoSinger(new NeutrinoOptions(NeutrinoFolder!, name) { UseGpu = UseGpu, Threads = Threads, KeepFiles = KeepFiles }),
             "diffsinger" => new DiffSingerSinger(DiffSinger(DiffSingerFolder(name)!)),
+            "voicevox" => Voicevox(name),
             _ => throw new SingerException($"no engine named {engine}"),
         };
+    }
+
+    private VoicevoxSinger Voicevox(string name)
+    {
+        var singers = VoicevoxEngine.Singers(VoicevoxUrl) ?? throw new SingerException($"VOICEVOX is not answering at {VoicevoxUrl}");
+        return new VoicevoxSinger(VoicevoxEngine.Client(VoicevoxUrl), singers.Voices.First(v => v.Name == name), singers.Teacher!.Value);
     }
 
     /// <summary>A DiffSinger voice's options, on <see cref="Provider"/> (<c>--provider</c>; the default
@@ -182,6 +205,10 @@ sealed class Engines
         if (VoicesFolder is not null)
         {
             voices.AddRange(DiffSingerOptions.Voices(VoicesFolder).Select(v => "diffsinger/" + v));
+        }
+        if (VoicevoxEngine.Singers(VoicevoxUrl) is { } singers)
+        {
+            voices.AddRange(singers.Voices.Select(v => "voicevox/" + v.Name));
         }
         return voices;
     }

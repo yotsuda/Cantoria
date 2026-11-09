@@ -13,8 +13,8 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import {
-    CantilenaScore, DefaultVoices, ENGINES, VoiceEntry, VoiceGender, defaultVoiceFor, diffSingerEntriesIn, diffSingerVoicesIn, languageProblem, missingProgramNote, neutrinoFolderProblems, programCandidates,
-    resolveSinger, scoreProblems, splitVoiceId, voiceEntriesIn, voiceId, voicesFolderProblems, voicesIn,
+    CantilenaScore, DefaultVoices, ENGINES, EngineName, VOICEVOX_URL, VoiceEntry, VoiceGender, defaultVoiceFor, diffSingerEntriesIn, diffSingerVoicesIn, languageProblem, missingProgramNote, neutrinoFolderProblems, programCandidates,
+    resolveSinger, scoreProblems, splitVoiceId, voiceEntriesIn, voiceId, voicesFolderProblems, voicesIn, voicevoxEntriesFrom,
 } from './core';
 import { Engine, EngineSetup, RenderedVoice } from './engine';
 
@@ -23,7 +23,7 @@ export interface CantilenaStatus {
     ready: boolean;
     program: string | undefined;
     /** The engine of the voice the setting names. */
-    backend: 'neutrino' | 'diffsinger';
+    backend: EngineName;
     neutrinoFolder: string;
     /** The DiffSinger voices folder. */
     voicesFolder: string;
@@ -64,6 +64,32 @@ function settings(): vscode.WorkspaceConfiguration { return vscode.workspace.get
 function neutrinoFolder(): string { return settings().get<string>('neutrinoFolder', '').trim(); }
 function voicesFolder(): string { return settings().get<string>('voicesFolder', '').trim(); }
 function vocoderFolder(): string { return settings().get<string>('vocoderFolder', '').trim(); }
+function voicevoxUrl(): string { return settings().get<string>('voicevoxUrl', VOICEVOX_URL).trim(); }
+
+/** The voices of the running VOICEVOX, as last asked: an engine that is a server has no folder to read. */
+let voicevoxVoices: VoiceEntry[] = [];
+let voicevoxAsking: Promise<void> | undefined;
+let voicevoxAskedAt = 0;
+
+/** Asks VOICEVOX what it sings, at most every two seconds; one that is not running has no voices. */
+function askVoicevox(): Promise<void> {
+    if (voicevoxAsking) { return voicevoxAsking; }
+    const url = voicevoxUrl();
+    if (!url) { voicevoxVoices = []; return Promise.resolve(); }
+    if (Date.now() - voicevoxAskedAt < 2000) { return Promise.resolve(); }
+    voicevoxAsking = (async () => {
+        try {
+            const answer = await fetch(`${url.replace(/\/+$/, '')}/singers`, { signal: AbortSignal.timeout(1500) });
+            voicevoxVoices = answer.ok ? voicevoxEntriesFrom(await answer.json()) : [];
+        } catch {
+            voicevoxVoices = [];
+        } finally {
+            voicevoxAskedAt = Date.now();
+            voicevoxAsking = undefined;
+        }
+    })();
+    return voicevoxAsking;
+}
 
 /** A voice as its engine, name and `engine/name`. */
 interface Voice { engine: string; name: string; id: string }
@@ -80,12 +106,13 @@ function voiceSetting(): Voice { return voiceOf(defaultVoiceFor(voices(), defaul
 
 function readTextOr(p: string): string | undefined { try { return fs.readFileSync(p, 'utf8'); } catch { return undefined; } }
 function listDirs(dir: string): string[] { try { return fs.readdirSync(dir, { withFileTypes: true }).filter(d => d.isDirectory()).map(d => d.name); } catch { return []; } }
-/** Every voice installed, NEUTRINO's then the DiffSinger folder's. */
+/** Every voice installed: NEUTRINO's, the DiffSinger folder's, the running VOICEVOX's. */
 function voices(): VoiceEntry[] {
     const n = neutrinoFolder(), d = voicesFolder();
     return [
         ...(n ? voiceEntriesIn(n, listDirs, fs.existsSync, readTextOr, path.join) : []),
         ...(d ? diffSingerEntriesIn(d, listDirs, fs.existsSync, readTextOr, path.join) : []),
+        ...voicevoxVoices,
     ];
 }
 
@@ -115,12 +142,12 @@ function setupNow(context: vscode.ExtensionContext): { setup?: EngineSetup; prob
     const n = neutrinoFolder(), d = voicesFolder();
     const problems: string[] = [];
     if (!prog) { problems.push(missingProgramNote(process.platform, process.arch, bundledBuilds(context))); }
-    if (!n && !d) { problems.push('no engine is set up: choose a NEUTRINO folder (Cantilena: Choose NEUTRINO Folder…) or a DiffSinger voices folder (Cantilena: Choose Voices Folder…)'); }
+    if (!n && !d && voicevoxVoices.length === 0) { problems.push('no engine is set up: choose a NEUTRINO folder (Cantilena: Choose NEUTRINO Folder…) or a DiffSinger voices folder (Cantilena: Choose Voices Folder…), or start VOICEVOX'); }
     problems.push(...neutrinoFolderProblems(n, fs.existsSync, path.join, process.platform));
     problems.push(...voicesFolderProblems(d, fs.existsSync));
     if (problems.length > 0) { return { problems, program: prog }; }
     return {
-        setup: { program: prog!, neutrinoFolder: n, voicesFolder: d, vocoderFolder: vocoderFolder(), gpu: settings().get<boolean>('gpu', true), threads: settings().get<number>('threads', 4) },
+        setup: { program: prog!, neutrinoFolder: n, voicesFolder: d, vocoderFolder: vocoderFolder(), gpu: settings().get<boolean>('gpu', true), threads: settings().get<number>('threads', 4), voicevoxUrl: voicevoxUrl() },
         problems, program: prog,
     };
 }
@@ -131,7 +158,7 @@ function engineFor(context: vscode.ExtensionContext): Engine {
     if (!setup) { throw new Error(problems.join('; ')); }
     if (engine && (engine.setup.program !== setup.program || engine.setup.neutrinoFolder !== setup.neutrinoFolder
         || engine.setup.voicesFolder !== setup.voicesFolder || engine.setup.vocoderFolder !== setup.vocoderFolder
-        || engine.setup.gpu !== setup.gpu || engine.setup.threads !== setup.threads)) {
+        || engine.setup.gpu !== setup.gpu || engine.setup.threads !== setup.threads || engine.setup.voicevoxUrl !== setup.voicevoxUrl)) {
         engine.dispose();
         engine = undefined;
     }
@@ -152,6 +179,10 @@ function voiceProblems(voice: Voice): string[] {
         const names = voicesIn(n, listDirs, fs.existsSync, path.join);
         return names.includes(voice.name) ? [] : [`the voice ${voice.name} is not under ${path.join(n, 'model')} (installed: ${names.join(', ') || 'none'})`];
     }
+    if (voice.engine === 'voicevox') {
+        if (voicevoxVoices.some(v => v.id === voice.id)) { return []; }
+        return [voicevoxVoices.length === 0 ? `VOICEVOX is not answering at ${voicevoxUrl() || VOICEVOX_URL}: start VOICEVOX to sing with ${voice.id}` : `VOICEVOX has no voice ${voice.name} (there is: ${voicevoxVoices.map(v => v.name).join(', ')})`];
+    }
     if (fs.existsSync(path.join(voice.name, 'dsconfig.yaml'))) { return []; }   // a folder named outright
     const d = voicesFolder();
     if (!d) { return [`${voice.id} needs a DiffSinger voices folder (Cantilena: Choose Voices Folder…)`]; }
@@ -160,16 +191,18 @@ function voiceProblems(voice: Voice): string[] {
 }
 
 async function status(context: vscode.ExtensionContext): Promise<CantilenaStatus> {
+    await askVoicevox();
     const { setup, problems, program: prog } = setupNow(context);
     const voice = voiceSetting();
     if (setup) { problems.push(...voiceProblems(voice)); }
-    const backend = voice.engine === 'diffsinger' ? 'diffsinger' : 'neutrino';
+    const backend = voice.engine as EngineName;
     return { ready: problems.length === 0, program: prog, backend, neutrinoFolder: neutrinoFolder(), voicesFolder: voicesFolder(), voice: voice.id, voices: voices().map(v => v.id), problems };
 }
 
 async function sing(context: vscode.ExtensionContext, score: CantilenaScore, options?: { voice?: string }): Promise<RenderedVoice & { cached: boolean }> {
     const problems = scoreProblems(score);
     if (problems.length > 0) { throw new Error(problems.join('; ')); }
+    await askVoicevox();
     const asked = (options?.voice ?? '').trim();
     const voice = asked ? voiceOf(asked) : voiceSetting();
     const wrong = voiceProblems(voice);
@@ -241,7 +274,7 @@ async function checkSetup(context: vscode.ExtensionContext): Promise<void> {
     const s = await status(context);
     output.appendLine(`setup: program ${s.program ?? 'none'}; NEUTRINO ${s.neutrinoFolder || 'not set'}; DiffSinger voices ${s.voicesFolder || 'not set'}; voice ${s.voice}; installed ${s.voices.join(', ') || 'none'}; ${s.ready ? 'ready' : s.problems.join('; ')}`);
     if (s.ready) {
-        const where = s.backend === 'neutrino' ? `through NEUTRINO at ${s.neutrinoFolder}` : `a DiffSinger voice under ${s.voicesFolder}`;
+        const where = s.backend === 'neutrino' ? `through NEUTRINO at ${s.neutrinoFolder}` : s.backend === 'voicevox' ? 'through the running VOICEVOX' : `a DiffSinger voice under ${s.voicesFolder}`;
         vscode.window.showInformationMessage(`Cantilena is ready: ${s.voice}, ${where}.`);
         return;
     }
@@ -271,7 +304,7 @@ export function activate(context: vscode.ExtensionContext): CantilenaApi {
         }),
         // A changed engine setting lets the engine go; the next sing starts one for the new settings.
         vscode.workspace.onDidChangeConfiguration(e => {
-            if (['neutrinoFolder', 'voicesFolder', 'vocoderFolder', 'program', 'gpu', 'threads'].some(s => e.affectsConfiguration('cantilena.' + s))) {
+            if (['neutrinoFolder', 'voicesFolder', 'vocoderFolder', 'program', 'gpu', 'threads', 'voicevoxUrl'].some(s => e.affectsConfiguration('cantilena.' + s))) {
                 release();
             }
         }),
@@ -282,10 +315,10 @@ export function activate(context: vscode.ExtensionContext): CantilenaApi {
         version,
         apiVersion: 1,
         status: () => status(context),
-        voices: async () => voices(),
+        voices: async () => { await askVoicevox(); return voices(); },
         sing: (score, options) => sing(context, score, options),
         release,
-        resolveSinger: async (singer, options) => resolveSinger(singer, voices(), defaultVoices(), options),
+        resolveSinger: async (singer, options) => { await askVoicevox(); return resolveSinger(singer, voices(), defaultVoices(), options); },
     });
 }
 

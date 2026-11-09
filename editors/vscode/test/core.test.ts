@@ -7,7 +7,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import {
     ENGINES, characterNameOf, diffSingerEntriesIn, diffSingerVoicesIn, languageProblem, languageTag, missingProgramNote, neutrinoFolderProblems, parseLine, programCandidates,
-    defaultVoiceFor, firstOfGender, genderOfWord, requestLine, resolveSinger, rid, scoreProblems, serveArgs, speakerOf, splitVoiceId, voiceEntriesIn, voiceId, voiceKey, voicesFolderProblems, voicesIn, vsixTarget,
+    defaultVoiceFor, firstOfGender, genderOfWord, requestLine, resolveSinger, rid, scoreProblems, serveArgs, speakerOf, splitVoiceId, voiceEntriesIn, voiceId, voiceKey, voicesFolderProblems, voicesIn, voicevoxEntriesFrom, vsixTarget,
 } from '../src/core';
 
 const join = (...parts: string[]) => parts.join('\\');
@@ -124,6 +124,10 @@ describe('the engine\'s wire', () => {
         assert.deepEqual(serveArgs('C:\\v', false, 0), ['serve', '--out-dir', 'C:\\v', '--threads', '1', '--cpu']);
         assert.deepEqual(serveArgs('C:\\v', true, 4, 'C:\\voices', ' '), ['serve', '--out-dir', 'C:\\v', '--threads', '4', '--voices-dir', 'C:\\voices']);
         assert.deepEqual(serveArgs('C:\\v', true, 4, '', 'C:\\voc'), ['serve', '--out-dir', 'C:\\v', '--threads', '4', '--vocoder-dir', 'C:\\voc']);
+        assert.deepEqual(serveArgs('C:\\v', true, 4, '', '', 'http://x:1'), ['serve', '--out-dir', 'C:\\v', '--threads', '4', '--voicevox-url', 'http://x:1']);
+        assert.deepEqual(voicevoxEntriesFrom({ detail: 'no' }), [], 'not a list of singers');
+        assert.deepEqual(voicevoxEntriesFrom([{ name: 'ず', styles: [{ name: 'ふつう', type: 'talk' }, { name: 'ノーマル', type: 'frame_decode' }] }]),
+            [{ id: 'voicevox/ず-ノーマル', engine: 'voicevox', name: 'ず-ノーマル', label: 'ず (ノーマル)', language: 'ja', licence: 'Credit "VOICEVOX:ず" and follow the character\'s terms' }]);
     });
 });
 
@@ -163,7 +167,7 @@ describe('where the program and the voices are', () => {
     // A voice is named engine/name everywhere (docs/roadmap.md A), so a second engine's voice
     // needs no new setting; a bare name is the first engine's.
     it('names a voice engine/name, and reads either form', () => {
-        assert.deepEqual(ENGINES, ['neutrino', 'diffsinger']);
+        assert.deepEqual(ENGINES, ['neutrino', 'diffsinger', 'voicevox']);
         assert.equal(voiceId('neutrino', 'MERROW'), 'neutrino/MERROW');
         assert.deepEqual(splitVoiceId('neutrino/MERROW'), { engine: 'neutrino', name: 'MERROW' });
         assert.deepEqual(splitVoiceId(' Neutrino/KIRITAN '), { engine: 'neutrino', name: 'KIRITAN' });
@@ -228,7 +232,7 @@ describe('the manifest', () => {
 
     it('puts the general settings first, the engines in alphabetical order, the developer\'s last', () => {
         const sections = [...manifest.contributes.configuration].sort((a: { order: number }, b: { order: number }) => a.order - b.order);
-        assert.deepEqual(sections.map((c: { title: string }) => c.title), ['General', 'DiffSinger', 'NEUTRINO', 'Developer']);
+        assert.deepEqual(sections.map((c: { title: string }) => c.title), ['General', 'DiffSinger', 'NEUTRINO', 'VOICEVOX', 'Developer']);
     });
 
     it('groups the settings by what they are for', () => {
@@ -237,6 +241,7 @@ describe('the manifest', () => {
             General: ['defaultFemaleVoice', 'defaultMaleVoice', 'gpu'],
             NEUTRINO: ['neutrinoFolder', 'threads'],
             DiffSinger: ['vocoderFolder', 'voicesFolder'],
+            VOICEVOX: ['voicevoxUrl'],
             Developer: ['program'],
         });
     });

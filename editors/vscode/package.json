@@ -96,8 +96,20 @@
         }
       },
       {
-        "title": "Developer",
+        "title": "VOICEVOX",
         "order": 4,
+        "properties": {
+            "cantilena.voicevoxUrl": {
+              "type": "string",
+              "default": "http://127.0.0.1:50021",
+              "scope": "machine-overridable",
+              "markdownDescription": "Where the running VOICEVOX answers. Start VOICEVOX and its singing voices are listed; Japanese only. VOICEVOX is not bundled: get it from [voicevox.hiroshiba.jp](https://voicevox.hiroshiba.jp/). Each character has its own terms, and a published work credits `VOICEVOX:name`. Empty: VOICEVOX is not asked."
+            }
+        }
+      },
+      {
+        "title": "Developer",
+        "order": 5,
         "properties": {
             "cantilena.program": {
               "type": "string",
