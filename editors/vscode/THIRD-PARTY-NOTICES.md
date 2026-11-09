@@ -17,3 +17,10 @@ Cantoria's, Apache License 2.0 (LICENSE).
   NEUTRINO folder, never included.
 
 The repository's THIRD-PARTY-NOTICES.md lists the works the library and the other backends use.
+
+## The icon
+
+The extension's icon is the C clef of Emmentaler, LilyPond's music font.
+Copyright (C) 1997-2023 Han-Wen Nienhuys, Jan Nieuwenhuizen, Werner Lemberg, and the LilyPond
+project contributors. The font is dual-licensed; the icon uses it under the SIL Open Font License.
+<https://gitlab.com/lilypond/lilypond>

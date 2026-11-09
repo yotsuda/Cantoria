@@ -103,3 +103,10 @@ Cantoria does nothing of the kind.
 No voice (sound bank, singing library, trained model) is included in this
 repository or its releases. Each is the work of its author and the user
 installs it under that author's terms.
+
+## The icon
+
+The extension's icon is the C clef of Emmentaler, LilyPond's music font.
+Copyright (C) 1997-2023 Han-Wen Nienhuys, Jan Nieuwenhuizen, Werner Lemberg, and the LilyPond
+project contributors. The font is dual-licensed; the icon uses it under the SIL Open Font License.
+<https://gitlab.com/lilypond/lilypond>
