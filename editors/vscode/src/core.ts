@@ -66,6 +66,11 @@ export function singsLanguage(voice: Pick<VoiceEntry, 'language' | 'languages'>,
     return voice.languages?.includes(language) ?? voice.language === language;
 }
 
+/** The voices a `+` joins, each to sing the score together (`neutrino/MERROW + diffsinger/TIGER`). */
+export function voicePieces(text: string): string[] {
+    return text.split('+').map(p => p.trim()).filter(Boolean);
+}
+
 /** The first voice listed that says it is `gender` and sings `language` (the same one every time,
  *  so a score sounds alike from one playing to the next). A voice that does not say is not guessed at. */
 export function firstOfGender(voices: readonly Listed[], gender: string, language?: string): string | undefined {
@@ -116,6 +121,12 @@ export function defaultVoiceFor(voices: readonly Listed[], defaults: DefaultVoic
  */
 export function resolveSinger(written: string, voices: readonly Listed[], defaults: DefaultVoices,
     options?: { language?: string; gender?: string }): { voice: string; note?: string } {
+    const pieces = voicePieces(written);
+    if (pieces.length > 1) {
+        const each = pieces.map(p => resolveSinger(p, voices, defaults, options));
+        const notes = each.map(r => r.note).filter(Boolean);
+        return { voice: [...new Set(each.map(r => r.voice))].join('+'), ...(notes.length > 0 ? { note: notes.join('; ') } : {}) };
+    }
     const asked = written.trim();
     const said = genderOfWord(asked);
     const fallback = defaultVoiceFor(voices, defaults, said ?? (options?.gender === 'male' ? 'male' : 'female'), options?.language);
@@ -218,7 +229,7 @@ export function voicevoxRunIn(folder: string, exists: (p: string) => boolean, jo
  *  default voice is one, or nothing else is installed. No `language`: no words are being sung. */
 export function needsVoicevox(written: string, defaults: DefaultVoices, otherVoices: number, language: string | undefined): boolean {
     const asked = written.trim();
-    if (asked.startsWith('voicevox/')) { return true; }
+    if (voicePieces(asked).some(p => p.startsWith('voicevox/'))) { return true; }
     if (!language || asked.includes('/')) { return false; }
     return otherVoices === 0 || [defaults.female, defaults.male].some(v => v.trim().startsWith('voicevox/'));
 }

@@ -106,10 +106,27 @@ sealed class Engines
         return Names.Contains(engine) ? (engine, t[(slash + 1)..]) : (engine, t[(slash + 1)..]);
     }
 
+    /// <summary>The voices a <c>+</c> joins, each to sing the score (<c>neutrino/MERROW+diffsinger/TIGER</c>); one voice
+    /// when there is no <c>+</c>, or when the whole is a voice's folder.</summary>
+    public static IReadOnlyList<string?> Pieces(string? voice)
+    {
+        var t = (voice ?? "").Trim();
+        if (!t.Contains('+') || File.Exists(Path.Combine(t, "dsconfig.yaml")))
+        {
+            return [voice];
+        }
+        return t.Split('+', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+    }
+
     /// <summary>Why a voice cannot be sung with: an engine this build has not, a folder not set, a voice not installed.</summary>
     public IReadOnlyList<string> Problems(string? voice)
     {
-        var (engine, name) = Split(voice);
+        var pieces = Pieces(voice);
+        if (pieces.Count > 1)
+        {
+            return pieces.SelectMany(Problems).ToList();
+        }
+        var (engine, name) = Split(pieces.Count == 1 ? pieces[0] : voice);
         switch (engine)
         {
             case "neutrino":
@@ -169,7 +186,12 @@ sealed class Engines
         {
             throw new SingerException(string.Join("; ", problems));
         }
-        var (engine, name) = Split(voice);
+        var pieces = Pieces(voice);
+        if (pieces.Count > 1)
+        {
+            return new ChorusSinger(pieces.Select(Create).ToList());
+        }
+        var (engine, name) = Split(pieces.Count == 1 ? pieces[0] : voice);
         return engine switch
         {
             "neutrino" => new NeutrinoSinger(new NeutrinoOptions(NeutrinoFolder!, name) { UseGpu = UseGpu, Threads = Threads, KeepFiles = KeepFiles }),

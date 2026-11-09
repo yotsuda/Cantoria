@@ -144,6 +144,8 @@ describe('when a VOICEVOX voice is needed', () => {
         assert.equal(needsVoicevox('', none, 5, 'ja'), false);
     });
 
+    it('is when any of the voices that sing together is one', () => assert.equal(needsVoicevox('neutrino/M + voicevox/ず-ノーマル', none, 5, 'ja'), true));
+
     it('is when nothing else can sing', () => assert.equal(needsVoicevox('', none, 0, 'ja'), true));
 
     it('is not when no words are being sung', () => assert.equal(needsVoicevox('', { female: 'voicevox/ず-ノーマル', male: '' }, 5, undefined), false));

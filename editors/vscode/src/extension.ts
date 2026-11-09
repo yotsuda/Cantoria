@@ -14,7 +14,7 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 import {
     CantilenaScore, DefaultVoices, ENGINES, EngineName, VOICEVOX_URL, VoiceEntry, VoiceGender, defaultVoiceFor, diffSingerEntriesIn, diffSingerVoicesIn, languageProblem, missingProgramNote, needsVoicevox, neutrinoFolderProblems, voicevoxRunIn, programCandidates,
-    resolveSinger, scoreProblems, splitVoiceId, voiceEntriesIn, voiceId, voicesFolderProblems, voicesIn, 
+    resolveSinger, scoreProblems, splitVoiceId, voiceEntriesIn, voiceId, voicePieces, voicesFolderProblems, voicesIn, 
 } from './core';
 import { Engine, EngineSetup, RenderedVoice } from './engine';
 import { VoicevoxServer } from './voicevox';
@@ -198,11 +198,12 @@ async function sing(context: vscode.ExtensionContext, score: CantilenaScore, opt
     if (problems.length > 0) { throw new Error(problems.join('; ')); }
     const asked = (options?.voice ?? '').trim();
     if (needsVoicevox(asked, defaultVoices(), voices().length - voicevox.voices.length, score.language ?? 'ja')) { await voicevox.ensure(); } else { await voicevox.ask(); }
-    const voice = asked ? voiceOf(asked) : voiceSetting();
-    const wrong = voiceProblems(voice);
+    const singers = asked && voicePieces(asked).length > 0 ? voicePieces(asked).map(voiceOf) : [voiceSetting()];
+    const wrong = singers.flatMap(voiceProblems);
     if (wrong.length > 0) { throw new Error(wrong.join('; ')); }
-    const language = languageProblem(voices().find(v => v.id === voice.id), score.language);
+    const language = singers.map(s => languageProblem(voices().find(v => v.id === s.id), score.language)).find(Boolean);
     if (language) { throw new Error(language); }
+    const voice = { id: singers.map(s => s.id).join('+') };
     const { key, rendered, cached } = engineFor(context).sing(score, voice.id, voice.id, voicevox.answering);
     const t0 = Date.now();
     const v = await rendered;
