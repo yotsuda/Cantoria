@@ -210,7 +210,18 @@ describe('where the program and the voices are', () => {
 
 describe('the manifest', () => {
     const manifest = JSON.parse(fs.readFileSync(path.join(__dirname, '..', '..', 'package.json'), 'utf8'));
-    const props = manifest.contributes.configuration.properties;
+    const props = Object.assign({}, ...manifest.contributes.configuration.map((c: { properties: object }) => c.properties));
+
+    it('groups the settings by what they are for', () => {
+        const groups = Object.fromEntries(manifest.contributes.configuration.map((c: { title: string; properties: object }) => [c.title, Object.keys(c.properties).map(k => k.replace('cantilena.', '')).sort()]));
+        assert.deepEqual(groups, {
+            General: ['gpu', 'voice', 'voices'],
+            NEUTRINO: ['neutrinoFolder', 'threads'],
+            DiffSinger: ['vocoderFolder', 'voicesFolder'],
+            Developer: ['program'],
+        });
+    });
+
     const commands = (manifest.contributes.commands as { command: string }[]).map(c => c.command);
 
     it('holds the settings, each engine setting machine-overridable', () => {
