@@ -4,6 +4,7 @@
 
 - **A score can name its singer, and you decide who that is**: the setting `cantilena.voices` casts a score's roles (`"soprano": "neutrino/MERROW"`) and may replace a voice it names; the API has `resolveSinger` and `cast`. A singer neither cast nor installed sings as `cantilena.voice`. `sing` refuses words in a language the voice says it does not sing. `voices()` gives a voice's `gender` where its `info.toml` says, and a score's `singer male` or `singer female` sings with the first such voice for its words' language, unless `cantilena.voices` casts one.
 - **A score's dynamics are heard**: a note's `level` and `levelEnd` scale what the engine sang (NEUTRINO reads a dynamic and sings no louder for it), eased between notes.
+- **A breath mark between two notes is heard**: a note's `inhale` lets NEUTRINO sing its own breath there (a rest stays silent).
 - **A held ん moves on the beat**: where a note starts on the very phoneme the last one ended on, NEUTRINO's timing could put the join up to 0.4 s late, and the pitch moved late with it. The join now goes where the score has it.
 - **DiffSinger voices sing on the GPU**: the bundled program is built on the DirectML build of ONNX
   Runtime, so a DiffSinger voice's models run on any DirectX 12 GPU (a phrase in a second or two

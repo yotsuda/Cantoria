@@ -43,8 +43,26 @@ public static class NeutrinoMusicXml
     public static int Ticks(double seconds) => (int)Math.Round(seconds * Divisions);
 
     /// <summary>Writes the score as an uncompressed MusicXML document (UTF-8 text).</summary>
+    /// <summary>The score with each <see cref="SungNote.Inhale"/> note held to the next note's start: a
+    /// breath mark with a rest after it is silence, and with none NEUTRINO sings its own breath (the
+    /// <c>br</c> phoneme, its length the model's).</summary>
+    public static SungScore WithInhalesClosed(SungScore score)
+    {
+        List<SungNote>? notes = null;
+        for (int i = 0; i + 1 < score.Notes.Count; i++)
+        {
+            if (score.Notes[i].Inhale)
+            {
+                notes ??= score.Notes.ToList();
+                notes[i] = notes[i] with { Duration = score.Notes[i + 1].Start - score.Notes[i].Start };
+            }
+        }
+        return notes is null ? score : score with { Notes = notes };
+    }
+
     public static string Write(SungScore score)
     {
+        score = WithInhalesClosed(score);
         var events = Segments(score);
         // Through a stream, not a StringBuilder: a writer over text declares encoding="utf-16"
         // whatever the settings say, and musicXMLtoLabel then read every lyric as "xx".

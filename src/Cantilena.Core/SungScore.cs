@@ -17,6 +17,8 @@ namespace Cantilena;
 /// <param name="Level">The note's loudness as a factor on the sung audio, 1 for as sung; null is 1.
 /// The engines do not sing louder or softer for a marking, so it is applied to what they sang.</param>
 /// <param name="LevelEnd">The factor at the note's end, for a swell across it; null is <see cref="Level"/>.</param>
+/// <param name="Inhale">True when the singer takes an audible breath between this note and the next,
+/// which follows closely (a breath mark), where a rest is only silence.</param>
 public sealed record SungNote(
     double Start,
     double Duration,
@@ -25,7 +27,8 @@ public sealed record SungNote(
     bool Melisma = false,
     bool Breath = false,
     double? Level = null,
-    double? LevelEnd = null)
+    double? LevelEnd = null,
+    bool Inhale = false)
 {
     /// <summary>Seconds at which the note ends.</summary>
     public double End => Start + Duration;

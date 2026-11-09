@@ -19,6 +19,8 @@ export interface CantilenaNote {
     level?: number;
     /** The factor at the note's end, for a swell across it; absent is `level`. */
     levelEnd?: number;
+    /** An audible breath between this note and the next (a breath mark), where a rest is only silence. */
+    inhale?: boolean;
 }
 
 /** The score a caller hands `sing`: notes in seconds; the sample rate and language optional. */
