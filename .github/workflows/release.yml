@@ -1,0 +1,127 @@
+name: Release
+
+# Tag-driven release, after Calamo's and Lily#'s: pushing a tag like v0.4.0 runs the tests, packs
+# the three VSIX (tools/pack-extension.ps1: the program published self-contained for each
+# platform, the licenses of what it bundles beside it, `vsce package --target`), attaches them to
+# a GitHub Release, and publishes them to the VS Code Marketplace.
+#
+# Run by hand (workflow_dispatch) it only tests and packs, and keeps the VSIX as a workflow
+# artifact: no Release, no Marketplace. Do that once before the first tag, so that the runner is
+# proven before a version is spent: THE MARKETPLACE NEVER ACCEPTS A VERSION TWICE.
+#
+# One Windows job packs all three: pack-extension.ps1 cross-publishes, and the Windows program
+# needs the DirectML package. The three are published one after another, never in parallel: the
+# first publish of an extension creates it, and Lily#'s 0.4.0 lost five of eight parallel legs to
+# "The extension already exists."
+#
+# Secret: VSCE_PAT, the same token as Lily#'s and Calamo's: a Marketplace -> Manage token of the
+# Microsoft account that owns the publisher `yotsuda`, organization "All accessible organizations".
+# An Entra ID token for the same e-mail address is a different principal and is refused. THIS ONE
+# EXPIRES 2027-10-16: when a release fails at verify-pat, renew it and update the secret in all
+# three repositories (Settings -> Secrets and variables -> Actions).
+#
+# Only a tag pushed by the owner or a run by hand starts this workflow, so the secret never
+# reaches a fork's pull request.
+
+on:
+  push:
+    tags: [ 'v*' ]
+  workflow_dispatch:
+
+permissions:
+  contents: write   # create the GitHub Release + upload the VSIX
+
+jobs:
+  vsix:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Tag matches the version
+        # v0.4.0 must be package.json's 0.4.0 (pack-extension.ps1 then checks that the program's
+        # csproj says the same). The version is not rewritten from the tag: a wrong tag is a
+        # mistake to stop on.
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          $tag = $env:GITHUB_REF_NAME -replace '^v', ''
+          $pkg = (Get-Content editors/vscode/package.json -Raw | ConvertFrom-Json).version
+          if ($tag -ne $pkg) { throw "tag $env:GITHUB_REF_NAME, editors/vscode/package.json $pkg : make them one before tagging" }
+          "version $pkg"
+
+      - name: Publish rights
+        # One request before the build: a wrong or expired PAT fails here, not after the pack.
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+        run: |
+          $publisher = (Get-Content editors/vscode/package.json -Raw | ConvertFrom-Json).publisher
+          npx --yes @vscode/vsce verify-pat $publisher
+          if ($LASTEXITCODE -ne 0) { throw "verify-pat failed for '$publisher': nothing was published" }
+
+      - name: Test the program
+        run: dotnet test tests/Cantoria.Tests -c Release
+
+      - name: Test the extension
+        working-directory: editors/vscode
+        run: |
+          npm ci
+          if ($LASTEXITCODE -ne 0) { throw "npm ci failed" }
+          npm test
+          if ($LASTEXITCODE -ne 0) { throw "npm test failed" }
+
+      - name: Pack
+        # The same script the local deploy uses, for all three platforms.
+        run: pwsh -NoProfile -File tools/pack-extension.ps1 -Out "$PWD/out/extension"
+
+      - name: Keep the VSIX
+        uses: actions/upload-artifact@v4
+        with:
+          name: cantoria-vsix
+          path: out/extension/*.vsix
+          if-no-files-found: error
+
+      - name: Extract release notes
+        # The topmost section of the extension's CHANGELOG.md is the version being tagged (the
+        # Marketplace shows the same file). The heading is dropped: the Release has the tag as its title.
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          $n = 0
+          $notes = foreach ($line in Get-Content editors/vscode/CHANGELOG.md) {
+            if ($line -match '^## ') { $n++; continue }
+            if ($n -eq 1) { $line }
+          }
+          Set-Content RELEASE_NOTES.md ($notes -join "`n")
+          Get-Content RELEASE_NOTES.md
+
+      - name: Upload release assets
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          body_path: RELEASE_NOTES.md
+          files: out/extension/*.vsix
+
+      - name: Publish to VS Code Marketplace
+        # Each packed VSIX as it is (its target is inside it), one at a time. No --pre-release: a
+        # pre-release version reaches only users who opted in, which would make "installable from
+        # the extension page" quietly false. "preview": true in package.json is the Beta label, a
+        # different thing. A target that fails does not stop the others, and the job fails at the
+        # end naming it; a version already published is refused by the Marketplace, so bump the
+        # version rather than retry.
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+        run: |
+          $failed = @()
+          foreach ($vsix in Get-ChildItem out/extension/*.vsix) {
+            "publishing $($vsix.Name)"
+            npx --yes @vscode/vsce publish --packagePath $vsix.FullName
+            if ($LASTEXITCODE -ne 0) { $failed += $vsix.Name }
+          }
+          if ($failed) { throw "not published: $($failed -join ', ')" }
+          $global:LASTEXITCODE = 0
