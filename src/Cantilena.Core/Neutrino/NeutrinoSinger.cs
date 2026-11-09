@@ -55,6 +55,10 @@ public sealed class NeutrinoSinger : ISinger, IDisposable
         {
             throw new SingerException("the score is not sound: " + string.Join("; ", problems));
         }
+        if (NeutrinoMusicXml.NotKanaProblem(score) is { } notKana)
+        {
+            throw new SingerException(notKana);
+        }
         await _oneAtATime.WaitAsync(ct).ConfigureAwait(false);
         try
         {

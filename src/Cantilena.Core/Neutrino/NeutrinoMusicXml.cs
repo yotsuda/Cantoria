@@ -37,6 +37,16 @@ public static class NeutrinoMusicXml
     /// <summary>The lyric NEUTRINO reads as "continue the previous vowel".</summary>
     public const string MelismaLyric = "ー";
 
+    /// <summary>Why NEUTRINO cannot read the score's words, or null: it reads kana, and on anything else it
+    /// says only that it failed to load the phrase. Punctuation is left to it.</summary>
+    public static string? NotKanaProblem(SungScore score)
+    {
+        var other = score.Notes.Where(n => !n.Melisma && n.Lyric!.Any(c => char.IsLetterOrDigit(c) && c is not (>= '\u3040' and <= '\u30FF')))
+            .Select(n => n.Lyric!).Distinct(StringComparer.Ordinal).ToList();
+        return other.Count == 0 ? null
+            : $"NEUTRINO sings kana, and {other.Count} syllable(s) are not: {string.Join(", ", other.Take(8))}{(other.Count > 8 ? ", …" : "")}";
+    }
+
     private const int BarTicks = Divisions * BeatsPerBar;
 
     /// <summary>Ticks (divisions) for a time in seconds.</summary>
