@@ -1,12 +1,11 @@
 # Cantoria
 
 A singing engine for notation software: give it notes with lyrics, get back a
-voice singing them.
+voice singing them. Voices from different engines can sing one score together.
 
-*Cantoria* (Italian, from Latin *cantoria*, "little song") is the musical
-term for a flowing, vocal melodic line — the kind a singer carries over the
-instruments. That is the one thing a score player cannot do with a sound font,
-and the one thing this library adds.
+*Cantoria* (Italian) is the gallery of a church where the singers stand: the
+place where voices gather. A score player cannot sing with a sound font, and
+that is the one thing this library adds.
 
 ## What it is
 
@@ -16,22 +15,28 @@ and the one thing this library adds.
   writes a WAV, so any editor or notation program can call it without linking
   to it.
 - A **VS Code extension** (`yotsuda.cantoria`, in `editors/vscode`) that carries the
-  CLI, holds the settings (where NEUTRINO is, which voice) and sings for other
+  CLI, holds the settings (where each engine is, which voices) and sings for other
   extensions through an API — how Lily# sings its lyrics. A voice is named
   `engine/name` there (`neutrino/MERROW`), so a second engine's voice needs no new setting.
 - **Backends** behind the same contract:
-  - `neutrino` — drives a user's own installation of
-    [NEUTRINO](https://studio-neutrino.com/) (closed-source freeware, Japanese
-    voices) as a separate process.
   - `diffsinger` — in-process inference of
     [DiffSinger](https://github.com/openvpi/DiffSinger) voices in the OpenUtau
     format (a folder with `dsconfig.yaml`, as OpenUtau installs them) through
     ONNX Runtime, after the C# implementation in
-    [OpenUtau](https://github.com/stakira/OpenUtau). Japanese lyrics (kana) so
-    far. On Windows the models run on the GPU through DirectML (any DirectX 12
-    device; the CPU where there is none, or with `--cpu`); on Linux and macOS on
-    the CPU (CoreML on request, `--provider coreml`, untested). The program is
-    published for win-x64, linux-x64 and osx-arm64; NEUTRINO itself is Windows-only.
+    [OpenUtau](https://github.com/stakira/OpenUtau). Japanese lyrics (kana),
+    and English where the voice has a `dsdict-en.yaml`. On Windows the models run
+    on the GPU through DirectML (any DirectX 12 device; the CPU where there is
+    none, or with `--cpu`); on Linux and macOS on the CPU (CoreML on request,
+    `--provider coreml`, untested).
+  - `neutrino` — drives a user's own installation of
+    [NEUTRINO](https://studio-neutrino.com/) (closed-source freeware, Japanese
+    voices, Windows only) as a separate process.
+  - `voicevox` — sings through a running
+    [VOICEVOX](https://voicevox.hiroshiba.jp/) over its local API (Japanese
+    voices); the user's own installation, never redistributed.
+
+  The program is published for win-x64, linux-x64 and osx-arm64, and has been
+  heard only on Windows so far.
 
 Cantoria ships **no voice**. A voice (a trained model, a singing library) is
 its author's work under its author's terms; the user installs one and points
@@ -39,11 +44,14 @@ Cantoria at it, exactly as a score player is pointed at a sound font.
 
 ## Status
 
-Early. Both backends sing. A voice is named `engine/name`:
+Early. All three backends sing. A voice is named `engine/name`, and voices joined by `+` sing
+together:
 
 ```
 cantoria sing examples/yukiyakonko.json -o yuki.wav --voice neutrino/MERROW --neutrino-dir "C:\path\to\NEUTRINO"
 cantoria sing examples/yukiyakonko.json -o yuki.wav --voice diffsinger/TIGER --voices-dir "C:\path\to\voices"
+cantoria sing examples/yukiyakonko.json -o yuki.wav --voice voicevox/ずんだもん-ノーマル
+cantoria sing examples/yukiyakonko.json -o yuki.wav --voice "neutrino/MERROW+diffsinger/TIGER" --neutrino-dir … --voices-dir …
 cantoria voices --neutrino-dir … --voices-dir …
 ```
 
@@ -72,10 +80,14 @@ NEUTRINO render of a score takes under half a second). See
 - Times are **seconds**: tempo, meter and repeats are the caller's business,
   already resolved. Gaps between notes are rests.
 - `pitch` is a MIDI note number (60 = C4); fractional values are allowed.
-- `lyric` is the syllable as pronounced, in the language's own script
-  (hiragana or katakana for `ja`). A note with `melisma: true` continues the
-  previous syllable's vowel and has no lyric of its own.
-- `breath: true` marks a phrase end after the note (the singer breathes).
+- `language` says the words' language (`ja`, `en`). `lyric` is the syllable, in
+  the language's own script: hiragana or katakana for `ja`, a syllable of the
+  word for `en`, with `hyphen: true` on a note whose next syllable is of the
+  same word. A note with `melisma: true` continues the previous syllable's vowel
+  and has no lyric of its own.
+- `breath: true` marks a phrase end after the note (the singer breathes), and
+  `inhale: true` an audible breath before the next one. `level` and `levelEnd`
+  scale the sung audio across the note (absent: 1).
 
 ## Relation to Lily#
 

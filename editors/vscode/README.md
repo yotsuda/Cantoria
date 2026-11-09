@@ -9,8 +9,9 @@ editor of its own.
 
 Open source, Apache-2.0: [github.com/yotsuda/Cantoria](https://github.com/yotsuda/Cantoria).
 Published for Windows x64, Linux x64 and macOS arm64 with the program bundled. NEUTRINO runs on
-Windows only; DiffSinger voices sing everywhere, on the CPU outside Windows. Other platforms can
-point `cantoria.program` at a build of their own.
+Windows only. DiffSinger voices are built to sing on all three, on the CPU outside Windows, but
+have been heard only on Windows so far. Other platforms can point `cantoria.program` at a build of
+their own.
 
 ## Setup
 
@@ -48,7 +49,7 @@ and **Cantoria: Check Setup** to see that all is well.
 
 ## Singing in Lily#
 
-The preview's Play sings every part a lyrics row sings, in time with the other parts. Write kana for
+Needs the Lily# extension 0.16.0 or later. The preview's Play sings every part a lyrics row sings, in time with the other parts. Write kana for
 a Japanese voice and syllables of English words for an English one. A lyrics row names who sings it:
 
 ```
