@@ -13,10 +13,11 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import {
-    CantilenaScore, DefaultVoices, ENGINES, EngineName, VOICEVOX_URL, VoiceEntry, VoiceGender, defaultVoiceFor, diffSingerEntriesIn, diffSingerVoicesIn, languageProblem, missingProgramNote, neutrinoFolderProblems, programCandidates,
-    resolveSinger, scoreProblems, splitVoiceId, voiceEntriesIn, voiceId, voicesFolderProblems, voicesIn, voicevoxEntriesFrom,
+    CantilenaScore, DefaultVoices, ENGINES, EngineName, VOICEVOX_URL, VoiceEntry, VoiceGender, defaultVoiceFor, diffSingerEntriesIn, diffSingerVoicesIn, languageProblem, missingProgramNote, needsVoicevox, neutrinoFolderProblems, voicevoxRunIn, programCandidates,
+    resolveSinger, scoreProblems, splitVoiceId, voiceEntriesIn, voiceId, voicesFolderProblems, voicesIn, 
 } from './core';
 import { Engine, EngineSetup, RenderedVoice } from './engine';
+import { VoicevoxServer } from './voicevox';
 
 /** What `status()` answers: whether a `sing` can succeed now, and why not. */
 export interface CantilenaStatus {
@@ -65,31 +66,24 @@ function neutrinoFolder(): string { return settings().get<string>('neutrinoFolde
 function voicesFolder(): string { return settings().get<string>('voicesFolder', '').trim(); }
 function vocoderFolder(): string { return settings().get<string>('vocoderFolder', '').trim(); }
 function voicevoxUrl(): string { return settings().get<string>('voicevoxUrl', VOICEVOX_URL).trim(); }
+function voicevoxFolder(): string { return settings().get<string>('voicevoxFolder', '').trim(); }
 
-/** The voices of the running VOICEVOX, as last asked: an engine that is a server has no folder to read. */
-let voicevoxVoices: VoiceEntry[] = [];
-let voicevoxAsking: Promise<void> | undefined;
-let voicevoxAskedAt = 0;
-
-/** Asks VOICEVOX what it sings, at most every two seconds; one that is not running has no voices. */
-function askVoicevox(): Promise<void> {
-    if (voicevoxAsking) { return voicevoxAsking; }
-    const url = voicevoxUrl();
-    if (!url) { voicevoxVoices = []; return Promise.resolve(); }
-    if (Date.now() - voicevoxAskedAt < 2000) { return Promise.resolve(); }
-    voicevoxAsking = (async () => {
-        try {
-            const answer = await fetch(`${url.replace(/\/+$/, '')}/singers`, { signal: AbortSignal.timeout(1500) });
-            voicevoxVoices = answer.ok ? voicevoxEntriesFrom(await answer.json()) : [];
-        } catch {
-            voicevoxVoices = [];
-        } finally {
-            voicevoxAskedAt = Date.now();
-            voicevoxAsking = undefined;
-        }
-    })();
-    return voicevoxAsking;
-}
+/** VOICEVOX: an engine that is a server has no folder to read, so its voices are asked for. */
+const voicevox = new VoicevoxServer(() => ({ url: voicevoxUrl(), folder: voicevoxFolder(), gpu: settings().get<boolean>('gpu', true) }), {
+    fetchJson: async (url, timeoutMs) => {
+        const answer = await fetch(url, { signal: AbortSignal.timeout(timeoutMs) });
+        if (!answer.ok) { throw new Error(`HTTP ${answer.status}`); }
+        return answer.json();
+    },
+    spawn: (program, args, cwd) => {
+        const child = cp.spawn(program, args, { cwd, windowsHide: true, stdio: 'ignore' });
+        return child;
+    },
+    exists: fs.existsSync,
+    log: line => output.appendLine(line),
+    now: Date.now,
+    sleep: ms => new Promise(resolve => setTimeout(resolve, ms)),
+});
 
 /** A voice as its engine, name and `engine/name`. */
 interface Voice { engine: string; name: string; id: string }
@@ -112,7 +106,7 @@ function voices(): VoiceEntry[] {
     return [
         ...(n ? voiceEntriesIn(n, listDirs, fs.existsSync, readTextOr, path.join) : []),
         ...(d ? diffSingerEntriesIn(d, listDirs, fs.existsSync, readTextOr, path.join) : []),
-        ...voicevoxVoices,
+        ...voicevox.voices,
     ];
 }
 
@@ -142,12 +136,12 @@ function setupNow(context: vscode.ExtensionContext): { setup?: EngineSetup; prob
     const n = neutrinoFolder(), d = voicesFolder();
     const problems: string[] = [];
     if (!prog) { problems.push(missingProgramNote(process.platform, process.arch, bundledBuilds(context))); }
-    if (!n && !d && voicevoxVoices.length === 0) { problems.push('no engine is set up: choose a NEUTRINO folder (Cantilena: Choose NEUTRINO Folder…) or a DiffSinger voices folder (Cantilena: Choose Voices Folder…), or start VOICEVOX'); }
+    if (!n && !d && voicevox.voices.length === 0 && !voicevoxFolder()) { problems.push('no engine is set up: choose a NEUTRINO folder (Cantilena: Choose NEUTRINO Folder…) or a DiffSinger voices folder (Cantilena: Choose Voices Folder…), or start VOICEVOX'); }
     problems.push(...neutrinoFolderProblems(n, fs.existsSync, path.join, process.platform));
     problems.push(...voicesFolderProblems(d, fs.existsSync));
     if (problems.length > 0) { return { problems, program: prog }; }
     return {
-        setup: { program: prog!, neutrinoFolder: n, voicesFolder: d, vocoderFolder: vocoderFolder(), gpu: settings().get<boolean>('gpu', true), threads: settings().get<number>('threads', 4), voicevoxUrl: voicevoxUrl() },
+        setup: { program: prog!, neutrinoFolder: n, voicesFolder: d, vocoderFolder: vocoderFolder(), gpu: settings().get<boolean>('gpu', true), threads: settings().get<number>('threads', 4) },
         problems, program: prog,
     };
 }
@@ -158,7 +152,7 @@ function engineFor(context: vscode.ExtensionContext): Engine {
     if (!setup) { throw new Error(problems.join('; ')); }
     if (engine && (engine.setup.program !== setup.program || engine.setup.neutrinoFolder !== setup.neutrinoFolder
         || engine.setup.voicesFolder !== setup.voicesFolder || engine.setup.vocoderFolder !== setup.vocoderFolder
-        || engine.setup.gpu !== setup.gpu || engine.setup.threads !== setup.threads || engine.setup.voicevoxUrl !== setup.voicevoxUrl)) {
+        || engine.setup.gpu !== setup.gpu || engine.setup.threads !== setup.threads)) {
         engine.dispose();
         engine = undefined;
     }
@@ -180,8 +174,8 @@ function voiceProblems(voice: Voice): string[] {
         return names.includes(voice.name) ? [] : [`the voice ${voice.name} is not under ${path.join(n, 'model')} (installed: ${names.join(', ') || 'none'})`];
     }
     if (voice.engine === 'voicevox') {
-        if (voicevoxVoices.some(v => v.id === voice.id)) { return []; }
-        return [voicevoxVoices.length === 0 ? `VOICEVOX is not answering at ${voicevoxUrl() || VOICEVOX_URL}: start VOICEVOX to sing with ${voice.id}` : `VOICEVOX has no voice ${voice.name} (there is: ${voicevoxVoices.map(v => v.name).join(', ')})`];
+        if (voicevox.voices.some(v => v.id === voice.id)) { return []; }
+        return [voicevox.voices.length === 0 ? `VOICEVOX is not answering at ${voicevoxUrl() || VOICEVOX_URL}: start VOICEVOX, or set its folder so that Cantilena can (Cantilena: Choose VOICEVOX Folder…), to sing with ${voice.id}` : `VOICEVOX has no voice ${voice.name} (there is: ${voicevox.voices.map(v => v.name).join(', ')})`];
     }
     if (fs.existsSync(path.join(voice.name, 'dsconfig.yaml'))) { return []; }   // a folder named outright
     const d = voicesFolder();
@@ -191,7 +185,7 @@ function voiceProblems(voice: Voice): string[] {
 }
 
 async function status(context: vscode.ExtensionContext): Promise<CantilenaStatus> {
-    await askVoicevox();
+    await voicevox.ask();
     const { setup, problems, program: prog } = setupNow(context);
     const voice = voiceSetting();
     if (setup) { problems.push(...voiceProblems(voice)); }
@@ -202,14 +196,14 @@ async function status(context: vscode.ExtensionContext): Promise<CantilenaStatus
 async function sing(context: vscode.ExtensionContext, score: CantilenaScore, options?: { voice?: string }): Promise<RenderedVoice & { cached: boolean }> {
     const problems = scoreProblems(score);
     if (problems.length > 0) { throw new Error(problems.join('; ')); }
-    await askVoicevox();
     const asked = (options?.voice ?? '').trim();
+    if (needsVoicevox(asked, defaultVoices(), voices().length - voicevox.voices.length, score.language ?? 'ja')) { await voicevox.ensure(); } else { await voicevox.ask(); }
     const voice = asked ? voiceOf(asked) : voiceSetting();
     const wrong = voiceProblems(voice);
     if (wrong.length > 0) { throw new Error(wrong.join('; ')); }
     const language = languageProblem(voices().find(v => v.id === voice.id), score.language);
     if (language) { throw new Error(language); }
-    const { key, rendered, cached } = engineFor(context).sing(score, voice.id);
+    const { key, rendered, cached } = engineFor(context).sing(score, voice.id, voice.id, voicevox.answering);
     const t0 = Date.now();
     const v = await rendered;
     if (!cached) { output.appendLine(`sung ${key.slice(0, 8)} in ${voice.id}: ${v.duration.toFixed(1)} s, ${Date.now() - t0} ms`); }
@@ -241,6 +235,12 @@ function chooseVoicesFolder(): Promise<void> {
         folder => `Cantilena: the DiffSinger voices are under ${folder}`);
 }
 
+function chooseVoicevoxFolder(): Promise<void> {
+    return chooseFolder('Cantilena: the VOICEVOX folder (holding vv-engine)', 'voicevoxFolder',
+        folder => voicevoxRunIn(folder, fs.existsSync, path.join) ? [] : [`no VOICEVOX engine under ${folder} (it holds vv-engine\\run.exe)`],
+        folder => `Cantilena: VOICEVOX is ${folder}`);
+}
+
 function chooseVocoderFolder(): Promise<void> {
     return chooseFolder('Cantilena: the vocoder folder (holding vocoder.yaml and its model)', 'vocoderFolder',
         folder => fs.existsSync(path.join(folder, 'vocoder.yaml')) ? [] : [`no vocoder.yaml in ${folder}`],
@@ -249,6 +249,7 @@ function chooseVocoderFolder(): Promise<void> {
 
 /** A default voice from a list: every voice but those that say they are the other gender. */
 async function chooseDefaultVoice(context: vscode.ExtensionContext, gender: VoiceGender): Promise<void> {
+    await voicevox.ensure();
     const s = await status(context);
     const all = voices();
     if (all.length === 0) {
@@ -294,6 +295,7 @@ export function activate(context: vscode.ExtensionContext): CantilenaApi {
         vscode.commands.registerCommand('cantilena.chooseNeutrinoFolder', () => chooseNeutrinoFolder()),
         vscode.commands.registerCommand('cantilena.chooseVoicesFolder', () => chooseVoicesFolder()),
         vscode.commands.registerCommand('cantilena.chooseVocoderFolder', () => chooseVocoderFolder()),
+        vscode.commands.registerCommand('cantilena.chooseVoicevoxFolder', () => chooseVoicevoxFolder()),
         vscode.commands.registerCommand('cantilena.chooseFemaleVoice', () => chooseDefaultVoice(context, 'female')),
         vscode.commands.registerCommand('cantilena.chooseMaleVoice', () => chooseDefaultVoice(context, 'male')),
         vscode.commands.registerCommand('cantilena.checkSetup', () => checkSetup(context)),
@@ -304,24 +306,30 @@ export function activate(context: vscode.ExtensionContext): CantilenaApi {
         }),
         // A changed engine setting lets the engine go; the next sing starts one for the new settings.
         vscode.workspace.onDidChangeConfiguration(e => {
-            if (['neutrinoFolder', 'voicesFolder', 'vocoderFolder', 'program', 'gpu', 'threads', 'voicevoxUrl'].some(s => e.affectsConfiguration('cantilena.' + s))) {
+            if (['neutrinoFolder', 'voicesFolder', 'vocoderFolder', 'program', 'gpu', 'threads'].some(s => e.affectsConfiguration('cantilena.' + s))) {
                 release();
             }
+            if (['voicevoxUrl', 'voicevoxFolder', 'gpu'].some(s => e.affectsConfiguration('cantilena.' + s))) { voicevox.changed(); }
         }),
         { dispose: release },
+        { dispose: () => voicevox.dispose() },
     );
     const version = String((context.extension.packageJSON as { version?: string }).version ?? '0');
     return Object.freeze<CantilenaApi>({
         version,
         apiVersion: 1,
         status: () => status(context),
-        voices: async () => { await askVoicevox(); return voices(); },
+        voices: async () => { await voicevox.ensure(); return voices(); },
         sing: (score, options) => sing(context, score, options),
         release,
-        resolveSinger: async (singer, options) => { await askVoicevox(); return resolveSinger(singer, voices(), defaultVoices(), options); },
+        resolveSinger: async (singer, options) => {
+            if (needsVoicevox(singer, defaultVoices(), voices().length - voicevox.voices.length, options?.language)) { await voicevox.ensure(); } else { await voicevox.ask(); }
+            return resolveSinger(singer, voices(), defaultVoices(), options);
+        },
     });
 }
 
 export function deactivate(): void {
     release();
+    voicevox.dispose();
 }

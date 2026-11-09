@@ -27,7 +27,7 @@ sealed class Engines
     /// <summary>A vocoder folder for DiffSinger voices that bundle none.</summary>
     public string? VocoderFolder { get; init; }
     /// <summary>Where the running VOICEVOX answers.</summary>
-    public string VoicevoxUrl { get; init; } = VoicevoxEngine.DefaultUrl;
+    public string VoicevoxUrl { get; set; } = VoicevoxEngine.DefaultUrl;
     /// <summary>NEUTRINO on its GPU (CUDA); false with <c>--cpu</c> / <c>--provider cpu</c>.</summary>
     public bool UseGpu => Provider != OnnxProvider.Cpu;
     /// <summary>Where a DiffSinger voice's models run (<c>--provider</c>; <c>--cpu</c> is <c>cpu</c>).</summary>

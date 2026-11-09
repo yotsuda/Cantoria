@@ -124,7 +124,7 @@ describe('the engine\'s wire', () => {
         assert.deepEqual(serveArgs('C:\\v', false, 0), ['serve', '--out-dir', 'C:\\v', '--threads', '1', '--cpu']);
         assert.deepEqual(serveArgs('C:\\v', true, 4, 'C:\\voices', ' '), ['serve', '--out-dir', 'C:\\v', '--threads', '4', '--voices-dir', 'C:\\voices']);
         assert.deepEqual(serveArgs('C:\\v', true, 4, '', 'C:\\voc'), ['serve', '--out-dir', 'C:\\v', '--threads', '4', '--vocoder-dir', 'C:\\voc']);
-        assert.deepEqual(serveArgs('C:\\v', true, 4, '', '', 'http://x:1'), ['serve', '--out-dir', 'C:\\v', '--threads', '4', '--voicevox-url', 'http://x:1']);
+        assert.equal(JSON.parse(requestLine('k', { notes: [] }, 'voicevox/x', 'o', 'http://x:1')).voicevoxUrl, 'http://x:1');
         assert.deepEqual(voicevoxEntriesFrom({ detail: 'no' }), [], 'not a list of singers');
         assert.deepEqual(voicevoxEntriesFrom([{ name: 'ず', styles: [{ name: 'ふつう', type: 'talk' }, { name: 'ノーマル', type: 'frame_decode' }] }]),
             [{ id: 'voicevox/ず-ノーマル', engine: 'voicevox', name: 'ず-ノーマル', label: 'ず (ノーマル)', language: 'ja', licence: 'Credit "VOICEVOX:ず" and follow the character\'s terms' }]);
@@ -241,7 +241,7 @@ describe('the manifest', () => {
             General: ['defaultFemaleVoice', 'defaultMaleVoice', 'gpu'],
             NEUTRINO: ['neutrinoFolder', 'threads'],
             DiffSinger: ['vocoderFolder', 'voicesFolder'],
-            VOICEVOX: ['voicevoxUrl'],
+            VOICEVOX: ['voicevoxFolder', 'voicevoxUrl'],
             Developer: ['program'],
         });
     });
@@ -262,8 +262,8 @@ describe('the manifest', () => {
         assert.match(props['cantilena.vocoderFolder'].markdownDescription, /command:cantilena\.chooseVocoderFolder/);
     });
 
-    it('contributes the seven commands and starts on nothing but them and the API', () => {
-        assert.deepEqual(commands.sort(), ['cantilena.checkSetup', 'cantilena.chooseFemaleVoice', 'cantilena.chooseMaleVoice', 'cantilena.chooseNeutrinoFolder', 'cantilena.chooseVocoderFolder', 'cantilena.chooseVoicesFolder', 'cantilena.forgetVoices']);
+    it('contributes the eight commands and starts on nothing but them and the API', () => {
+        assert.deepEqual(commands.sort(), ['cantilena.checkSetup', 'cantilena.chooseFemaleVoice', 'cantilena.chooseMaleVoice', 'cantilena.chooseNeutrinoFolder', 'cantilena.chooseVocoderFolder', 'cantilena.chooseVoicesFolder', 'cantilena.chooseVoicevoxFolder', 'cantilena.forgetVoices']);
         assert.deepEqual(manifest.activationEvents, []);
         assert.equal(manifest.main, './out/extension.js');
         assert.equal(manifest.license, 'Apache-2.0');

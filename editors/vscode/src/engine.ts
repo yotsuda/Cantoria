@@ -15,7 +15,7 @@ import { CantilenaScore, SHUTDOWN_LINE, parseLine, requestLine, serveArgs, voice
 export interface RenderedVoice { wav: string; duration: number; sampleRate: number }
 
 /** How the engine is to run: the program, NEUTRINO's folder (its environment), the DiffSinger voices and vocoder folders, the GPU, the threads. */
-export interface EngineSetup { program: string; neutrinoFolder: string; voicesFolder: string; vocoderFolder: string; gpu: boolean; threads: number; voicevoxUrl?: string }
+export interface EngineSetup { program: string; neutrinoFolder: string; voicesFolder: string; vocoderFolder: string; gpu: boolean; threads: number }
 
 /**
  * The resident engine: started on the first render, spoken to on stdin, answered on stdout one
@@ -41,7 +41,7 @@ export class Engine {
         fs.mkdirSync(this.outDir, { recursive: true });
         const env = { ...process.env };
         if (this.setup.neutrinoFolder) { env.CANTILENA_NEUTRINO_DIR = this.setup.neutrinoFolder; } else { delete env.CANTILENA_NEUTRINO_DIR; }
-        const args = serveArgs(this.outDir, this.setup.gpu, this.setup.threads, this.setup.voicesFolder, this.setup.vocoderFolder, this.setup.voicevoxUrl);
+        const args = serveArgs(this.outDir, this.setup.gpu, this.setup.threads, this.setup.voicesFolder, this.setup.vocoderFolder);
         // The bundled program is packed on Windows, where a VSIX carries no file modes: on Linux and
         // macOS it arrives without its execute bit, so it is given one before the first start.
         if (process.platform !== 'win32' && path.isAbsolute(this.setup.program)) {
@@ -87,25 +87,25 @@ export class Engine {
     /** The voice for `score` in `voice` (the engine's own name for it; `id` its `engine/name`, what
      *  the render is keyed by): at once when it was sung before (the file still there), else when
      *  the engine has sung it; a second ask while it is in flight joins the first. */
-    sing(score: CantilenaScore, voice: string, id = voice): { key: string; rendered: Promise<RenderedVoice>; cached: boolean } {
+    sing(score: CantilenaScore, voice: string, id = voice, voicevoxUrl?: string): { key: string; rendered: Promise<RenderedVoice>; cached: boolean } {
         const key = voiceKey(score, id);
         const output = path.join(this.outDir, `${key}.wav`);
         const hit = this.done.get(key);
         if (hit && fs.existsSync(hit.wav)) { return { key, rendered: Promise.resolve(hit), cached: true }; }
         let rendered = this.inFlight.get(key);
         if (!rendered) {
-            rendered = this.request(key, score, voice, output).then(v => { this.done.set(key, v); return v; });
+            rendered = this.request(key, score, voice, output, voicevoxUrl).then(v => { this.done.set(key, v); return v; });
             this.inFlight.set(key, rendered);
             rendered.finally(() => this.inFlight.delete(key)).catch(() => undefined);
         }
         return { key, rendered, cached: false };
     }
 
-    private request(key: string, score: CantilenaScore, voice: string, output: string): Promise<RenderedVoice> {
+    private request(key: string, score: CantilenaScore, voice: string, output: string, voicevoxUrl?: string): Promise<RenderedVoice> {
         const child = this.child ?? this.start();
         return new Promise<RenderedVoice>((resolve, reject) => {
             this.pending.set(key, { resolve, reject });
-            child.stdin!.write(requestLine(key, score, voice, output), e => {
+            child.stdin!.write(requestLine(key, score, voice, output, voicevoxUrl), e => {
                 if (e) { this.pending.delete(key); reject(e); }
             });
         });

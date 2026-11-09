@@ -99,6 +99,12 @@
         "title": "VOICEVOX",
         "order": 4,
         "properties": {
+            "cantilena.voicevoxFolder": {
+              "type": "string",
+              "default": "",
+              "scope": "machine-overridable",
+              "markdownDescription": "The folder of your VOICEVOX (holding `vv-engine\\run.exe`). Set: when a score or the list of voices needs a VOICEVOX voice and no VOICEVOX is running, Cantilena starts its engine on a port of its own and stops it when VS Code closes. A VOICEVOX you opened yourself is used and left alone. You use VOICEVOX under [its terms](https://voicevox.hiroshiba.jp/term/). Empty: Cantilena starts nothing, and only a VOICEVOX you have opened sings.\n\n**[Choose the folder…](command:cantilena.chooseVoicevoxFolder)**"
+            },
             "cantilena.voicevoxUrl": {
               "type": "string",
               "default": "http://127.0.0.1:50021",
@@ -145,6 +151,11 @@
         "command": "cantilena.chooseMaleVoice",
         "category": "Cantilena",
         "title": "Choose Default Male Voice…"
+      },
+      {
+        "command": "cantilena.chooseVoicevoxFolder",
+        "category": "Cantilena",
+        "title": "Choose VOICEVOX Folder…"
       },
       {
         "command": "cantilena.checkSetup",

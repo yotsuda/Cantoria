@@ -205,6 +205,24 @@ export function diffSingerEntriesIn(folder: string, listDirs: (dir: string) => s
 /** Where VOICEVOX answers unless the setting says otherwise. */
 export const VOICEVOX_URL = 'http://127.0.0.1:50021';
 
+/** The port of an engine Cantilena starts: not VOICEVOX's own, which the user's VOICEVOX opens on. */
+export const VOICEVOX_OWN_PORT = 50121;
+export const VOICEVOX_OWN_URL = `http://127.0.0.1:${VOICEVOX_OWN_PORT}`;
+
+/** The engine program under a VOICEVOX folder: an install's `vv-engine`, or the engine folder itself. */
+export function voicevoxRunIn(folder: string, exists: (p: string) => boolean, join: (...parts: string[]) => string): string | undefined {
+    return [join(folder, 'vv-engine', 'run.exe'), join(folder, 'run.exe'), join(folder, 'vv-engine', 'run'), join(folder, 'run')].find(exists);
+}
+
+/** Whether a score's `singer` calls for a VOICEVOX voice: it names one, or it names none and the
+ *  default voice is one, or nothing else is installed. No `language`: no words are being sung. */
+export function needsVoicevox(written: string, defaults: DefaultVoices, otherVoices: number, language: string | undefined): boolean {
+    const asked = written.trim();
+    if (asked.startsWith('voicevox/')) { return true; }
+    if (!language || asked.includes('/')) { return false; }
+    return otherVoices === 0 || [defaults.female, defaults.male].some(v => v.trim().startsWith('voicevox/'));
+}
+
 /** The singing styles of a running VOICEVOX (its `GET /singers`) as the API lists them. The credit
  *  VOICEVOX's terms ask of a published work is the voice's `licence`. */
 export function voicevoxEntriesFrom(singers: unknown): VoiceEntry[] {
@@ -271,20 +289,19 @@ export function parseLine(line: string): ServeAnswer | null {
 }
 
 /** One request of `cantilena serve`'s stdin. */
-export function requestLine(id: string, score: CantilenaScore, voice: string, output: string): string {
-    return JSON.stringify({ id, score, voice, output }) + '\n';
+export function requestLine(id: string, score: CantilenaScore, voice: string, output: string, voicevoxUrl?: string): string {
+    return JSON.stringify({ id, score, voice, output, voicevoxUrl }) + '\n';
 }
 
 /** The shutdown request. */
 export const SHUTDOWN_LINE = '{"command":"shutdown"}\n';
 
 /** The arguments of the resident engine: where the WAVs go, the GPU or not, the threads, the DiffSinger folders when set. */
-export function serveArgs(outDir: string, gpu: boolean, threads: number, voicesFolder = '', vocoderFolder = '', voicevoxUrl = ''): string[] {
+export function serveArgs(outDir: string, gpu: boolean, threads: number, voicesFolder = '', vocoderFolder = ''): string[] {
     const args = ['serve', '--out-dir', outDir, '--threads', String(Math.max(1, Math.floor(threads) || 1))];
     if (!gpu) { args.push('--cpu'); }
     if (voicesFolder.trim()) { args.push('--voices-dir', voicesFolder.trim()); }
     if (vocoderFolder.trim()) { args.push('--vocoder-dir', vocoderFolder.trim()); }
-    if (voicevoxUrl.trim()) { args.push('--voicevox-url', voicevoxUrl.trim()); }
     return args;
 }
 

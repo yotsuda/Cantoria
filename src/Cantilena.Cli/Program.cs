@@ -252,8 +252,8 @@ static async Task<int> Serve(string[] rest)
     }
     else if (engines.NeutrinoFolder is null && engines.VoicesFolder is null && engines.List().Count == 0)
     {
-        Console.Error.WriteLine("cantilena: no engine configured: give --neutrino-dir or --voices-dir (or the environment, or cantilena.json), or start VOICEVOX");
-        return 2;
+        // Not fatal: a request can say where a VOICEVOX started after this process answers.
+        Console.Error.WriteLine("cantilena: no engine configured yet: give --neutrino-dir or --voices-dir (or the environment, or cantilena.json), or start VOICEVOX");
     }
     var outDir = a.OutDir ?? Path.Combine(Path.GetTempPath(), "cantilena");
     Directory.CreateDirectory(outDir);
@@ -273,10 +273,11 @@ static async Task<int> Serve(string[] rest)
     ISinger SingerOf(string? name)
     {
         var (engine, voice) = Engines.Split(name ?? defaultVoice);
-        var key = engine + "/" + voice;
+        var id = engine + "/" + voice;
+        var key = engine == "voicevox" ? id + "@" + engines.VoicevoxUrl : id;
         if (!singers.TryGetValue(key, out var singer))
         {
-            singers[key] = singer = engines.Create(key);
+            singers[key] = singer = engines.Create(id);
         }
         return singer;
     }
@@ -319,6 +320,10 @@ static async Task<int> Serve(string[] rest)
                 if (bad.Count > 0)
                 {
                     throw new SingerException(string.Join("; ", bad));
+                }
+                if (request.VoicevoxUrl is { Length: > 0 } voicevoxUrl)
+                {
+                    engines.VoicevoxUrl = voicevoxUrl;
                 }
                 var singer = SingerOf(request.Voice);
                 var watch = Stopwatch.StartNew();
@@ -451,6 +456,8 @@ sealed class ServeRequest
     public string? ScoreFile { get; set; }
     /// <summary>The voice as <c>engine/name</c>; default the <c>--voice</c> option, else NEUTRINO's MERROW.</summary>
     public string? Voice { get; set; }
+    /// <summary>Where VOICEVOX answers now: the editor may have started it after this process began.</summary>
+    public string? VoicevoxUrl { get; set; }
     /// <summary>Where to write the WAV; default a file named after the id under the out dir.</summary>
     public string? Output { get; set; }
 }
