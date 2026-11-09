@@ -7,7 +7,7 @@ different engines can sing together in one score, even in one part. The extensio
 `cantoria` program, holds the settings and sings for other extensions through its API. It has no
 editor of its own.
 
-Open source, Apache-2.0: [github.com/yotsuda/cantoria](https://github.com/yotsuda/cantoria).
+Open source, Apache-2.0: [github.com/yotsuda/Cantoria](https://github.com/yotsuda/Cantoria).
 Published for Windows x64, Linux x64 and macOS arm64 with the program bundled. NEUTRINO runs on
 Windows only; DiffSinger voices sing everywhere, on the CPU outside Windows. Other platforms can
 point `cantoria.program` at a build of their own.

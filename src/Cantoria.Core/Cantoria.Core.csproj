@@ -15,7 +15,7 @@
     <Description>A singing engine for notation software: notes with lyrics in, a voice out.</Description>
     <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <RepositoryUrl>https://github.com/yotsuda/cantoria</RepositoryUrl>
+    <RepositoryUrl>https://github.com/yotsuda/Cantoria</RepositoryUrl>
     <IsPackable>true</IsPackable>
   </PropertyGroup>
 

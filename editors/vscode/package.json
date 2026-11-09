@@ -10,12 +10,12 @@
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "https://github.com/yotsuda/cantoria.git"
+    "url": "https://github.com/yotsuda/Cantoria.git"
   },
   "bugs": {
-    "url": "https://github.com/yotsuda/cantoria/issues"
+    "url": "https://github.com/yotsuda/Cantoria/issues"
   },
-  "homepage": "https://github.com/yotsuda/cantoria#readme",
+  "homepage": "https://github.com/yotsuda/Cantoria#readme",
   "engines": {
     "vscode": "^1.90.0"
   },
