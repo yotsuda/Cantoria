@@ -10,9 +10,12 @@ name: Release
 # proven before a version is spent: THE MARKETPLACE NEVER ACCEPTS A VERSION TWICE.
 #
 # One Windows job packs all three: pack-extension.ps1 cross-publishes, and the Windows program
-# needs the DirectML package. The three are published one after another, never in parallel: the
-# first publish of an extension creates it, and Lily#'s 0.4.0 lost five of eight parallel legs to
-# "The extension already exists."
+# needs the DirectML package. The three are published one after another, each only once the one
+# before it is listed (tools/publish-marketplace.ps1): Lily#'s 0.4.0 lost targets to parallel legs,
+# and Cantoria's 0.4.0, sent ten seconds apart, had two accepted and never listed.
+#
+# Run by hand with publish_targets (win32-x64,linux-x64) it publishes those targets of the current
+# version from its GitHub Release instead: the way to finish a partial release.
 #
 # Secret: VSCE_PAT, the same token as Lily#'s and Calamo's: a Marketplace -> Manage token of the
 # Microsoft account that owns the publisher `yotsuda`, organization "All accessible organizations".
@@ -27,12 +30,18 @@ on:
   push:
     tags: [ 'v*' ]
   workflow_dispatch:
+    inputs:
+      publish_targets:
+        description: 'Finish a partial release: targets to publish from the GitHub Release (win32-x64,linux-x64). Empty: test and pack only.'
+        required: false
+        default: ''
 
 permissions:
   contents: write   # create the GitHub Release + upload the VSIX
 
 jobs:
   vsix:
+    if: github.event.inputs.publish_targets == ''
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -107,21 +116,45 @@ jobs:
           files: out/extension/*.vsix
 
       - name: Publish to VS Code Marketplace
-        # Each packed VSIX as it is (its target is inside it), one at a time. No --pre-release: a
-        # pre-release version reaches only users who opted in, which would make "installable from
-        # the extension page" quietly false. "preview": true in package.json is the Beta label, a
-        # different thing. A target that fails does not stop the others, and the job fails at the
-        # end naming it; a version already published is refused by the Marketplace, so bump the
-        # version rather than retry.
+        # Each packed VSIX as it is (its target is inside it), one at a time, each only once the one
+        # before it is listed. No --pre-release: a pre-release version reaches only users who opted
+        # in, which would make "installable from the extension page" quietly false. "preview": true
+        # in package.json is the Beta label, a different thing.
         if: startsWith(github.ref, 'refs/tags/')
         env:
           VSCE_PAT: ${{ secrets.VSCE_PAT }}
+        run: ./tools/publish-marketplace.ps1 -Vsix (Get-ChildItem out/extension/*.vsix).FullName
+
+  finish:
+    # By hand, with publish_targets: the targets a partial release left out, the very files its
+    # GitHub Release holds.
+    if: github.event.inputs.publish_targets != ''
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Publish rights
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
         run: |
-          $failed = @()
-          foreach ($vsix in Get-ChildItem out/extension/*.vsix) {
-            "publishing $($vsix.Name)"
-            npx --yes @vscode/vsce publish --packagePath $vsix.FullName
-            if ($LASTEXITCODE -ne 0) { $failed += $vsix.Name }
+          $publisher = (Get-Content editors/vscode/package.json -Raw | ConvertFrom-Json).publisher
+          npx --yes @vscode/vsce verify-pat $publisher
+          if ($LASTEXITCODE -ne 0) { throw "verify-pat failed for '$publisher': nothing was published" }
+
+      - name: Publish the targets from the Release
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+          GH_TOKEN: ${{ github.token }}
+          PUBLISH_TARGETS: ${{ github.event.inputs.publish_targets }}
+        run: |
+          $version = (Get-Content editors/vscode/package.json -Raw | ConvertFrom-Json).version
+          $files = foreach ($target in $env:PUBLISH_TARGETS -split '[,\s]+' | Where-Object { $_ }) {
+            $name = "cantoria-$target-$version.vsix"
+            gh release download "v$version" --pattern $name --dir release-vsix
+            if ($LASTEXITCODE -ne 0) { throw "no $name in the release v$version" }
+            "release-vsix/$name"
           }
-          if ($failed) { throw "not published: $($failed -join ', ')" }
-          $global:LASTEXITCODE = 0
+          ./tools/publish-marketplace.ps1 -Vsix $files
