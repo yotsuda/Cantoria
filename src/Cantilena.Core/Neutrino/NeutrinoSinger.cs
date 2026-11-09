@@ -91,6 +91,23 @@ public sealed class NeutrinoSinger : ISinger, IDisposable
                 }
                 args.Add("-t");
                 var timeout = _rendered ? _options.RenderTimeout : _options.FirstRenderTimeout;
+
+                // A join of like phonemes (ん after ん): the timing alone first, corrected, and
+                // the rest from it (NeutrinoTiming).
+                string full = await File.ReadAllTextAsync(Abs(".full.lab"), ct).ConfigureAwait(false);
+                if (NeutrinoTiming.HasRepeats(full))
+                {
+                    var timing = await Run("neutrino_client.exe", [.. args, "--skip-f0", "--skip-melspec", "--skip-wav"], timeout, ct).ConfigureAwait(false);
+                    log.Append(timing.Output);
+                    if (timing.ExitCode != 0 || !File.Exists(Abs(".timing.lab")))
+                    {
+                        throw new SingerException($"NEUTRINO did not time the score (neutrino_client exit {timing.ExitCode}):\n{timing.Output.Trim()}");
+                    }
+                    string predicted = await File.ReadAllTextAsync(Abs(".timing.lab"), ct).ConfigureAwait(false);
+                    await File.WriteAllTextAsync(Abs(".timing.lab"), NeutrinoTiming.AlignRepeats(full, predicted), new UTF8Encoding(false), ct).ConfigureAwait(false);
+                    args.Add("--skip-timing");
+                }
+
                 var render = await Run("neutrino_client.exe", args, timeout, ct).ConfigureAwait(false);
                 log.Append(render.Output);
                 if (render.ExitCode != 0 || !File.Exists(Abs(".wav")))
