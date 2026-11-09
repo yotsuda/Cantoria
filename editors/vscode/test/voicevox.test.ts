@@ -1,11 +1,13 @@
 import { strict as assert } from 'node:assert';
+import * as path from 'node:path';
 import { describe, it } from 'node:test';
 import { VOICEVOX_OWN_URL, needsVoicevox, voicevoxRunIn } from '../src/core';
 import { StartedEngine, VoicevoxDeps, VoicevoxServer } from '../src/voicevox';
 
 const SINGERS = [{ name: 'ず', styles: [{ name: 'ノーマル', type: 'frame_decode' }] }];
 const USER_URL = 'http://127.0.0.1:50021';
-const RUN = 'C:\\V\\vv-engine\\run.exe';
+// (joined as the server joins it, so that the fake machine finds the engine on every platform CI runs on)
+const RUN = path.join('C:\\V', 'vv-engine', 'run.exe');
 
 /** A machine: which URLs answer, what is started, and a clock that runs on sleep. */
 function machine(options: { answering?: string[]; startsAnswering?: (args: string[]) => boolean; run?: boolean } = {}) {
