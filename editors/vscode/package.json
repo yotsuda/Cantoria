@@ -1,6 +1,6 @@
 {
-  "name": "cantilena",
-  "displayName": "Cantilena Singing Voice",
+  "name": "cantoria",
+  "displayName": "Cantoria Singing Voice",
   "description": "Sings the lyrics of a score for notation extensions such as Lily#: notes with syllables in, a voice out — through your own installation of NEUTRINO, or DiffSinger voices in the OpenUtau format. Open source (Apache-2.0); runs locally on Windows.",
   "version": "0.4.0",
   "publisher": "yotsuda",
@@ -8,12 +8,12 @@
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "https://github.com/yotsuda/cantilena.git"
+    "url": "https://github.com/yotsuda/cantoria.git"
   },
   "bugs": {
-    "url": "https://github.com/yotsuda/cantilena/issues"
+    "url": "https://github.com/yotsuda/cantoria/issues"
   },
-  "homepage": "https://github.com/yotsuda/cantilena#readme",
+  "homepage": "https://github.com/yotsuda/cantoria#readme",
   "engines": {
     "vscode": "^1.90.0"
   },
@@ -37,19 +37,19 @@
         "title": "General",
         "order": 1,
         "properties": {
-            "cantilena.defaultFemaleVoice": {
+            "cantoria.defaultFemaleVoice": {
               "type": "string",
               "default": "",
               "scope": "machine-overridable",
-              "markdownDescription": "The voice that sings a female part when the score names no voice, as `engine/name` (`neutrino/MERROW`, `diffsinger/TIGER`). Empty: the first installed voice that says it is female and sings the words' language.\n\n**[Choose a voice…](command:cantilena.chooseFemaleVoice)**"
+              "markdownDescription": "The voice that sings a female part when the score names no voice, as `engine/name` (`neutrino/MERROW`, `diffsinger/TIGER`). Empty: the first installed voice that says it is female and sings the words' language.\n\n**[Choose a voice…](command:cantoria.chooseFemaleVoice)**"
             },
-            "cantilena.defaultMaleVoice": {
+            "cantoria.defaultMaleVoice": {
               "type": "string",
               "default": "",
               "scope": "machine-overridable",
-              "markdownDescription": "The voice that sings a male part when the score names no voice, as `engine/name`. Empty: the first installed voice that says it is male and sings the words' language.\n\n**[Choose a voice…](command:cantilena.chooseMaleVoice)**"
+              "markdownDescription": "The voice that sings a male part when the score names no voice, as `engine/name`. Empty: the first installed voice that says it is male and sings the words' language.\n\n**[Choose a voice…](command:cantoria.chooseMaleVoice)**"
             },
-            "cantilena.gpu": {
+            "cantoria.gpu": {
               "type": "boolean",
               "default": true,
               "scope": "machine-overridable",
@@ -61,17 +61,17 @@
         "title": "DiffSinger",
         "order": 2,
         "properties": {
-            "cantilena.voicesFolder": {
+            "cantoria.voicesFolder": {
               "type": "string",
               "default": "",
               "scope": "machine-overridable",
-              "markdownDescription": "The folder whose subfolders are DiffSinger voices in the OpenUtau format (each holding a `dsconfig.yaml`, as OpenUtau installs them). Each voice is its author's work under its author's terms; none is bundled. Empty: no DiffSinger voice can be sung.\n\n**[Choose the folder…](command:cantilena.chooseVoicesFolder)**"
+              "markdownDescription": "The folder whose subfolders are DiffSinger voices in the OpenUtau format (each holding a `dsconfig.yaml`, as OpenUtau installs them). Each voice is its author's work under its author's terms; none is bundled. Empty: no DiffSinger voice can be sung.\n\n**[Choose the folder…](command:cantoria.chooseVoicesFolder)**"
             },
-            "cantilena.vocoderFolder": {
+            "cantoria.vocoderFolder": {
               "type": "string",
               "default": "",
               "scope": "machine-overridable",
-              "markdownDescription": "A vocoder folder (holding `vocoder.yaml` and its model) for DiffSinger voices that bundle none. Most voices bundle their own; leave this empty then.\n\n**[Choose the folder…](command:cantilena.chooseVocoderFolder)**"
+              "markdownDescription": "A vocoder folder (holding `vocoder.yaml` and its model) for DiffSinger voices that bundle none. Most voices bundle their own; leave this empty then.\n\n**[Choose the folder…](command:cantoria.chooseVocoderFolder)**"
             }
         }
       },
@@ -79,13 +79,13 @@
         "title": "NEUTRINO",
         "order": 3,
         "properties": {
-            "cantilena.neutrinoFolder": {
+            "cantoria.neutrinoFolder": {
               "type": "string",
               "default": "",
               "scope": "machine-overridable",
-              "markdownDescription": "The folder of your NEUTRINO installation (Tau, v3.2 or later): the one holding `bin\\`, `model\\` and `settings\\`. NEUTRINO is not bundled — it is free software of STUDIO NEUTRINO under its own terms, from [studio-neutrino.com](https://studio-neutrino.com/). Empty: no NEUTRINO voice can be sung (a DiffSinger voices folder is the other engine).\n\n**[Choose the folder…](command:cantilena.chooseNeutrinoFolder)**"
+              "markdownDescription": "The folder of your NEUTRINO installation (Tau, v3.2 or later): the one holding `bin\\`, `model\\` and `settings\\`. NEUTRINO is not bundled — it is free software of STUDIO NEUTRINO under its own terms, from [studio-neutrino.com](https://studio-neutrino.com/). Empty: no NEUTRINO voice can be sung (a DiffSinger voices folder is the other engine).\n\n**[Choose the folder…](command:cantoria.chooseNeutrinoFolder)**"
             },
-            "cantilena.threads": {
+            "cantoria.threads": {
               "type": "number",
               "default": 4,
               "minimum": 1,
@@ -99,13 +99,13 @@
         "title": "VOICEVOX",
         "order": 4,
         "properties": {
-            "cantilena.voicevoxFolder": {
+            "cantoria.voicevoxFolder": {
               "type": "string",
               "default": "",
               "scope": "machine-overridable",
-              "markdownDescription": "The folder of your VOICEVOX (holding `vv-engine\\run.exe`). Set: when a score or the list of voices needs a VOICEVOX voice and no VOICEVOX is running, Cantilena starts its engine on a port of its own and stops it when VS Code closes. A VOICEVOX you opened yourself is used and left alone. You use VOICEVOX under [its terms](https://voicevox.hiroshiba.jp/term/). Empty: Cantilena starts nothing, and only a VOICEVOX you have opened sings.\n\n**[Choose the folder…](command:cantilena.chooseVoicevoxFolder)**"
+              "markdownDescription": "The folder of your VOICEVOX (holding `vv-engine\\run.exe`). Set: when a score or the list of voices needs a VOICEVOX voice and no VOICEVOX is running, Cantoria starts its engine on a port of its own and stops it when VS Code closes. A VOICEVOX you opened yourself is used and left alone. You use VOICEVOX under [its terms](https://voicevox.hiroshiba.jp/term/). Empty: Cantoria starts nothing, and only a VOICEVOX you have opened sings.\n\n**[Choose the folder…](command:cantoria.chooseVoicevoxFolder)**"
             },
-            "cantilena.voicevoxUrl": {
+            "cantoria.voicevoxUrl": {
               "type": "string",
               "default": "http://127.0.0.1:50021",
               "scope": "machine-overridable",
@@ -117,54 +117,54 @@
         "title": "Developer",
         "order": 5,
         "properties": {
-            "cantilena.program": {
+            "cantoria.program": {
               "type": "string",
               "default": "",
               "scope": "machine-overridable",
-              "markdownDescription": "For developers: the `cantilena` program to run instead of the one bundled with this extension (a build from the repository)."
+              "markdownDescription": "For developers: the `cantoria` program to run instead of the one bundled with this extension (a build from the repository)."
             }
         }
       }
     ],
     "commands": [
       {
-        "command": "cantilena.chooseNeutrinoFolder",
-        "category": "Cantilena",
+        "command": "cantoria.chooseNeutrinoFolder",
+        "category": "Cantoria",
         "title": "Choose NEUTRINO Folder…"
       },
       {
-        "command": "cantilena.chooseVoicesFolder",
-        "category": "Cantilena",
+        "command": "cantoria.chooseVoicesFolder",
+        "category": "Cantoria",
         "title": "Choose Voices Folder… (DiffSinger)"
       },
       {
-        "command": "cantilena.chooseVocoderFolder",
-        "category": "Cantilena",
+        "command": "cantoria.chooseVocoderFolder",
+        "category": "Cantoria",
         "title": "Choose Vocoder Folder… (DiffSinger)"
       },
       {
-        "command": "cantilena.chooseFemaleVoice",
-        "category": "Cantilena",
+        "command": "cantoria.chooseFemaleVoice",
+        "category": "Cantoria",
         "title": "Choose Default Female Voice…"
       },
       {
-        "command": "cantilena.chooseMaleVoice",
-        "category": "Cantilena",
+        "command": "cantoria.chooseMaleVoice",
+        "category": "Cantoria",
         "title": "Choose Default Male Voice…"
       },
       {
-        "command": "cantilena.chooseVoicevoxFolder",
-        "category": "Cantilena",
+        "command": "cantoria.chooseVoicevoxFolder",
+        "category": "Cantoria",
         "title": "Choose VOICEVOX Folder…"
       },
       {
-        "command": "cantilena.checkSetup",
-        "category": "Cantilena",
+        "command": "cantoria.checkSetup",
+        "category": "Cantoria",
         "title": "Check Setup"
       },
       {
-        "command": "cantilena.forgetVoices",
-        "category": "Cantilena",
+        "command": "cantoria.forgetVoices",
+        "category": "Cantoria",
         "title": "Forget Rendered Voices"
       }
     ]

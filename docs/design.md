@@ -1,9 +1,9 @@
-# Cantilena — design
+# Cantoria — design
 
 ## 1. Purpose
 
 A notation program plays its score through a sound font; the lyrics stay
-silent. Cantilena takes the notes a part sings, with their syllables, and
+silent. Cantoria takes the notes a part sings, with their syllables, and
 returns the voice. It is a library and a CLI, not an editor: no piano roll,
 no tuning UI. Tuning (pitch curves, timing) is out of scope until a caller
 needs it.
@@ -23,7 +23,7 @@ public sealed record SungAudio(float[] Samples, int SampleRate);   // mono, −1
 melisma flag, breath flag. Decisions:
 
 - **Seconds, not ticks.** Every caller already knows its tempo map; making
-  Cantilena understand tempo, meter, repeats and fermatas would copy the
+  Cantoria understand tempo, meter, repeats and fermatas would copy the
   caller's hardest code. A backend that needs a tempo (NEUTRINO's MusicXML)
   gets a constant one and absolute durations, which is lossless.
 - **Syllable, not phonemes.** Phonemization is language- and voice-specific
@@ -42,7 +42,7 @@ melisma flag, breath flag. Decisions:
 
 ## 3. Pipeline
 
-Every modern singing synthesizer is these four stages; Cantilena's backends
+Every modern singing synthesizer is these four stages; Cantoria's backends
 are the two ways of running them.
 
 1. **Phonemize**: syllables → phonemes (`こん` → `k o N`).
@@ -70,19 +70,19 @@ it by hand (Lily# session 1124, 2026-11-08):
   model\<VOICE>\ -n <threads> [-m] -t` for one render. Control commands:
   `neutrino_client.exe --owner-pid <pid> status|help|shutdown`.
 - Cold start ~45 s (model load, GPU); then **~0.5 s for a 4.5 s phrase** on an
-  RTX 5070 Ti. Cantilena therefore keeps the server alive for the process's
+  RTX 5070 Ti. Cantoria therefore keeps the server alive for the process's
   lifetime and shuts it down on dispose.
 - The command lines are **configuration**, with these as defaults: NEUTRINO
   has changed its layout between versions (`Run.bat` → server/client) and
   will again.
-- Nothing of NEUTRINO is redistributed. Cantilena only needs the folder.
+- Nothing of NEUTRINO is redistributed. Cantoria only needs the folder.
 
 ### 3.2 `diffsinger` backend (second; sings since 2026-11-08)
 
 In-process inference of DiffSinger voices in the OpenUtau format through
 `Microsoft.ML.OnnxRuntime`, following OpenUtau's `OpenUtau.Core/DiffSinger/`
-(MIT, written anew in `src/Cantilena.Core/DiffSinger/`). The voice is a folder
-the user installs (as OpenUtau installs it); Cantilena reads it, never bundles it:
+(MIT, written anew in `src/Cantoria.Core/DiffSinger/`). The voice is a folder
+the user installs (as OpenUtau installs it); Cantoria reads it, never bundles it:
 
 - `DiffSingerVoice`: the root `dsconfig.yaml` (acoustic model, phoneme list,
   speakers, embeds and mel settings), the modules `dsdur/`, `dspitch/`,
@@ -114,9 +114,9 @@ machine with a DirectX 12 device and one without: `OnnxProviders.Create` appends
 DirectML provider (sequential execution, no memory pattern — what the provider asks),
 and where that fails (no entry point in a CPU build, no device) or the first session
 cannot be created, the voice falls back to the CPU and says why
-(`DiffSingerVoice.ProviderNote`; `cantilena sing` prints "on DirectML" / "on the
+(`DiffSingerVoice.ProviderNote`; `cantoria sing` prints "on DirectML" / "on the
 CPU (…)", `serve` answers `provider`). The CLI's `--cpu` (the extension's
-`cantilena.gpu` off) is `Cpu`. CUDA and CoreML are not wired: CUDA needs the
+`cantoria.gpu` off) is `Cpu`. CUDA and CoreML are not wired: CUDA needs the
 user's CUDA and cuDNN and a package of hundreds of megabytes; CoreML comes in the
 standard package on macOS and can be appended the same way when a macOS build
 exists. On the CPU a 7 s phrase renders in 4–18 s at 10–20 steps; on DirectML
@@ -133,19 +133,19 @@ NEUTRINO does, and the GPU provider is worth its separate package.
 ## 4. CLI
 
 ```
-cantilena sing score.json -o out.wav --voice neutrino/MERROW --neutrino-dir C:\NEUTRINO
-cantilena sing score.json -o out.wav --voice diffsinger/TIGER --voices-dir C:\voices
-cantilena sing score.json -o out.wav --voice C:\voices\TIGER        # a path holding dsconfig.yaml
-cantilena voices [--neutrino-dir …] [--voices-dir …]                 # what is installed, as engine/name
-cantilena providers                                                  # where DiffSinger models can run here (CPU, DirectML, CoreML; what auto picks)
-cantilena serve [the same]                                           # a resident singer for an editor (below)
-cantilena --version
+cantoria sing score.json -o out.wav --voice neutrino/MERROW --neutrino-dir C:\NEUTRINO
+cantoria sing score.json -o out.wav --voice diffsinger/TIGER --voices-dir C:\voices
+cantoria sing score.json -o out.wav --voice C:\voices\TIGER        # a path holding dsconfig.yaml
+cantoria voices [--neutrino-dir …] [--voices-dir …]                 # what is installed, as engine/name
+cantoria providers                                                  # where DiffSinger models can run here (CPU, DirectML, CoreML; what auto picks)
+cantoria serve [the same]                                           # a resident singer for an editor (below)
+cantoria --version
 ```
 
 A voice is `engine/name`; a bare name is NEUTRINO's. The folders come from the
-options, else the environment (`CANTILENA_NEUTRINO_DIR`, `CANTILENA_VOICES_DIR`,
-`CANTILENA_VOCODER_DIR`), else `cantilena.json` in the user's config folder
-(`%APPDATA%\cantilena` on Windows, `~/.config/cantilena` elsewhere: `neutrino.folder`,
+options, else the environment (`CANTORIA_NEUTRINO_DIR`, `CANTORIA_VOICES_DIR`,
+`CANTORIA_VOCODER_DIR`), else `cantoria.json` in the user's config folder
+(`%APPDATA%\cantoria` on Windows, `~/.config/cantoria` elsewhere: `neutrino.folder`,
 `diffsinger.voices`, `diffsinger.vocoder`). `--provider auto|cpu|directml|coreml` picks where
 a DiffSinger voice's models run (§3.2; `--cpu` is `cpu` for every engine). NEUTRINO runs on
 Windows only. Exit codes: 0 sung, 1 the backend failed (its message on stderr), 2 bad
@@ -155,7 +155,7 @@ arguments, score or settings.
 
 An editor that renders a voice on every Play cannot pay the engine's warm-up
 each time (NEUTRINO's server binds to the process that started it, and a cold
-start is seconds to a minute), so `cantilena serve` keeps the engine for the
+start is seconds to a minute), so `cantoria serve` keeps the engine for the
 life of one process and talks **JSON lines** on stdin/stdout, UTF-8 both ways:
 
 ```
@@ -169,7 +169,7 @@ life of one process and talks **JSON lines** on stdin/stdout, UTF-8 both ways:
 
 - `score`, `voice` (an `engine/name`; default the `--voice` option, else
   `neutrino/MERROW`) and `output` (default `<out-dir>\<id>.wav`, `--out-dir`
-  default `%TEMP%\cantilena`) are optional; `score` or `scoreFile` is required.
+  default `%TEMP%\cantoria`) are optional; `score` or `scoreFile` is required.
   An `id` is echoed; a request without one gets its ordinal. The answer names
   the `voice` that sang. `{"command":"voices"}` answers `{"voices":[…]}`.
 - Requests are answered **in order, one at a time**; the caller may pipeline
@@ -181,12 +181,12 @@ life of one process and talks **JSON lines** on stdin/stdout, UTF-8 both ways:
 - Measured 2026-11-08 (RTX 5070 Ti, the 8 s example): first request 3.8 s,
   the next 0.4 s.
 
-### 4.2 The VS Code extension (`editors/vscode`, `yotsuda.cantilena`)
+### 4.2 The VS Code extension (`editors/vscode`, `yotsuda.cantoria`)
 
 The engine's home for editors (the owner's decision 2026-11-08, the shape the Lily#
-OMR reader took): it carries the `cantilena` program (under `bin/<rid>/`: one VSIX per
-platform target — win-x64, linux-x64, osx-arm64 — since 0.4.0, roadmap B5), holds the settings an engine needs — `cantilena.neutrinoFolder`,
-`cantilena.defaultFemaleVoice`, `cantilena.defaultMaleVoice`, `cantilena.gpu`, `cantilena.threads`, and `cantilena.program` for a
+OMR reader took): it carries the `cantoria` program (under `bin/<rid>/`: one VSIX per
+platform target — win-x64, linux-x64, osx-arm64 — since 0.4.0, roadmap B5), holds the settings an engine needs — `cantoria.neutrinoFolder`,
+`cantoria.defaultFemaleVoice`, `cantoria.defaultMaleVoice`, `cantoria.gpu`, `cantoria.threads`, and `cantoria.program` for a
 developer's build — with pickers (**Choose NEUTRINO Folder…**, **Choose Default Female Voice…**, **Choose Default Male Voice…**) and a
 **Check Setup**, and sings for other extensions through the API its `activate` returns:
 
@@ -226,7 +226,7 @@ nothing is sung in CI.
    follow) into the JSON score: seconds from its own tempo map, the syllable
    each note carries, `melisma` where the lyric extends, `breath` at a breath
    mark or a long rest.
-2. It keeps one `cantilena serve` child (§4.1) and sends each voice's score
+2. It keeps one `cantoria serve` child (§4.1) and sends each voice's score
    with a cache key over the score's bytes, the voice and the speed, keeps the
    WAV, and plays it alongside its sound-font synth at the same clock; muting
    the part mutes the voice; exports mix the WAV in. (Lily#'s side of this is
@@ -242,11 +242,11 @@ expression hints, more engines, platform builds, a downloadable first voice — 
 
 ## 7. Licensing boundaries
 
-- Cantilena: Apache-2.0. May include MIT code (OpenUtau) with notices; may
+- Cantoria: Apache-2.0. May include MIT code (OpenUtau) with notices; may
   reference Apache/MIT packages.
 - Must **not** depend on Lily# (GPL-3.0): the dependency runs one way.
 - Must **not** include any voice, model, NEUTRINO file or dataset. Public
   singing datasets are mostly research-only; training a voice for
   distribution needs recordings made for it with the singer's consent.
-- NEUTRINO's agreement forbids its use in ML voice conversion; Cantilena
+- NEUTRINO's agreement forbids its use in ML voice conversion; Cantoria
   synthesizes from scores only.

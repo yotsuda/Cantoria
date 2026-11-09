@@ -1,7 +1,7 @@
 // Copyright 2026 Yoshifumi Tsuda
 // Licensed under the Apache License, Version 2.0. See LICENSE in the repository root.
 
-// The engine as a process: one resident `cantilena serve`, spoken to in JSON lines, and the
+// The engine as a process: one resident `cantoria serve`, spoken to in JSON lines, and the
 // voices it rendered, kept by their key under the extension's storage so a phrase is sung once
 // per machine. No vscode here: the settings and the commands are extension.ts's.
 
@@ -9,7 +9,7 @@ import * as cp from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as readline from 'readline';
-import { CantilenaScore, SHUTDOWN_LINE, parseLine, requestLine, serveArgs, voiceKey } from './core';
+import { CantoriaScore, SHUTDOWN_LINE, parseLine, requestLine, serveArgs, voiceKey } from './core';
 
 /** A voice the engine rendered: the WAV's path, its length, its rate. */
 export interface RenderedVoice { wav: string; duration: number; sampleRate: number }
@@ -40,7 +40,7 @@ export class Engine {
     private start(): cp.ChildProcess {
         fs.mkdirSync(this.outDir, { recursive: true });
         const env = { ...process.env };
-        if (this.setup.neutrinoFolder) { env.CANTILENA_NEUTRINO_DIR = this.setup.neutrinoFolder; } else { delete env.CANTILENA_NEUTRINO_DIR; }
+        if (this.setup.neutrinoFolder) { env.CANTORIA_NEUTRINO_DIR = this.setup.neutrinoFolder; } else { delete env.CANTORIA_NEUTRINO_DIR; }
         const args = serveArgs(this.outDir, this.setup.gpu, this.setup.threads, this.setup.voicesFolder, this.setup.vocoderFolder);
         // The bundled program is packed on Windows, where a VSIX carries no file modes: on Linux and
         // macOS it arrives without its execute bit, so it is given one before the first start.
@@ -87,7 +87,7 @@ export class Engine {
     /** The voice for `score` in `voice` (the engine's own name for it; `id` its `engine/name`, what
      *  the render is keyed by): at once when it was sung before (the file still there), else when
      *  the engine has sung it; a second ask while it is in flight joins the first. */
-    sing(score: CantilenaScore, voice: string, id = voice, voicevoxUrl?: string): { key: string; rendered: Promise<RenderedVoice>; cached: boolean } {
+    sing(score: CantoriaScore, voice: string, id = voice, voicevoxUrl?: string): { key: string; rendered: Promise<RenderedVoice>; cached: boolean } {
         const key = voiceKey(score, id);
         const output = path.join(this.outDir, `${key}.wav`);
         const hit = this.done.get(key);
@@ -101,7 +101,7 @@ export class Engine {
         return { key, rendered, cached: false };
     }
 
-    private request(key: string, score: CantilenaScore, voice: string, output: string, voicevoxUrl?: string): Promise<RenderedVoice> {
+    private request(key: string, score: CantoriaScore, voice: string, output: string, voicevoxUrl?: string): Promise<RenderedVoice> {
         const child = this.child ?? this.start();
         return new Promise<RenderedVoice>((resolve, reject) => {
             this.pending.set(key, { resolve, reject });

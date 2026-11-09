@@ -114,7 +114,7 @@ describe('the engine\'s wire', () => {
         assert.deepEqual(parseLine('{"ready":true,"backend":"neutrino","voices":["MERROW"],"outDir":"x"}'), { ready: true, backend: 'neutrino', voices: ['MERROW'], outDir: 'x' });
         assert.deepEqual(parseLine('{"id":"k","wav":"C:\\\\v\\\\k.wav","duration":8,"sampleRate":48000,"seconds":0.4}'), { id: 'k', wav: 'C:\\v\\k.wav', duration: 8, sampleRate: 48000, seconds: 0.4 });
         assert.deepEqual(parseLine('{"id":"k","error":"no lyric"}'), { id: 'k', error: 'no lyric' });
-        assert.equal(parseLine('cantilena: serving neutrino from …'), null);
+        assert.equal(parseLine('cantoria: serving neutrino from …'), null);
         assert.equal(parseLine('{broken'), null);
     });
 
@@ -149,17 +149,17 @@ describe('where the program and the voices are', () => {
         assert.equal(vsixTarget('osx-arm64'), 'darwin-arm64');
         assert.equal(vsixTarget('linux-x64'), 'linux-x64');
         assert.equal(missingProgramNote('win32', 'x64', ['osx-arm64']),
-            'the cantilena program was not found: this machine is win32-x64 (win-x64), this VSIX bundles osx-arm64 — it is the package for another platform; install cantilena-win32-x64-<version>.vsix (developers set cantilena.program)');
+            'the cantoria program was not found: this machine is win32-x64 (win-x64), this VSIX bundles osx-arm64 — it is the package for another platform; install cantoria-win32-x64-<version>.vsix (developers set cantoria.program)');
         assert.equal(missingProgramNote('linux', 'x64', []),
-            'the cantilena program was not found: this machine is linux-x64 (linux-x64), this VSIX bundles no program — install the linux-x64 package (developers set cantilena.program)');
+            'the cantoria program was not found: this machine is linux-x64 (linux-x64), this VSIX bundles no program — install the linux-x64 package (developers set cantoria.program)');
         assert.match(missingProgramNote('freebsd', 'x64', ['win-x64']), /which no bundled build is made for/);
     });
 
     it('looks for the program in the setting, the bundle, then the PATH', () => {
-        assert.deepEqual(programCandidates('win32', 'x64', 'C:\\ext', 'C:\\dev\\cantilena.exe', join),
-            ['C:\\dev\\cantilena.exe', 'C:\\ext\\bin\\win-x64\\cantilena.exe', 'cantilena.exe']);
+        assert.deepEqual(programCandidates('win32', 'x64', 'C:\\ext', 'C:\\dev\\cantoria.exe', join),
+            ['C:\\dev\\cantoria.exe', 'C:\\ext\\bin\\win-x64\\cantoria.exe', 'cantoria.exe']);
         assert.deepEqual(programCandidates('darwin', 'arm64', '/ext', '  ', (...p) => p.join('/')),
-            ['/ext/bin/osx-arm64/cantilena', 'cantilena']);
+            ['/ext/bin/osx-arm64/cantoria', 'cantoria']);
     });
 
     it('lists the voices as the engine does: the model folders holding an info.toml', () => {
@@ -254,7 +254,7 @@ describe('the manifest', () => {
     });
 
     it('groups the settings by what they are for', () => {
-        const groups = Object.fromEntries(manifest.contributes.configuration.map((c: { title: string; properties: object }) => [c.title, Object.keys(c.properties).map(k => k.replace('cantilena.', '')).sort()]));
+        const groups = Object.fromEntries(manifest.contributes.configuration.map((c: { title: string; properties: object }) => [c.title, Object.keys(c.properties).map(k => k.replace('cantoria.', '')).sort()]));
         assert.deepEqual(groups, {
             General: ['defaultFemaleVoice', 'defaultMaleVoice', 'gpu'],
             NEUTRINO: ['neutrinoFolder', 'threads'],
@@ -267,21 +267,21 @@ describe('the manifest', () => {
     const commands = (manifest.contributes.commands as { command: string }[]).map(c => c.command);
 
     it('holds the settings, each engine setting machine-overridable', () => {
-        for (const name of ['cantilena.neutrinoFolder', 'cantilena.voicesFolder', 'cantilena.vocoderFolder', 'cantilena.defaultFemaleVoice', 'cantilena.defaultMaleVoice', 'cantilena.gpu', 'cantilena.threads', 'cantilena.program']) {
+        for (const name of ['cantoria.neutrinoFolder', 'cantoria.voicesFolder', 'cantoria.vocoderFolder', 'cantoria.defaultFemaleVoice', 'cantoria.defaultMaleVoice', 'cantoria.gpu', 'cantoria.threads', 'cantoria.program']) {
             assert.ok(props[name], `${name} is contributed`);
             assert.equal(props[name].scope, 'machine-overridable', name);
         }
-        assert.equal(props['cantilena.defaultFemaleVoice'].default, '');
-        assert.equal(props['cantilena.defaultMaleVoice'].default, '');
-        assert.match(props['cantilena.neutrinoFolder'].markdownDescription, /command:cantilena\.chooseNeutrinoFolder/);
-        assert.match(props['cantilena.defaultFemaleVoice'].markdownDescription, /command:cantilena\.chooseFemaleVoice/);
-        assert.match(props['cantilena.defaultMaleVoice'].markdownDescription, /command:cantilena\.chooseMaleVoice/);
-        assert.match(props['cantilena.voicesFolder'].markdownDescription, /command:cantilena\.chooseVoicesFolder/);
-        assert.match(props['cantilena.vocoderFolder'].markdownDescription, /command:cantilena\.chooseVocoderFolder/);
+        assert.equal(props['cantoria.defaultFemaleVoice'].default, '');
+        assert.equal(props['cantoria.defaultMaleVoice'].default, '');
+        assert.match(props['cantoria.neutrinoFolder'].markdownDescription, /command:cantoria\.chooseNeutrinoFolder/);
+        assert.match(props['cantoria.defaultFemaleVoice'].markdownDescription, /command:cantoria\.chooseFemaleVoice/);
+        assert.match(props['cantoria.defaultMaleVoice'].markdownDescription, /command:cantoria\.chooseMaleVoice/);
+        assert.match(props['cantoria.voicesFolder'].markdownDescription, /command:cantoria\.chooseVoicesFolder/);
+        assert.match(props['cantoria.vocoderFolder'].markdownDescription, /command:cantoria\.chooseVocoderFolder/);
     });
 
     it('contributes the eight commands and starts on nothing but them and the API', () => {
-        assert.deepEqual(commands.sort(), ['cantilena.checkSetup', 'cantilena.chooseFemaleVoice', 'cantilena.chooseMaleVoice', 'cantilena.chooseNeutrinoFolder', 'cantilena.chooseVocoderFolder', 'cantilena.chooseVoicesFolder', 'cantilena.chooseVoicevoxFolder', 'cantilena.forgetVoices']);
+        assert.deepEqual(commands.sort(), ['cantoria.checkSetup', 'cantoria.chooseFemaleVoice', 'cantoria.chooseMaleVoice', 'cantoria.chooseNeutrinoFolder', 'cantoria.chooseVocoderFolder', 'cantoria.chooseVoicesFolder', 'cantoria.chooseVoicevoxFolder', 'cantoria.forgetVoices']);
         assert.deepEqual(manifest.activationEvents, []);
         assert.equal(manifest.main, './out/extension.js');
         assert.equal(manifest.license, 'Apache-2.0');

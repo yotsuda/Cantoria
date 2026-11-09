@@ -2,9 +2,9 @@ name: CI
 
 # The library, the CLI and the extension on the three platforms the extension ships for. No voice
 # is installed here (every voice is its author's, under its author's terms), so the singer tests
-# pass without singing (they are gated on CANTILENA_DIFFSINGER_VOICE); what is proven per platform
+# pass without singing (they are gated on CANTORIA_DIFFSINGER_VOICE); what is proven per platform
 # is that the self-contained program starts, reads a score, and that ONNX Runtime loads and names
-# its providers (`cantilena providers`).
+# its providers (`cantoria providers`).
 on:
   push:
     branches: [main]
@@ -18,15 +18,15 @@ jobs:
         include:
           - os: ubuntu-latest
             rid: linux-x64
-            exe: cantilena
+            exe: cantoria
             dml: ''
           - os: macos-latest
             rid: osx-arm64
-            exe: cantilena
+            exe: cantoria
             dml: ''
           - os: windows-latest
             rid: win-x64
-            exe: cantilena.exe
+            exe: cantoria.exe
             dml: -p:UseDirectML=true
     runs-on: ${{ matrix.os }}
     steps:
@@ -35,9 +35,9 @@ jobs:
         with:
           dotnet-version: 10.0.x
       - name: Test (the CPU package)
-        run: dotnet test tests/Cantilena.Tests -c Release
+        run: dotnet test tests/Cantoria.Tests -c Release
       - name: Publish ${{ matrix.rid }}
-        run: dotnet publish src/Cantilena.Cli -c Release -r ${{ matrix.rid }} --self-contained ${{ matrix.dml }} -o out/${{ matrix.rid }}
+        run: dotnet publish src/Cantoria.Cli -c Release -r ${{ matrix.rid }} --self-contained ${{ matrix.dml }} -o out/${{ matrix.rid }}
       - name: The program starts, reads a score, names its providers
         shell: bash
         run: |

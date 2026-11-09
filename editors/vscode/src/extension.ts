@@ -1,7 +1,7 @@
 // Copyright 2026 Yoshifumi Tsuda
 // Licensed under the Apache License, Version 2.0. See LICENSE in the repository root.
 
-// Cantilena as a VS Code extension: carries the `cantilena` program, holds the settings (where
+// Cantoria as a VS Code extension: carries the `cantoria` program, holds the settings (where
 // NEUTRINO is, where the DiffSinger voices are, which voice), and sings for other extensions
 // through the API `activate` returns (docs/design.md §4.2 in the repository). Lily# is the first
 // caller: its preview's Play hands the sung part's notes here and plays the WAV beside its synth.
@@ -13,14 +13,14 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import {
-    CantilenaScore, DefaultVoices, ENGINES, EngineName, VOICEVOX_URL, VoiceEntry, VoiceGender, defaultVoiceFor, diffSingerEntriesIn, diffSingerVoicesIn, languageProblem, missingProgramNote, needsVoicevox, neutrinoFolderProblems, voicevoxRunIn, programCandidates,
+    CantoriaScore, DefaultVoices, ENGINES, EngineName, VOICEVOX_URL, VoiceEntry, VoiceGender, defaultVoiceFor, diffSingerEntriesIn, diffSingerVoicesIn, languageProblem, missingProgramNote, needsVoicevox, neutrinoFolderProblems, voicevoxRunIn, programCandidates,
     resolveSinger, scoreProblems, splitVoiceId, voiceEntriesIn, voiceId, voicePieces, voicesFolderProblems, voicesIn, 
 } from './core';
 import { Engine, EngineSetup, RenderedVoice } from './engine';
 import { VoicevoxServer } from './voicevox';
 
 /** What `status()` answers: whether a `sing` can succeed now, and why not. */
-export interface CantilenaStatus {
+export interface CantoriaStatus {
     ready: boolean;
     program: string | undefined;
     /** The engine of the voice the setting names. */
@@ -35,13 +35,13 @@ export interface CantilenaStatus {
     problems: string[];
 }
 
-/** The API another extension gets from `vscode.extensions.getExtension('yotsuda.cantilena').activate()`. */
-export interface CantilenaApi {
+/** The API another extension gets from `vscode.extensions.getExtension('yotsuda.cantoria').activate()`. */
+export interface CantoriaApi {
     /** This extension's version. */
     readonly version: string;
     /** The API's shape; raised when a call changes incompatibly. */
     readonly apiVersion: 1;
-    status(): Promise<CantilenaStatus>;
+    status(): Promise<CantoriaStatus>;
     /** The voices installed, each as `{ id: 'neutrino/MERROW', engine, name, label, language? }`. */
     voices(): Promise<VoiceEntry[]>;
     /** Sings `score` (the README's JSON: notes in seconds with syllables) in `options.voice` — an
@@ -49,7 +49,7 @@ export interface CantilenaApi {
      *  WAV is kept under the extension's storage until "Forget Rendered Voices"; the same score in
      *  the same voice is sung once. Throws with a sentence when it cannot: no program, no engine set
      *  up, a voice or an engine that is not there, a score the engine refused. */
-    sing(score: CantilenaScore, options?: { voice?: string }): Promise<RenderedVoice & { cached: boolean }>;
+    sing(score: CantoriaScore, options?: { voice?: string }): Promise<RenderedVoice & { cached: boolean }>;
     /** Lets the engine go (NEUTRINO's server and the DiffSinger sessions with it); the next `sing` starts it again. */
     release(): void;
     /** The voice a score's `singer` string comes to here: the voice it names when installed, else the
@@ -61,7 +61,7 @@ let output: vscode.OutputChannel;
 let engine: Engine | undefined;
 let storage: string;
 
-function settings(): vscode.WorkspaceConfiguration { return vscode.workspace.getConfiguration('cantilena'); }
+function settings(): vscode.WorkspaceConfiguration { return vscode.workspace.getConfiguration('cantoria'); }
 function neutrinoFolder(): string { return settings().get<string>('neutrinoFolder', '').trim(); }
 function voicesFolder(): string { return settings().get<string>('voicesFolder', '').trim(); }
 function vocoderFolder(): string { return settings().get<string>('vocoderFolder', '').trim(); }
@@ -110,7 +110,7 @@ function voices(): VoiceEntry[] {
     ];
 }
 
-/** The `cantilena` program: the first candidate that exists (the bare name is trusted to the PATH). */
+/** The `cantoria` program: the first candidate that exists (the bare name is trusted to the PATH). */
 function program(context: vscode.ExtensionContext): string | undefined {
     const candidates = programCandidates(process.platform, process.arch, context.extensionPath, settings().get<string>('program', ''), path.join);
     for (const c of candidates) {
@@ -136,7 +136,7 @@ function setupNow(context: vscode.ExtensionContext): { setup?: EngineSetup; prob
     const n = neutrinoFolder(), d = voicesFolder();
     const problems: string[] = [];
     if (!prog) { problems.push(missingProgramNote(process.platform, process.arch, bundledBuilds(context))); }
-    if (!n && !d && voicevox.voices.length === 0 && !voicevoxFolder()) { problems.push('no engine is set up: choose a NEUTRINO folder (Cantilena: Choose NEUTRINO Folder…) or a DiffSinger voices folder (Cantilena: Choose Voices Folder…), or start VOICEVOX'); }
+    if (!n && !d && voicevox.voices.length === 0 && !voicevoxFolder()) { problems.push('no engine is set up: choose a NEUTRINO folder (Cantoria: Choose NEUTRINO Folder…) or a DiffSinger voices folder (Cantoria: Choose Voices Folder…), or start VOICEVOX'); }
     problems.push(...neutrinoFolderProblems(n, fs.existsSync, path.join, process.platform));
     problems.push(...voicesFolderProblems(d, fs.existsSync));
     if (problems.length > 0) { return { problems, program: prog }; }
@@ -169,22 +169,22 @@ function voiceProblems(voice: Voice): string[] {
     if (!(ENGINES as readonly string[]).includes(voice.engine)) { return [`no engine named ${voice.engine} in ${voice.id} (there is: ${ENGINES.join(', ')})`]; }
     if (voice.engine === 'neutrino') {
         const n = neutrinoFolder();
-        if (!n) { return [`${voice.id} needs a NEUTRINO folder (Cantilena: Choose NEUTRINO Folder…)`]; }
+        if (!n) { return [`${voice.id} needs a NEUTRINO folder (Cantoria: Choose NEUTRINO Folder…)`]; }
         const names = voicesIn(n, listDirs, fs.existsSync, path.join);
         return names.includes(voice.name) ? [] : [`the voice ${voice.name} is not under ${path.join(n, 'model')} (installed: ${names.join(', ') || 'none'})`];
     }
     if (voice.engine === 'voicevox') {
         if (voicevox.voices.some(v => v.id === voice.id)) { return []; }
-        return [voicevox.voices.length === 0 ? `VOICEVOX is not answering at ${voicevoxUrl() || VOICEVOX_URL}: start VOICEVOX, or set its folder so that Cantilena can (Cantilena: Choose VOICEVOX Folder…), to sing with ${voice.id}` : `VOICEVOX has no voice ${voice.name} (there is: ${voicevox.voices.map(v => v.name).join(', ')})`];
+        return [voicevox.voices.length === 0 ? `VOICEVOX is not answering at ${voicevoxUrl() || VOICEVOX_URL}: start VOICEVOX, or set its folder so that Cantoria can (Cantoria: Choose VOICEVOX Folder…), to sing with ${voice.id}` : `VOICEVOX has no voice ${voice.name} (there is: ${voicevox.voices.map(v => v.name).join(', ')})`];
     }
     if (fs.existsSync(path.join(voice.name, 'dsconfig.yaml'))) { return []; }   // a folder named outright
     const d = voicesFolder();
-    if (!d) { return [`${voice.id} needs a DiffSinger voices folder (Cantilena: Choose Voices Folder…)`]; }
+    if (!d) { return [`${voice.id} needs a DiffSinger voices folder (Cantoria: Choose Voices Folder…)`]; }
     const names = diffSingerEntriesIn(d, listDirs, fs.existsSync, readTextOr, path.join).map(v => v.name);
     return names.includes(voice.name) ? [] : [`the voice ${voice.name} is not under ${d} (installed: ${names.join(', ') || 'none'})`];
 }
 
-async function status(context: vscode.ExtensionContext): Promise<CantilenaStatus> {
+async function status(context: vscode.ExtensionContext): Promise<CantoriaStatus> {
     await voicevox.ask();
     const { setup, problems, program: prog } = setupNow(context);
     const voice = voiceSetting();
@@ -193,7 +193,7 @@ async function status(context: vscode.ExtensionContext): Promise<CantilenaStatus
     return { ready: problems.length === 0, program: prog, backend, neutrinoFolder: neutrinoFolder(), voicesFolder: voicesFolder(), voice: voice.id, voices: voices().map(v => v.id), problems };
 }
 
-async function sing(context: vscode.ExtensionContext, score: CantilenaScore, options?: { voice?: string }): Promise<RenderedVoice & { cached: boolean }> {
+async function sing(context: vscode.ExtensionContext, score: CantoriaScore, options?: { voice?: string }): Promise<RenderedVoice & { cached: boolean }> {
     const problems = scoreProblems(score);
     if (problems.length > 0) { throw new Error(problems.join('; ')); }
     const asked = (options?.voice ?? '').trim();
@@ -218,7 +218,7 @@ async function chooseFolder(title: string, setting: string, check: (folder: stri
     const problems = check(folder);
     if (problems.length > 0) {
         const anyway = 'Use it anyway';
-        const choice = await vscode.window.showWarningMessage(`Cantilena: ${problems[0]}`, anyway);
+        const choice = await vscode.window.showWarningMessage(`Cantoria: ${problems[0]}`, anyway);
         if (choice !== anyway) { return; }
     }
     await settings().update(setting, folder, vscode.ConfigurationTarget.Global);
@@ -226,26 +226,26 @@ async function chooseFolder(title: string, setting: string, check: (folder: stri
 }
 
 function chooseNeutrinoFolder(): Promise<void> {
-    return chooseFolder('Cantilena: the NEUTRINO folder (holding bin, model and settings)', 'neutrinoFolder',
-        folder => neutrinoFolderProblems(folder, fs.existsSync, path.join), folder => `Cantilena: NEUTRINO is ${folder}`);
+    return chooseFolder('Cantoria: the NEUTRINO folder (holding bin, model and settings)', 'neutrinoFolder',
+        folder => neutrinoFolderProblems(folder, fs.existsSync, path.join), folder => `Cantoria: NEUTRINO is ${folder}`);
 }
 
 function chooseVoicesFolder(): Promise<void> {
-    return chooseFolder('Cantilena: the folder whose subfolders are DiffSinger voices (each with a dsconfig.yaml)', 'voicesFolder',
+    return chooseFolder('Cantoria: the folder whose subfolders are DiffSinger voices (each with a dsconfig.yaml)', 'voicesFolder',
         folder => diffSingerVoicesIn(folder, listDirs, fs.existsSync, path.join).length > 0 ? [] : [`no DiffSinger voice under ${folder} (a voice is a subfolder with dsconfig.yaml)`],
-        folder => `Cantilena: the DiffSinger voices are under ${folder}`);
+        folder => `Cantoria: the DiffSinger voices are under ${folder}`);
 }
 
 function chooseVoicevoxFolder(): Promise<void> {
-    return chooseFolder('Cantilena: the VOICEVOX folder (holding vv-engine)', 'voicevoxFolder',
+    return chooseFolder('Cantoria: the VOICEVOX folder (holding vv-engine)', 'voicevoxFolder',
         folder => voicevoxRunIn(folder, fs.existsSync, path.join) ? [] : [`no VOICEVOX engine under ${folder} (it holds vv-engine\\run.exe)`],
-        folder => `Cantilena: VOICEVOX is ${folder}`);
+        folder => `Cantoria: VOICEVOX is ${folder}`);
 }
 
 function chooseVocoderFolder(): Promise<void> {
-    return chooseFolder('Cantilena: the vocoder folder (holding vocoder.yaml and its model)', 'vocoderFolder',
+    return chooseFolder('Cantoria: the vocoder folder (holding vocoder.yaml and its model)', 'vocoderFolder',
         folder => fs.existsSync(path.join(folder, 'vocoder.yaml')) ? [] : [`no vocoder.yaml in ${folder}`],
-        folder => `Cantilena: the vocoder is ${folder}`);
+        folder => `Cantoria: the vocoder is ${folder}`);
 }
 
 /** A default voice from a list: every voice but those that say they are the other gender. */
@@ -255,7 +255,7 @@ async function chooseDefaultVoice(context: vscode.ExtensionContext, gender: Voic
     const all = voices();
     if (all.length === 0) {
         const neutrino = 'Choose NEUTRINO Folder…', ds = 'Choose Voices Folder…';
-        const choice = await vscode.window.showWarningMessage(`Cantilena: no voice to list — ${s.problems[0] ?? 'the folders hold no voice'}`, neutrino, ds);
+        const choice = await vscode.window.showWarningMessage(`Cantoria: no voice to list — ${s.problems[0] ?? 'the folders hold no voice'}`, neutrino, ds);
         if (choice === neutrino) { await chooseNeutrinoFolder(); }
         else if (choice === ds) { await chooseVoicesFolder(); }
         return;
@@ -266,10 +266,10 @@ async function chooseDefaultVoice(context: vscode.ExtensionContext, gender: Voic
             label: v.id,
             description: [v.label !== v.name ? v.label : '', v.gender ?? '', v.language ?? '', v.id === current ? '(current)' : ''].filter(Boolean).join(' · '),
         })),
-        { title: `Cantilena: Default ${gender === 'male' ? 'Male' : 'Female'} Voice`, placeHolder: `The voice that sings a ${gender} part when the score names none` });
+        { title: `Cantoria: Default ${gender === 'male' ? 'Male' : 'Female'} Voice`, placeHolder: `The voice that sings a ${gender} part when the score names none` });
     if (!pick) { return; }
     await settings().update(gender === 'male' ? 'defaultMaleVoice' : 'defaultFemaleVoice', pick.label, vscode.ConfigurationTarget.Global);
-    vscode.window.setStatusBarMessage(`Cantilena: the default ${gender} voice is ${pick.label}`, 4000);
+    vscode.window.setStatusBarMessage(`Cantoria: the default ${gender} voice is ${pick.label}`, 4000);
 }
 
 async function checkSetup(context: vscode.ExtensionContext): Promise<void> {
@@ -277,46 +277,46 @@ async function checkSetup(context: vscode.ExtensionContext): Promise<void> {
     output.appendLine(`setup: program ${s.program ?? 'none'}; NEUTRINO ${s.neutrinoFolder || 'not set'}; DiffSinger voices ${s.voicesFolder || 'not set'}; voice ${s.voice}; installed ${s.voices.join(', ') || 'none'}; ${s.ready ? 'ready' : s.problems.join('; ')}`);
     if (s.ready) {
         const where = s.backend === 'neutrino' ? `through NEUTRINO at ${s.neutrinoFolder}` : s.backend === 'voicevox' ? 'through the running VOICEVOX' : `a DiffSinger voice under ${s.voicesFolder}`;
-        vscode.window.showInformationMessage(`Cantilena is ready: ${s.voice}, ${where}.`);
+        vscode.window.showInformationMessage(`Cantoria is ready: ${s.voice}, ${where}.`);
         return;
     }
     const neutrino = 'Choose NEUTRINO Folder…', ds = 'Choose Voices Folder…', site = 'Get NEUTRINO', log = 'Show Output';
-    const choice = await vscode.window.showWarningMessage(`Cantilena cannot sing yet: ${s.problems[0]}`, neutrino, ds, site, log);
+    const choice = await vscode.window.showWarningMessage(`Cantoria cannot sing yet: ${s.problems[0]}`, neutrino, ds, site, log);
     if (choice === neutrino) { await chooseNeutrinoFolder(); }
     else if (choice === ds) { await chooseVoicesFolder(); }
     else if (choice === site) { void vscode.env.openExternal(vscode.Uri.parse('https://studio-neutrino.com/')); }
     else if (choice === log) { output.show(); }
 }
 
-export function activate(context: vscode.ExtensionContext): CantilenaApi {
-    output = vscode.window.createOutputChannel('Cantilena');
+export function activate(context: vscode.ExtensionContext): CantoriaApi {
+    output = vscode.window.createOutputChannel('Cantoria');
     storage = context.globalStorageUri.fsPath;
     context.subscriptions.push(
         output,
-        vscode.commands.registerCommand('cantilena.chooseNeutrinoFolder', () => chooseNeutrinoFolder()),
-        vscode.commands.registerCommand('cantilena.chooseVoicesFolder', () => chooseVoicesFolder()),
-        vscode.commands.registerCommand('cantilena.chooseVocoderFolder', () => chooseVocoderFolder()),
-        vscode.commands.registerCommand('cantilena.chooseVoicevoxFolder', () => chooseVoicevoxFolder()),
-        vscode.commands.registerCommand('cantilena.chooseFemaleVoice', () => chooseDefaultVoice(context, 'female')),
-        vscode.commands.registerCommand('cantilena.chooseMaleVoice', () => chooseDefaultVoice(context, 'male')),
-        vscode.commands.registerCommand('cantilena.checkSetup', () => checkSetup(context)),
-        vscode.commands.registerCommand('cantilena.forgetVoices', () => {
+        vscode.commands.registerCommand('cantoria.chooseNeutrinoFolder', () => chooseNeutrinoFolder()),
+        vscode.commands.registerCommand('cantoria.chooseVoicesFolder', () => chooseVoicesFolder()),
+        vscode.commands.registerCommand('cantoria.chooseVocoderFolder', () => chooseVocoderFolder()),
+        vscode.commands.registerCommand('cantoria.chooseVoicevoxFolder', () => chooseVoicevoxFolder()),
+        vscode.commands.registerCommand('cantoria.chooseFemaleVoice', () => chooseDefaultVoice(context, 'female')),
+        vscode.commands.registerCommand('cantoria.chooseMaleVoice', () => chooseDefaultVoice(context, 'male')),
+        vscode.commands.registerCommand('cantoria.checkSetup', () => checkSetup(context)),
+        vscode.commands.registerCommand('cantoria.forgetVoices', () => {
             const e = engine ?? new Engine({ program: '', neutrinoFolder: '', voicesFolder: '', vocoderFolder: '', gpu: true, threads: 1 }, path.join(storage, 'voices'), () => undefined);
             const n = e.forget();
-            vscode.window.setStatusBarMessage(`Cantilena: ${n} rendered voice${n === 1 ? '' : 's'} forgotten`, 4000);
+            vscode.window.setStatusBarMessage(`Cantoria: ${n} rendered voice${n === 1 ? '' : 's'} forgotten`, 4000);
         }),
         // A changed engine setting lets the engine go; the next sing starts one for the new settings.
         vscode.workspace.onDidChangeConfiguration(e => {
-            if (['neutrinoFolder', 'voicesFolder', 'vocoderFolder', 'program', 'gpu', 'threads'].some(s => e.affectsConfiguration('cantilena.' + s))) {
+            if (['neutrinoFolder', 'voicesFolder', 'vocoderFolder', 'program', 'gpu', 'threads'].some(s => e.affectsConfiguration('cantoria.' + s))) {
                 release();
             }
-            if (['voicevoxUrl', 'voicevoxFolder', 'gpu'].some(s => e.affectsConfiguration('cantilena.' + s))) { voicevox.changed(); }
+            if (['voicevoxUrl', 'voicevoxFolder', 'gpu'].some(s => e.affectsConfiguration('cantoria.' + s))) { voicevox.changed(); }
         }),
         { dispose: release },
         { dispose: () => voicevox.dispose() },
     );
     const version = String((context.extension.packageJSON as { version?: string }).version ?? '0');
-    return Object.freeze<CantilenaApi>({
+    return Object.freeze<CantoriaApi>({
         version,
         apiVersion: 1,
         status: () => status(context),

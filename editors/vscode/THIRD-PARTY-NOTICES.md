@@ -1,7 +1,7 @@
-# Third-party notices — Cantilena Singing Voice (the VS Code extension)
+# Third-party notices — Cantoria Singing Voice (the VS Code extension)
 
-The extension's own code (`out/extension.js`) and the bundled `cantilena` program are
-Cantilena's, Apache License 2.0 (LICENSE).
+The extension's own code (`out/extension.js`) and the bundled `cantoria` program are
+Cantoria's, Apache License 2.0 (LICENSE).
 
 ## Bundled
 
@@ -11,8 +11,8 @@ Cantilena's, Apache License 2.0 (LICENSE).
 ## Invoked, not included
 
 - **NEUTRINO** (STUDIO NEUTRINO / SHACHI, closed-source freeware) — installed by the user and
-  named in `cantilena.neutrinoFolder`; nothing of it is redistributed. Its agreement forbids use
-  for machine-learning voice conversion; Cantilena synthesizes from scores only.
+  named in `cantoria.neutrinoFolder`; nothing of it is redistributed. Its agreement forbids use
+  for machine-learning voice conversion; Cantoria synthesizes from scores only.
 - **Voices** (MERROW ships with NEUTRINO; others are their authors') — read from the user's
   NEUTRINO folder, never included.
 

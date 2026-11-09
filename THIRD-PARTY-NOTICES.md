@@ -1,10 +1,10 @@
 # Third-party notices
 
-Cantilena is Apache-2.0. The works below are, or are planned to be, used by it.
+Cantoria is Apache-2.0. The works below are, or are planned to be, used by it.
 Each entry says how it is used, because the obligations differ: code copied
 into this repository keeps its copyright notice here and in the file; a
 library referenced as a package keeps its own license in the package; a
-program invoked as a separate process is not part of Cantilena at all.
+program invoked as a separate process is not part of Cantoria at all.
 
 ## Included or referenced
 
@@ -12,11 +12,11 @@ program invoked as a separate process is not part of Cantilena at all.
 
 https://github.com/stakira/OpenUtau
 
-The `diffsinger` backend (`src/Cantilena.Core/DiffSinger/`) follows OpenUtau's
+The `diffsinger` backend (`src/Cantoria.Core/DiffSinger/`) follows OpenUtau's
 C# DiffSinger inference (`OpenUtau.Core/DiffSinger/`: the configuration keys,
 the frame arithmetic, the word division, the duration alignment, the inputs of
 the duration, pitch, variance, acoustic and vocoder models) and its Japanese
-phonemizer's reading of a voice's dictionary. It was written anew in Cantilena's
+phonemizer's reading of a voice's dictionary. It was written anew in Cantoria's
 own shape, not copied line for line; each file that follows OpenUtau says so at
 its top. OpenUtau's notice:
 
@@ -46,7 +46,7 @@ its top. OpenUtau's notice:
 
 https://github.com/microsoft/onnxruntime
 
-Referenced by `Cantilena.Core` as the NuGet package `Microsoft.ML.OnnxRuntime`
+Referenced by `Cantoria.Core` as the NuGet package `Microsoft.ML.OnnxRuntime`
 (the CPU build: every platform, the tests), or — the Windows program, published with
 `UseDirectML=true` — `Microsoft.ML.OnnxRuntime.DirectML` (the same runtime with the
 DirectML execution provider; its native library runs the CPU provider too). Not
@@ -68,7 +68,7 @@ the package's `ThirdPartyNotices.txt`.
 
 https://github.com/aaubry/YamlDotNet
 
-Referenced by `Cantilena.Core` as the NuGet package `YamlDotNet`, to read the
+Referenced by `Cantoria.Core` as the NuGet package `YamlDotNet`, to read the
 voices' `dsconfig.yaml`, `vocoder.yaml` and dictionaries. Not copied. Its
 license is in the package.
 
@@ -77,9 +77,9 @@ license is in the package.
 https://github.com/openvpi/DiffSinger
 
 The model architecture and the ONNX export format the `diffsinger` backend
-runs. Cantilena does not include DiffSinger's code; it reads models exported
+runs. Cantoria does not include DiffSinger's code; it reads models exported
 with it. Model files (voices) trained with DiffSinger belong to whoever trained
-them, under that person's terms — Cantilena ships none.
+them, under that person's terms — Cantoria ships none.
 
 ## Planned
 
@@ -91,12 +91,12 @@ Nothing further is planned to be copied.
 
 https://studio-neutrino.com/
 
-Closed-source freeware under its own license agreement. Cantilena's NEUTRINO
+Closed-source freeware under its own license agreement. Cantoria's NEUTRINO
 backend runs the user's own installation as a separate process
 (`musicXMLtoLabel.exe`, `neutrino_client.exe`) and never redistributes it.
 The sound produced is subject to the terms of the voice library used. The
 agreement forbids using NEUTRINO in machine-learning voice-conversion tools;
-Cantilena does nothing of the kind.
+Cantoria does nothing of the kind.
 
 ## Voices
 

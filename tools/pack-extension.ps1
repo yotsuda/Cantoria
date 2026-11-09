@@ -3,7 +3,7 @@ param(
     [string[]]$Targets = @('win-x64', 'linux-x64', 'osx-arm64'),  # the programs to publish, one VSIX each
     [switch]$SkipPublish                                     # reuse editors\vscode\bin from the last run (one target)
 )
-# Cantilena as a VS Code extension (editors\vscode): the `cantilena` program published
+# Cantoria as a VS Code extension (editors\vscode): the `cantoria` program published
 # self-contained for each target into editors\vscode\bin\<rid>, the extension compiled, and one
 # `vsce package --target <platform>` per target, each VSIX carrying its own program only (the
 # bin folder is remade per target). Packages only; publishing to the Marketplace is the owner's
@@ -21,7 +21,7 @@ $ext = "$root\editors\vscode"
 $vsceTarget = @{ 'win-x64' = 'win32-x64'; 'linux-x64' = 'linux-x64'; 'osx-arm64' = 'darwin-arm64'; 'linux-arm64' = 'linux-arm64'; 'osx-x64' = 'darwin-x64'; 'win-arm64' = 'win32-arm64' }
 
 # The extension's version is the program's: one number for one release.
-$programVersion = ([xml](Get-Content "$root\src\Cantilena.Cli\Cantilena.Cli.csproj" -Raw)).Project.PropertyGroup.Version | Where-Object { $_ } | Select-Object -First 1
+$programVersion = ([xml](Get-Content "$root\src\Cantoria.Cli\Cantoria.Cli.csproj" -Raw)).Project.PropertyGroup.Version | Where-Object { $_ } | Select-Object -First 1
 $pkg = Get-Content "$ext\package.json" -Raw | ConvertFrom-Json
 if ("$programVersion" -ne $pkg.version) { throw "editors/vscode/package.json is $($pkg.version), the program ${programVersion}: make them one" }
 
@@ -43,11 +43,11 @@ try {
         if (-not $SkipPublish) {
             if (Test-Path "$ext\bin") { Remove-Item -Recurse -Force "$ext\bin" }
             $dml = if ($rid -eq 'win-x64') { '-p:UseDirectML=true' } else { '' }
-            cmd /d /s /c "dotnet publish `"$root\src\Cantilena.Cli`" -c Release -r $rid --self-contained $dml -o `"$bin`" -v q -nologo < NUL"
+            cmd /d /s /c "dotnet publish `"$root\src\Cantoria.Cli`" -c Release -r $rid --self-contained $dml -o `"$bin`" -v q -nologo < NUL"
             if ($LASTEXITCODE -ne 0) { throw "dotnet publish $rid failed" }
             Get-ChildItem $bin -Filter *.pdb | Remove-Item
         }
-        $exe = if ($rid.StartsWith('win')) { 'cantilena.exe' } else { 'cantilena' }
+        $exe = if ($rid.StartsWith('win')) { 'cantoria.exe' } else { 'cantoria' }
         if (-not (Test-Path "$bin\$exe")) { throw "$bin\$exe is missing" }
         if ($rid -eq 'win-x64' -and -not (Test-Path "$bin\DirectML.dll")) { throw "$bin\DirectML.dll is missing: the DirectML package did not copy it (PlatformTarget?)" }
         $size = (Get-ChildItem $bin -Recurse -File | Measure-Object Length -Sum).Sum / 1MB

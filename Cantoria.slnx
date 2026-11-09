@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Cantoria.Cli/Cantoria.Cli.csproj" />
+    <Project Path="src/Cantoria.Core/Cantoria.Core.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Cantoria.Tests/Cantoria.Tests.csproj" />
+  </Folder>
+</Solution>

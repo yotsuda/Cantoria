@@ -2,13 +2,13 @@
 // Licensed under the Apache License, Version 2.0. See LICENSE in the repository root.
 
 // The extension's pure half: the score's shape, the key a rendered voice is named by, the lines
-// of `cantilena serve`'s wire, where the program and the voices are looked for. No vscode, no
+// of `cantoria serve`'s wire, where the program and the voices are looked for. No vscode, no
 // process here — test/core.test.ts drives it under node.
 
 import { createHash } from 'crypto';
 
 /** One sung note (the README's score): seconds, MIDI pitch, the syllable as pronounced. */
-export interface CantilenaNote {
+export interface CantoriaNote {
     start: number;
     duration: number;
     pitch: number;
@@ -26,10 +26,10 @@ export interface CantilenaNote {
 }
 
 /** The score a caller hands `sing`: notes in seconds; the sample rate and language optional. */
-export interface CantilenaScore {
+export interface CantoriaScore {
     sampleRate?: number;
     language?: string;
-    notes: CantilenaNote[];
+    notes: CantoriaNote[];
 }
 
 /** The engines this extension sings through; the first is what a bare voice name means. */
@@ -79,7 +79,7 @@ export function firstOfGender(voices: readonly Listed[], gender: string, languag
 
 export type VoiceGender = 'female' | 'male';
 
-/** The settings `cantilena.defaultFemaleVoice` and `cantilena.defaultMaleVoice`; '' is not set. */
+/** The settings `cantoria.defaultFemaleVoice` and `cantoria.defaultMaleVoice`; '' is not set. */
 export type DefaultVoices = Readonly<Record<VoiceGender, string>>;
 
 type Listed = Pick<VoiceEntry, 'id' | 'gender' | 'language' | 'languages'>;
@@ -234,7 +234,7 @@ export function diffSingerEntriesIn(folder: string, listDirs: (dir: string) => s
 /** Where VOICEVOX answers unless the setting says otherwise. */
 export const VOICEVOX_URL = 'http://127.0.0.1:50021';
 
-/** The port of an engine Cantilena starts: not VOICEVOX's own, which the user's VOICEVOX opens on. */
+/** The port of an engine Cantoria starts: not VOICEVOX's own, which the user's VOICEVOX opens on. */
 export const VOICEVOX_OWN_PORT = 50121;
 export const VOICEVOX_OWN_URL = `http://127.0.0.1:${VOICEVOX_OWN_PORT}`;
 
@@ -279,7 +279,7 @@ export function voicesFolderProblems(folder: string, exists: (p: string) => bool
 export function scoreProblems(score: unknown): string[] {
     const problems: string[] = [];
     if (!score || typeof score !== 'object') { return ['the score is not an object']; }
-    const s = score as Partial<CantilenaScore>;
+    const s = score as Partial<CantoriaScore>;
     if (!Array.isArray(s.notes)) { return ['the score has no "notes" array']; }
     if (s.notes.length === 0) { problems.push('the score has no notes'); }
     s.notes.forEach((n, i) => {
@@ -293,11 +293,11 @@ export function scoreProblems(score: unknown): string[] {
 }
 
 /** What a rendered voice is cached and named by: the voice (its `engine/name`) and the score's bytes. */
-export function voiceKey(score: CantilenaScore, voice: string): string {
+export function voiceKey(score: CantoriaScore, voice: string): string {
     return createHash('sha1').update(voice).update('\n').update(JSON.stringify(score)).digest('hex');
 }
 
-/** One line of `cantilena serve`'s stdout. */
+/** One line of `cantoria serve`'s stdout. */
 export interface ServeAnswer {
     ready?: boolean; backend?: string; voices?: string[];
     id?: string; wav?: string; duration?: number; sampleRate?: number; seconds?: number; error?: string;
@@ -317,8 +317,8 @@ export function parseLine(line: string): ServeAnswer | null {
     }
 }
 
-/** One request of `cantilena serve`'s stdin. */
-export function requestLine(id: string, score: CantilenaScore, voice: string, output: string, voicevoxUrl?: string): string {
+/** One request of `cantoria serve`'s stdin. */
+export function requestLine(id: string, score: CantoriaScore, voice: string, output: string, voicevoxUrl?: string): string {
     return JSON.stringify({ id, score, voice, output, voicevoxUrl }) + '\n';
 }
 
@@ -354,12 +354,12 @@ export function missingProgramNote(platform: string, arch: string, bundled: stri
     const machine = `this machine is ${platform}-${arch}` + (r ? ` (${r})` : ', which no bundled build is made for');
     const has = bundled.length > 0 ? `this VSIX bundles ${bundled.join(', ')}` : 'this VSIX bundles no program';
     const fix = r && bundled.length > 0 && !bundled.includes(r)
-        ? ` — it is the package for another platform; install cantilena-${vsixTarget(r)}-<version>.vsix`
+        ? ` — it is the package for another platform; install cantoria-${vsixTarget(r)}-<version>.vsix`
         : r ? ` — install the ${vsixTarget(r)} package` : '';
-    return `the cantilena program was not found: ${machine}, ${has}${fix} (developers set cantilena.program)`;
+    return `the cantoria program was not found: ${machine}, ${has}${fix} (developers set cantoria.program)`;
 }
 
-/** Where the `cantilena` program is looked for, in order: the setting (a developer's build), the
+/** Where the `cantoria` program is looked for, in order: the setting (a developer's build), the
  *  one bundled under `bin/<rid>/`, then the bare name on the PATH. */
 export function programCandidates(platform: string, arch: string, extensionPath: string, setting: string | undefined,
     join: (...parts: string[]) => string): string[] {
@@ -367,7 +367,7 @@ export function programCandidates(platform: string, arch: string, extensionPath:
     const own = (setting ?? '').trim();
     if (own) { list.push(own); }
     const r = rid(platform, arch);
-    const exe = platform === 'win32' ? 'cantilena.exe' : 'cantilena';
+    const exe = platform === 'win32' ? 'cantoria.exe' : 'cantoria';
     if (r) { list.push(join(extensionPath, 'bin', r, exe)); }
     list.push(exe);
     return list;

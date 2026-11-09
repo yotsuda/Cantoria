@@ -1,13 +1,13 @@
-# Cantilena — roadmap
+# Cantoria — roadmap
 
-What comes after the `neutrino` backend, in order, and why. `design.md` says what Cantilena is;
+What comes after the `neutrino` backend, in order, and why. `design.md` says what Cantoria is;
 this page says where it goes. Dates are not promised; each step has a *done when*.
 
 ## Aim
 
 One contract (a sung score in seconds, a voice out), several engines behind it, on every
 platform a notation program runs on, with no voice bundled and every voice's terms visible.
-Cantilena is a library, a CLI and an editor extension — never an editor.
+Cantoria is a library, a CLI and an editor extension — never an editor.
 
 ## A. Finish the first release
 
@@ -31,7 +31,7 @@ OpenUtau DiffSinger format — a folder the user installs, as a sound font is.
 
 1. **B1 — spike**: *done 2026-11-08* (Lily# session 1134; the probe and the numbers are in the
    owner's private lab, `sessions/p1134/`). A C# console over `Microsoft.ML.OnnxRuntime`
-   (1.23.0) sang Cantilena's `examples/yukiyakonko.json` through a DiffSinger voice in the
+   (1.23.0) sang Cantoria's `examples/yukiyakonko.json` through a DiffSinger voice in the
    OpenUtau format, every stage included (dsdur linguistic + duration → timing aligned to the
    notes; dspitch → f0; acoustic → mel; the voice's bundled vocoder → samples). Checked by an
    autocorrelation pitch tracker per note: all 12 notes voiced, mean |sung − written| 0.19
@@ -45,10 +45,10 @@ OpenUtau DiffSinger format — a folder the user installs, as a sound font is.
    Commons Clause) and the OpenVPI vocoder (CC BY-NC-SA) were used for the local test only and
    nothing of them is in this repository.
 2. **B2 — the pipeline**: *the library and the CLI done 2026-11-08* (Lily# session 1135:
-   `Cantilena.Core/DiffSinger/`, `cantilena sing|voices|serve` with `engine/name` voices and
+   `Cantoria.Core/DiffSinger/`, `cantoria sing|voices|serve` with `engine/name` voices and
    `--voices-dir`; nets `DiffSingerCoreTests` and, where a voice is installed,
    `DiffSingerSingerTests` with the pitch check; the extension's side is B4). As planned:
-   the spike ported into `Cantilena.Core/DiffSinger` as classes behind
+   the spike ported into `Cantoria.Core/DiffSinger` as classes behind
    one `ISinger` (voice folder, speaker, provider): the voice and its modules, the phonemiser
    per the voice's language (Japanese first — kana morae to the dictionary's graphemes, kana or
    romaji; English and others through `dsdict-<lang>.yaml`), the linguistic and duration models
@@ -61,17 +61,17 @@ OpenUtau DiffSinger format — a folder the user installs, as a sound font is.
 3. **B3 — providers**: *DirectML done 2026-11-08* (0.4.0; Lily# session 1139): the Windows
    program is built on the DirectML package of ONNX Runtime, `Provider` is `Auto` (DirectML
    where there is a DirectX 12 device, else the CPU, with the reason said), `Cpu` (`--cpu`,
-   `cantilena.gpu` off) or `DirectML`; `design.md` §3.2. CUDA is not planned (the user's CUDA
+   `cantoria.gpu` off) or `DirectML`; `design.md` §3.2. CUDA is not planned (the user's CUDA
    and cuDNN, hundreds of megabytes); CoreML waits for a macOS build (B5), where the standard
    package already carries it.
 4. **B4 — `serve` and the extension**: *done 2026-11-08* (0.3.0): both engines resident in
-   `serve`; the extension's `cantilena.voicesFolder` (and **Choose Voices Folder…**) beside
+   `serve`; the extension's `cantoria.voicesFolder` (and **Choose Voices Folder…**) beside
    `neutrinoFolder`, the voices list and the picker show both engines, either engine alone is a
    complete setup.
 5. **B5 — platform builds**: *built 2026-11-08* (0.4.0; Lily# session 1140): `linux-x64` and
    `osx-arm64` published self-contained beside `win-x64`, one VSIX per target
    (`tools/pack-extension.ps1`), the execute bit restored by the extension, NEUTRINO told as
-   Windows-only off Windows, `cantilena providers`; `.github/workflows/ci.yml` builds, tests and
+   Windows-only off Windows, `cantoria providers`; `.github/workflows/ci.yml` builds, tests and
    runs the program on the three platforms. ⚠️ Not yet heard on Linux or macOS: the build
    machine is Windows, and CI has no voice to sing with (every voice is its author's) — the
    first Linux or macOS phrase is the owner's, or whoever runs the VSIX there. CoreML is
@@ -114,7 +114,7 @@ need a Python runtime as a product dependency; any voice conversion.
 
 ## F. A voice on every machine
 
-Cantilena ships no voice. The extension offers to **download** one whose terms allow it, shows
+Cantoria ships no voice. The extension offers to **download** one whose terms allow it, shows
 those terms, and installs it into the voices folder; the Setup page lists each installed
 voice's engine and licence. Which voice: research, licence first. Until one is found, Setup
 points at where voices are published and what their terms say.
@@ -124,5 +124,5 @@ points at where voices are published and what their terms say.
 ## G. For other callers
 
 The CLI and the extension API are the public surface. A notation program that is not a VS
-Code extension uses `cantilena serve` (JSON lines) or `cantilena sing`; a NuGet package of
-`Cantilena.Core` when someone asks for in-process use. Nothing of Lily# is needed.
+Code extension uses `cantoria serve` (JSON lines) or `cantoria sing`; a NuGet package of
+`Cantoria.Core` when someone asks for in-process use. Nothing of Lily# is needed.
