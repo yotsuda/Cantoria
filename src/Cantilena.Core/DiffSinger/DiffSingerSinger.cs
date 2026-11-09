@@ -96,6 +96,7 @@ public sealed class DiffSingerSinger : ISinger, IDisposable
         // ---- words: a note with words, and the melisma notes that carry its vowel on ----
         var words = new List<Word>();
         var unknown = new List<string>();
+        var guessed = new List<string>();
         for (int i = 0; i < notes.Count; i++)
         {
             var n = notes[i];
@@ -114,6 +115,10 @@ public sealed class DiffSingerSinger : ISinger, IDisposable
                     continue;
                 }
                 phonemes = sung.Phonemes;
+                if (sung.Guessed)
+                {
+                    guessed.Add(n.Lyric!);
+                }
                 if (sung.Missing)
                 {
                     unknown.Add(n.Lyric!);
@@ -133,6 +138,10 @@ public sealed class DiffSingerSinger : ISinger, IDisposable
                 phonemes.Add("SP");
             }
             words.Add(new Word(n, phonemes));
+        }
+        if (guessed.Count > 0)
+        {
+            log.AppendLine($"not in {dur.DictionaryFile}, pronounced from the spelling: {string.Join(", ", guessed.Distinct())}");
         }
         if (unknown.Count > 0)
         {

@@ -21,7 +21,7 @@ public static class EnglishPhonemizer
 
     /// <summary>What each syllable sings. <c>Missing</c>: its word is not in the dictionary. Empty and
     /// not missing: the word has fewer vowels than notes, so the note carries the vowel before it on.</summary>
-    public readonly record struct Syllable(List<string> Phonemes, bool Missing);
+    public readonly record struct Syllable(List<string> Phonemes, bool Missing, bool Guessed = false);
 
     /// <summary>The phonemes of each note's syllable, in order.</summary>
     /// <param name="notes">Each syllable, and whether a hyphen joins it to the next.</param>
@@ -38,21 +38,25 @@ public static class EnglishPhonemizer
                 last++;
             }
             var parts = notes.Skip(first).Take(last - first + 1).Select(n => Clean(n.Text)).ToList();
-            var whole = parts.Count == 1 ? Spell(parts[0], dictionary, known) : Spell(string.Concat(parts), dictionary, known);
+            string word = string.Concat(parts);
+            var whole = Spell(word, dictionary, known);
+            // A word the dictionary lacks: each syllable may still be a word of its own, and
+            // failing that the letters give a guess.
+            var alone = whole is null ? parts.Select(p => Spell(p, dictionary, known)).ToList() : null;
+            bool guessed = alone is not null && alone.Contains(null);
+            whole ??= guessed ? Spell(word, dictionary, known, guess: true) : null;
             if (whole is not null)
             {
                 foreach (var dealt in Deal(whole, parts.Count, dictionary.IsVowel))
                 {
-                    result.Add(new Syllable(dealt, false));
+                    result.Add(new Syllable(dealt, false, guessed));
                 }
             }
             else
             {
-                // A word the dictionary lacks: each syllable may still be a word of its own.
-                foreach (var part in parts)
+                foreach (var one in alone!)
                 {
-                    var alone = Spell(part, dictionary, known);
-                    result.Add(new Syllable(alone ?? [], alone is null));
+                    result.Add(new Syllable(one ?? [], one is null));
                 }
             }
             first = last + 1;
@@ -83,12 +87,12 @@ public static class EnglishPhonemizer
     }
 
     /// <summary>The model's phonemes of a word or of an elision's words; null if one is not to be had.</summary>
-    private static List<string>? Spell(string text, DsDictionary dictionary, Func<string, string?> known)
+    private static List<string>? Spell(string text, DsDictionary dictionary, Func<string, string?> known, bool guess = false)
     {
         var phonemes = new List<string>();
         foreach (var word in text.Split(' ', StringSplitOptions.RemoveEmptyEntries))
         {
-            var raw = Lookup(word, dictionary);
+            var raw = Lookup(word, dictionary) ?? (guess ? EnglishLetters.Guess(word) : null);
             if (raw is null)
             {
                 return null;

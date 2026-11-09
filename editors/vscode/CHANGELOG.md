@@ -3,6 +3,7 @@
 ## 0.4.0
 
 - **A score can name its singer, or just its gender**: the settings `cantilena.defaultFemaleVoice` and `cantilena.defaultMaleVoice` take the place of `cantilena.voice`, with a picker each; empty is the first voice of that gender for the words' language. The API has `resolveSinger`. `sing` refuses words in a language the voice says it does not sing. `voices()` gives a voice's `gender` where its `info.toml` says.
+- **An English word the dictionary lacks is sung from its spelling**: the guess can be wrong, and the render's log names each word sung this way.
 - **DiffSinger voices sing English**, where the voice has a `dsdict-en.yaml`: words written in syllables are looked up whole and dealt back to their notes, and a score's `language` picks the dictionary. A voice lists every language it can sing in `languages`.
 - **A score's dynamics are heard**: a note's `level` and `levelEnd` scale what the engine sang (NEUTRINO reads a dynamic and sings no louder for it), eased between notes.
 - **The settings are grouped**: General, DiffSinger, NEUTRINO and Developer.

@@ -8,6 +8,8 @@ public class EnglishPhonemizerTests
     private const string Yaml = """
         symbols:
         - {symbol: aa, type: vowel}
+        - {symbol: ae, type: vowel}
+        - {symbol: eh, type: vowel}
         - {symbol: ah, type: vowel}
         - {symbol: ax, type: vowel}
         - {symbol: ay, type: vowel}
@@ -109,9 +111,46 @@ public class EnglishPhonemizerTests
     [Fact]
     public void AWordNotInTheDictionary_IsMissing_AndAKnownSyllableStillSings()
     {
-        var sung = Sing(("star", true), ("xyzzy", false));
+        var sung = Sing(("star", true), ("ほげ", false));
         Assert.Equal("s t aa r", Show(sung[0]));
         Assert.True(sung[1].Missing);
+    }
+
+    [Theory]
+    [InlineData("frog", "f r aa g")]
+    [InlineData("blade", "b l ey d")]
+    [InlineData("queen", "k w iy n")]
+    [InlineData("night", "n ay t")]
+    [InlineData("apple", "ae p ax l")]
+    [InlineData("knock", "n aa k")]
+    [InlineData("city", "s ih t iy")]
+    [InlineData("frogs", "f r aa g z")]
+    public void AWordTheDictionaryLacks_IsGuessedFromItsLetters(string word, string expected)
+        => Assert.Equal(expected, string.Join(' ', EnglishLetters.Guess(word)!));
+
+    [Theory]
+    [InlineData("ほげ")]
+    [InlineData("hmm")]
+    public void NoGuess_ForOtherScripts_OrWithoutAVowel(string word)
+        => Assert.Null(EnglishLetters.Guess(word));
+
+    [Fact]
+    public void AGuessedWord_SaysSo_AndIsDealtOverItsSyllables()
+    {
+        var sung = EnglishPhonemizer.Syllables([("blan", true), ("ket", false)], Dict, s => s);
+        Assert.True(sung[0].Guessed);
+        Assert.False(sung[0].Missing);
+        Assert.Equal("b l ae ng", Show(sung[0]));
+        Assert.Equal("k eh t", Show(sung[1]));
+    }
+
+    [Fact]
+    public void AListedSyllable_IsPreferredToAGuess()
+    {
+        var sung = EnglishPhonemizer.Syllables([("star", true), ("cat", false)], Dict, s => s);
+        Assert.False(sung[0].Guessed);
+        Assert.Equal("s t aa r", Show(sung[0]));
+        Assert.Equal("k aa t", Show(sung[1]));
     }
 
     [Fact]
