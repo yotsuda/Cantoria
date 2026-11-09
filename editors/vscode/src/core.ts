@@ -57,6 +57,18 @@ export interface VoiceEntry {
 /** `engine/name`. */
 export function voiceId(engine: string, name: string): string { return `${engine}/${name}`; }
 
+/** The names offered for casting: the two a score may write bare, the usual roles, then what is already cast. */
+export function castNames(cast: Readonly<Record<string, string>>): string[] {
+    return [...new Set(['male', 'female', 'soprano', 'alto', 'tenor', 'bass', ...Object.keys(cast)])];
+}
+
+/** The cast with `name` given to `voice`, or taken out with none. */
+export function withCast(cast: Readonly<Record<string, string>>, name: string, voice: string | undefined): Record<string, string> {
+    const next = { ...cast };
+    if (voice) { next[name] = voice; } else { delete next[name]; }
+    return next;
+}
+
 /** The first voice listed that says it is `gender` and sings `language` (the same one every time,
  *  so a score sounds alike from one playing to the next). A voice that does not say is not guessed at. */
 export function firstOfGender(voices: readonly Pick<VoiceEntry, 'id' | 'gender' | 'language'>[], gender: string, language?: string): string | undefined {

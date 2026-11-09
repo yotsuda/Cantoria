@@ -7,7 +7,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import {
     ENGINES, characterNameOf, diffSingerEntriesIn, diffSingerVoicesIn, languageProblem, languageTag, missingProgramNote, neutrinoFolderProblems, parseLine, programCandidates,
-    firstOfGender, requestLine, resolveSinger, rid, scoreProblems, serveArgs, speakerOf, splitVoiceId, voiceEntriesIn, voiceId, voiceKey, voicesFolderProblems, voicesIn, vsixTarget,
+    castNames, firstOfGender, requestLine, resolveSinger, rid, withCast, scoreProblems, serveArgs, speakerOf, splitVoiceId, voiceEntriesIn, voiceId, voiceKey, voicesFolderProblems, voicesIn, vsixTarget,
 } from '../src/core';
 
 const join = (...parts: string[]) => parts.join('\\');
@@ -23,6 +23,13 @@ describe('a score\'s singer on this machine', () => {
 
     it('then a voice\'s own name, when it is installed', () => {
         assert.deepEqual(resolveSinger('diffsinger/TIGER', {}, installed, fallback), { voice: 'diffsinger/TIGER' });
+    });
+
+    it('offers the names to cast and edits the cast', () => {
+        assert.deepEqual(castNames({ soprano: 'n/A', lead: 'n/B' }), ['male', 'female', 'soprano', 'alto', 'tenor', 'bass', 'lead']);
+        assert.deepEqual(withCast({ a: 'n/A' }, 'b', 'n/B'), { a: 'n/A', b: 'n/B' });
+        assert.deepEqual(withCast({ a: 'n/A' }, 'a', 'n/C'), { a: 'n/C' });
+        assert.deepEqual(withCast({ a: 'n/A', b: 'n/B' }, 'a', undefined), { b: 'n/B' });
     });
 
     it('picks a voice for male or female, the cast first, the same one every time', () => {
@@ -218,8 +225,14 @@ describe('the manifest', () => {
         assert.match(props['cantilena.vocoderFolder'].markdownDescription, /command:cantilena\.chooseVocoderFolder/);
     });
 
-    it('contributes the six commands and starts on nothing but them and the API', () => {
-        assert.deepEqual(commands.sort(), ['cantilena.checkSetup', 'cantilena.chooseNeutrinoFolder', 'cantilena.chooseVocoderFolder', 'cantilena.chooseVoice', 'cantilena.chooseVoicesFolder', 'cantilena.forgetVoices']);
+    it('tells the cast from the voices folder, with a way to each', () => {
+        assert.match(props['cantilena.voices'].markdownDescription, /Not the folder/);
+        assert.match(props['cantilena.voices'].markdownDescription, /command:cantilena\.chooseVoicesFolder/);
+        assert.match(props['cantilena.voices'].markdownDescription, /command:cantilena\.castVoice/);
+    });
+
+    it('contributes the seven commands and starts on nothing but them and the API', () => {
+        assert.deepEqual(commands.sort(), ['cantilena.castVoice', 'cantilena.checkSetup', 'cantilena.chooseNeutrinoFolder', 'cantilena.chooseVocoderFolder', 'cantilena.chooseVoice', 'cantilena.chooseVoicesFolder', 'cantilena.forgetVoices']);
         assert.deepEqual(manifest.activationEvents, []);
         assert.equal(manifest.main, './out/extension.js');
         assert.equal(manifest.license, 'Apache-2.0');

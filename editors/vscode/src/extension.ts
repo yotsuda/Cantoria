@@ -13,7 +13,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import {
-    CantilenaScore, ENGINES, VoiceEntry, diffSingerEntriesIn, diffSingerVoicesIn, firstOfGender, languageProblem, missingProgramNote, neutrinoFolderProblems, programCandidates,
+    CantilenaScore, ENGINES, VoiceEntry, castNames, withCast, diffSingerEntriesIn, diffSingerVoicesIn, firstOfGender, languageProblem, missingProgramNote, neutrinoFolderProblems, programCandidates,
     resolveSinger, scoreProblems, splitVoiceId, voiceEntriesIn, voiceId, voicesFolderProblems, voicesIn,
 } from './core';
 import { Engine, EngineSetup, RenderedVoice } from './engine';
@@ -236,6 +236,38 @@ async function chooseVoice(context: vscode.ExtensionContext): Promise<void> {
     vscode.window.setStatusBarMessage(`Cantilena: the voice is ${pick.label}`, 4000);
 }
 
+/** `cantilena.voices` from two lists: which name a score writes, and who sings it here. */
+async function castVoice(): Promise<void> {
+    const all = voices();
+    if (all.length === 0) {
+        const neutrino = 'Choose NEUTRINO Folder…', ds = 'Choose Voices Folder…';
+        const choice = await vscode.window.showWarningMessage('Cantilena: no voice is installed to cast yet', neutrino, ds);
+        if (choice === neutrino) { await chooseNeutrinoFolder(); }
+        else if (choice === ds) { await chooseVoicesFolder(); }
+        return;
+    }
+    const cast = castSetting();
+    const typed = 'Another name…';
+    const named = await vscode.window.showQuickPick(
+        [...castNames(cast).map(name => ({ label: name, description: cast[name] ?? '' })), { label: typed, description: 'A role of your own, or a voice to replace' }],
+        { title: 'Cantilena: Cast a Singer', placeHolder: 'The name a score writes after singer' });
+    if (!named) { return; }
+    const name = named.label === typed
+        ? (await vscode.window.showInputBox({ title: 'Cantilena: Cast a Singer', prompt: 'The name a score writes after singer' }))?.trim()
+        : named.label;
+    if (!name) { return; }
+    const remove = 'Sing it as the score says';
+    const items = [
+        ...all.map(v => ({ label: v.id, description: [v.label !== v.name ? v.label : '', v.gender ?? '', v.language ?? '', v.id === cast[name] ? '(current)' : ''].filter(Boolean).join(' · ') })),
+        ...(cast[name] ? [{ label: remove, description: 'Take this name out of the cast' }] : []),
+    ];
+    const pick = await vscode.window.showQuickPick(items, { title: `Cantilena: who sings "${name}" on this machine` });
+    if (!pick) { return; }
+    const voice = pick.label === remove ? undefined : pick.label;
+    await settings().update('voices', withCast(cast, name, voice), vscode.ConfigurationTarget.Global);
+    vscode.window.setStatusBarMessage(voice ? `Cantilena: "${name}" is sung by ${voice}` : `Cantilena: "${name}" is out of the cast`, 4000);
+}
+
 async function checkSetup(context: vscode.ExtensionContext): Promise<void> {
     const s = await status(context);
     output.appendLine(`setup: program ${s.program ?? 'none'}; NEUTRINO ${s.neutrinoFolder || 'not set'}; DiffSinger voices ${s.voicesFolder || 'not set'}; voice ${s.voice}; installed ${s.voices.join(', ') || 'none'}; ${s.ready ? 'ready' : s.problems.join('; ')}`);
@@ -260,6 +292,7 @@ export function activate(context: vscode.ExtensionContext): CantilenaApi {
         vscode.commands.registerCommand('cantilena.chooseNeutrinoFolder', () => chooseNeutrinoFolder()),
         vscode.commands.registerCommand('cantilena.chooseVoicesFolder', () => chooseVoicesFolder()),
         vscode.commands.registerCommand('cantilena.chooseVocoderFolder', () => chooseVocoderFolder()),
+        vscode.commands.registerCommand('cantilena.castVoice', () => castVoice()),
         vscode.commands.registerCommand('cantilena.chooseVoice', () => chooseVoice(context)),
         vscode.commands.registerCommand('cantilena.checkSetup', () => checkSetup(context)),
         vscode.commands.registerCommand('cantilena.forgetVoices', () => {
