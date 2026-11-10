@@ -48,13 +48,16 @@ export const VOICEVOX_GENDERS: Readonly<Record<string, 'female' | 'male'>> = {
     '猫使アル': 'female',
     '猫使ビィ': 'female',
     '中国うさぎ': 'female',
-    '満別花丸': 'female',
     'Voidoll': 'female',
     'ぞん子': 'female',
     '中部つるぎ': 'female',
     '暁記ミタマ': 'female',
+    'あんこもん': 'female',
+    'ブイブイ・コバコ': 'female',
     'ちび式じい': 'male',
     '†聖騎士 紅桜†': 'male',
+    // Officially neither, usable as both; listed as male because few voices are.
+    '満別花丸': 'male',
 };
 
 /** The gender of a VOICEVOX character's voice, or undefined when the table does not say. */
