@@ -92,21 +92,35 @@ public static class EnglishPhonemizer
         var phonemes = new List<string>();
         foreach (var word in text.Split(' ', StringSplitOptions.RemoveEmptyEntries))
         {
-            var raw = Lookup(word, dictionary) ?? (guess ? EnglishLetters.Guess(word) : null);
-            if (raw is null)
+            // An entry can name a phoneme its own voice lacks (TIGER's `hear` is [h, iy, r] where the
+            // voice has hh): the letters then read the word, which is better than silence.
+            var symbols = Known(Lookup(word, dictionary), known) ?? (guess ? Known(EnglishLetters.Guess(word), known) : null);
+            if (symbols is null)
             {
                 return null;
             }
-            foreach (var p in raw)
-            {
-                if (known(p) is not { } symbol)
-                {
-                    return null;
-                }
-                phonemes.Add(symbol);
-            }
+            phonemes.AddRange(symbols);
         }
         return phonemes.Count > 0 ? phonemes : null;
+    }
+
+    /// <summary>The phonemes as the model spells them; null if there are none or one is not the model's.</summary>
+    private static List<string>? Known(string[]? phonemes, Func<string, string?> known)
+    {
+        if (phonemes is null)
+        {
+            return null;
+        }
+        var symbols = new List<string>(phonemes.Length);
+        foreach (var p in phonemes)
+        {
+            if (known(p) is not { } symbol)
+            {
+                return null;
+            }
+            symbols.Add(symbol);
+        }
+        return symbols;
     }
 
     /// <summary>A word's entry, or its spelling from a listed form of it: the dictionary has

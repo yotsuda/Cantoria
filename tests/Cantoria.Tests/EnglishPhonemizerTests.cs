@@ -40,6 +40,7 @@ public class EnglishPhonemizerTests
         - {grapheme: "love", phonemes: [l, ah]}
         - {grapheme: "kiss", phonemes: [k, ih, s]}
         - {grapheme: "cat", phonemes: [k, aa, t]}
+        - {grapheme: "had", phonemes: [h, ae, d]}
         """;
 
     private static readonly DsDictionary Dict = DsDictionary.Parse(Yaml);
@@ -47,6 +48,15 @@ public class EnglishPhonemizerTests
     private static string?  Known(string symbol) => Dict.IsSymbol(symbol) ? symbol : null;
 
     private static List<EnglishPhonemizer.Syllable> Sing(params (string, bool)[] notes) => EnglishPhonemizer.Syllables(notes, Dict, Known);
+
+    [Fact]
+    public void AnEntryNamingAPhonemeTheVoiceLacks_IsReadFromItsLetters()
+    {
+        var had = Assert.Single(Sing(("had", false)));
+        Assert.Equal(["hh", "ae", "d"], had.Phonemes);
+        Assert.False(had.Missing);
+        Assert.True(had.Guessed);       // so the render's log names it
+    }
 
     private static string Show(EnglishPhonemizer.Syllable s) => string.Join(' ', s.Phonemes);
 
