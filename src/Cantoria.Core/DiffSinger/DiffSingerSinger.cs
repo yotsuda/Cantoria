@@ -22,7 +22,23 @@ public sealed class DiffSingerSinger : ISinger, IDisposable
     private const int TailFrames = 8;
     private const double LeadPaddingMs = 500;   // room before a phrase's first note for its consonants
 
+    /// <summary>A rest at least this long (seconds) ends a phrase: shorter, the next consonant reaches into it.</summary>
+    private const double RestBetweenPhrases = 0.3;
+
+    /// <summary>The longest one run of the models (seconds). DirectML sang 90 s and failed at 140 s,
+    /// on the pitch model's stack first and on the acoustic model's GRU (80070057) after that.</summary>
+    private const double LongestPhrase = 60;
+
+    private const double BreathMinMs = 150;     // a shorter gap takes no breath
+    private const double BreathMaxMs = 400;
+    private const double BreathClearMs = 20;    // kept clear between a breath and what follows it
+    private const double ConsonantRoomMs = 150; // of the rest after a phrase, left to the next phrase's consonants
+
+    /// <summary>What the phrases cost: 4 bytes a sample, 256 MiB a voice, about 24 minutes of singing.</summary>
+    private const int PhrasesKept = 64 * 1024 * 1024;
+
     private readonly DiffSingerVoice _voice;
+    private readonly PhraseCache _phrases = new(PhrasesKept);       // used under _oneAtATime
     private readonly SemaphoreSlim _oneAtATime = new(1, 1);
     private bool _disposed;
 
@@ -58,7 +74,7 @@ public sealed class DiffSingerSinger : ISinger, IDisposable
         await _oneAtATime.WaitAsync(ct).ConfigureAwait(false);
         try
         {
-            return await Task.Run(() => { _voice.UseSpeaker(speaker); return Render(score, ct); }, ct).ConfigureAwait(false);
+            return await Task.Run(() => { _voice.UseSpeaker(speaker); return Render(score, speaker, ct); }, ct).ConfigureAwait(false);
         }
         finally
         {
@@ -78,7 +94,7 @@ public sealed class DiffSingerSinger : ISinger, IDisposable
 
     private sealed record Phone(string Symbol, double StartMs, double EndMs);
 
-    private SungAudio Render(SungScore score, CancellationToken ct)
+    private SungAudio Render(SungScore score, string? speaker, CancellationToken ct)
     {
         var log = new System.Text.StringBuilder();
         var clock = System.Diagnostics.Stopwatch.StartNew();
@@ -160,7 +176,71 @@ public sealed class DiffSingerSinger : ISinger, IDisposable
             log.AppendLine($"not in {dur.DictionaryFile}, sung as silence: {string.Join(", ", unknown)}");
         }
 
-        // ---- timing: the duration model, one phrase (notes that touch) at a time ----
+        // ---- the phrases: each sung from its own time 0, once, and laid at its place in the score ----
+        var cuts = PhraseCut.Split(words.Select(w => (w.StartMs / 1000, w.EndMs / 1000)).ToList(), RestBetweenPhrases, LongestPhrase);
+        int rate = voice.Vocoder.SampleRate;
+        var placed = new List<(int At, float[] Samples)>();
+        int fresh = 0;
+        foreach (var (first, count) in cuts)
+        {
+            ct.ThrowIfCancellationRequested();
+            double startSeconds = words[first].Notes[0].Start;
+            var phrase = words.GetRange(first, count).Select(w => Shifted(w, startSeconds)).ToList();
+            double? breathRoom = first + count < words.Count ? EndBreathRoom(words[first + count - 1], words[first + count]) : null;
+            var key = new PhraseKey(speaker, language,
+                phrase.Select(w => $"{string.Join(' ', w.Phonemes)}|{w.Notes.Count}").ToList(),
+                phrase.SelectMany(w => w.Notes).Select(n => new PhraseNote(n.Start, n.Duration, n.Pitch, n.Breath)).ToList(),
+                breathRoom);
+            if (!_phrases.TryGet(key, out var sung))
+            {
+                sung = SingPhrase(phrase, breathRoom, log, ct);
+                _phrases.Add(key, sung);
+                fresh++;
+            }
+            placed.Add(((int)Math.Round((startSeconds * 1000 + sung.StartMs) / 1000 * rate), sung.Samples));
+        }
+        log.AppendLine($"phrases: {cuts.Count}, {fresh} sung, {cuts.Count - fresh} kept from before");
+        log.AppendLine($"provider: {voice.Provider}" + (voice.ProviderNote is { } note ? $" ({note})" : ""));
+
+        // Sample 0 is the score's 0: what sounds before it (the first consonant) is cut.
+        var aligned = new float[placed.Count == 0 ? 0 : Math.Max(0, placed.Max(p => p.At + p.Samples.Length))];
+        foreach (var (at, samples) in placed)
+        {
+            for (int i = Math.Max(0, -at); i < samples.Length; i++)
+            {
+                aligned[at + i] += samples[i];
+            }
+        }
+        LastLog = log.ToString();
+        return new SungAudio(aligned, rate);
+    }
+
+    /// <summary>The word with its notes' times counted from <paramref name="seconds"/>.</summary>
+    private static Word Shifted(Word w, double seconds)
+    {
+        var moved = new Word(w.Notes[0] with { Start = w.Notes[0].Start - seconds }, w.Phonemes);
+        moved.Notes.AddRange(w.Notes.Skip(1).Select(n => n with { Start = n.Start - seconds }));
+        return moved;
+    }
+
+    /// <summary>The time a breath at a phrase's end has before the next phrase's consonants, in ms;
+    /// null where no breath is taken. Past what a breath can use it no longer matters, so a longer
+    /// rest after the phrase does not make it a different phrase.</summary>
+    private static double? EndBreathRoom(Word last, Word next)
+    {
+        double room = next.StartMs - last.EndMs - ConsonantRoomMs;
+        return last.Notes[^1].Breath && room >= BreathMinMs ? Math.Min(room, BreathMaxMs + BreathClearMs) : null;
+    }
+
+    /// <summary>One phrase, its first note at time 0, through every model.</summary>
+    private SungPhrase SingPhrase(List<Word> words, double? breathRoom, System.Text.StringBuilder log, CancellationToken ct)
+    {
+        var clock = System.Diagnostics.Stopwatch.StartNew();
+        var voice = _voice;
+        var dur = voice.Dur;
+        var notes = words.SelectMany(w => w.Notes).ToList();
+
+        // ---- timing: the duration model, one run of notes that touch at a time ----
         var phrases = new List<List<Word>>();
         foreach (var w in words)
         {
@@ -186,12 +266,11 @@ public sealed class DiffSingerSinger : ISinger, IDisposable
             for (int i = 0; i < phones.Count; i++)
             {
                 withBreaths.Add(phones[i]);
-                if (i + 1 < phones.Count && phones[i + 1].StartMs - phones[i].EndMs >= 150
-                    && notes.Any(n => n.Breath && Math.Abs(n.End * 1000 - phones[i].EndMs) < 1))
+                double? room = i + 1 < phones.Count ? phones[i + 1].StartMs - phones[i].EndMs : breathRoom;
+                if (room >= BreathMinMs && notes.Any(n => n.Breath && Math.Abs(n.End * 1000 - phones[i].EndMs) < 1))
                 {
-                    double gapEnd = phones[i + 1].StartMs;
-                    double breathEnd = Math.Min(gapEnd - 20, phones[i].EndMs + 400);
-                    withBreaths.Add(new Phone(ap, phones[i].EndMs, breathEnd));
+                    double breathMs = Math.Min(room.Value - BreathClearMs, BreathMaxMs);
+                    withBreaths.Add(new Phone(ap, phones[i].EndMs, phones[i].EndMs + breathMs));
                 }
             }
             phones = withBreaths;
@@ -311,22 +390,7 @@ public sealed class DiffSingerSinger : ISinger, IDisposable
         var samples = waveform.First().AsTensor<float>().ToArray();
         int rate = voice.Vocoder.SampleRate;
         log.AppendLine($"vocoder: {samples.Length / (double)rate:0.00} s at {rate} Hz in {clock.Elapsed.TotalSeconds:0.00} s");
-        log.AppendLine($"provider: {voice.Provider}" + (voice.ProviderNote is { } note ? $" ({note})" : ""));
-
-        // Sample 0 stands at renderStartMs of the score: cut or pad so the audio's 0 is the score's 0.
-        int shift = (int)Math.Round(renderStartMs / 1000 * rate);
-        float[] aligned;
-        if (shift < 0)
-        {
-            aligned = -shift >= samples.Length ? [] : samples[(-shift)..];
-        }
-        else
-        {
-            aligned = new float[shift + samples.Length];
-            Array.Copy(samples, 0, aligned, shift, samples.Length);
-        }
-        LastLog = log.ToString();
-        return new SungAudio(aligned, rate);
+        return new SungPhrase(samples, renderStartMs);
     }
 
     private long AcousticToken(string symbol)

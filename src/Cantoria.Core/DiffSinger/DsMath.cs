@@ -168,6 +168,13 @@ public static class DsMath
         {
             throw new SingerException($"the {who} model wants inputs this engine does not give: {string.Join(", ", missing)}");
         }
-        return session.Run(given).Cast<NamedOnnxValue>().ToList();
+        try
+        {
+            return session.Run(given).Cast<NamedOnnxValue>().ToList();
+        }
+        catch (OnnxRuntimeException e)
+        {
+            throw new SingerException($"the {who} model failed: {e.Message}", e);
+        }
     }
 }

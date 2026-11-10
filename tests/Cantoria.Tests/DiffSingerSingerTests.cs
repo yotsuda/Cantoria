@@ -80,6 +80,68 @@ public class DiffSingerSingerTests
     }
 
     [Fact]
+    public async Task Sings_OnlyThePhraseThatChanged()
+    {
+        if (Voice is null)
+        {
+            return;
+        }
+        using var singer = new DiffSingerSinger(new DiffSingerOptions(Voice) { VocoderFolder = Vocoder, Steps = 10, Provider = OnnxProvider.Cpu });
+        static SungNote[] Phrase(double at, string a, string b) => [new(at, 0.5, 64, a), new(at + 0.5, 0.5, 66, b)];
+        var first = new SungScore([.. Phrase(0.5, "か", "き"), .. Phrase(2.5, "さ", "し"), .. Phrase(4.5, "た", "ち")]);
+        var whole = await singer.SingAsync(first);
+        Assert.Contains("phrases: 3, 3 sung, 0 kept", singer.LastLog);
+
+        // A syllable of the second phrase changed: only that one is sung, and the first sounds as before.
+        var edited = new SungScore([.. Phrase(0.5, "か", "き"), .. Phrase(2.5, "な", "し"), .. Phrase(4.5, "た", "ち")]);
+        var again = await singer.SingAsync(edited);
+        Assert.Contains("phrases: 3, 1 sung, 2 kept", singer.LastLog);
+        int rate = whole.SampleRate;
+        Assert.Equal(whole.Samples.Take(rate * 2), again.Samples.Take(rate * 2));
+        Assert.NotEqual(whole.Samples.Skip(rate * 2).Take(rate * 2), again.Samples.Skip(rate * 2).Take(rate * 2));
+
+        // Everything a bar later, and the same phrases at another place are the phrases already sung.
+        var later = new SungScore(first.Notes.Select(n => n with { Start = n.Start + 2 }).ToList());
+        var moved = await singer.SingAsync(later);
+        Assert.Contains("phrases: 3, 0 sung, 3 kept", singer.LastLog);
+        Assert.InRange(moved.Duration - whole.Duration, 1.99, 2.01);
+    }
+
+    [Fact]
+    public async Task ABreath_AtAPhrasesEnd_IsStillTaken()
+    {
+        if (Voice is null)
+        {
+            return;
+        }
+        using var singer = new DiffSingerSinger(new DiffSingerOptions(Voice) { VocoderFolder = Vocoder, Steps = 10, Provider = OnnxProvider.Cpu });
+        if (singer.Voice.AcousticSymbol("AP") is null)
+        {
+            return;
+        }
+        static SungScore Score(bool breath) => new([new(0.5, 1, 64, "か", Breath: breath), new(3, 1, 66, "さ")]);
+        var held = await singer.SingAsync(Score(false));
+        var breathed = await singer.SingAsync(Score(true));
+        static double Peak(SungAudio a) => a.Samples.Skip((int)(1.6 * a.SampleRate)).Take((int)(0.3 * a.SampleRate)).Max(s => (double)Math.Abs(s));
+        Assert.True(Peak(breathed) > 2 * Peak(held), $"after the note: {Peak(breathed):0.0000} with a breath, {Peak(held):0.0000} without");
+    }
+
+    [Fact]
+    public async Task AModelThatFails_IsASingerFailure_NotACrash()
+    {
+        if (Voice is null)
+        {
+            return;
+        }
+        using var singer = new DiffSingerSinger(new DiffSingerOptions(Voice) { VocoderFolder = Vocoder, Steps = 10, Provider = OnnxProvider.Cpu });
+        await singer.SingAsync(new SungScore([new SungNote(0.5, 0.5, 64, "か")]));     // settles the voice's language and opens the models
+        var session = singer.Voice.VocoderSession;
+        var inputs = session.InputNames.Select(name => DsMath.Row(name, new float[3]));     // rank 2: the mel wants 3
+        var e = Assert.Throws<SingerException>(() => DsMath.Run(session, inputs, "vocoder"));
+        Assert.Contains("vocoder", e.Message);
+    }
+
+    [Fact]
     public async Task Refuses_ASyllableTheDictionaryHasNot_WhenNothingIsLeft()
     {
         if (Voice is null)

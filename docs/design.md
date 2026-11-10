@@ -130,6 +130,16 @@ CPU a 7 s phrase took 5–18 s; on DirectML, with the models resident, 3 s for t
 0.3 s for the acoustic model — so this backend wants `serve`'s resident engine as much as
 NEUTRINO does, and the GPU provider is worth its separate package.
 
+The models run a phrase at a time (2026-11-10). On DirectML one run sang 90 s and failed at 140 s:
+a stack overflow in the pitch model, and with a larger stack `80070057` from the acoustic model's
+GRU. `PhraseCut` cuts at each rest of 0.3 s or more, where the cut cannot be heard and no edit moves
+a cut outside its own phrase, and a run still longer than 60 s in its widest gap. Each phrase is
+sung from its own time 0 and kept in `PhraseCache` (in memory, 256 MiB a voice), so an edit sings
+only its phrase and a phrase moved or repeated is not sung again. Harukaze, 187 s in 11 phrases on
+DirectML: 28 s the first time with the models' loading, 2.6 s after changing one syllable, 0.12 s
+for the same notes two bars later. On the CPU the first time costs more than one long run (77 s
+against 48 s).
+
 ## 4. CLI
 
 ```
