@@ -41,6 +41,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Han characters by Mandarin reading (tools/Generate-Pinyin.ps1; see THIRD-PARTY-NOTICES.md). -->
+    <EmbeddedResource Include="DiffSinger\pinyin.txt" LogicalName="Cantoria.DiffSinger.pinyin.txt" />
+  </ItemGroup>
+
+  <ItemGroup>
     <None Include="..\..\README.md" Pack="true" PackagePath="\" />
     <None Include="..\..\LICENSE" Pack="true" PackagePath="\" />
     <None Include="..\..\NOTICE" Pack="true" PackagePath="\" />

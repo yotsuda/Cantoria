@@ -52,4 +52,23 @@ public sealed class DsDictionary
         _entries.TryGetValue(grapheme, out var p) ? p
         : _entries.TryGetValue(grapheme.ToLowerInvariant(), out p) ? p
         : null;
+
+    /// <summary>A grapheme's phonemes as the model spells them; null when it has no entry, or the model lacks one of them.</summary>
+    public string[]? Spell(string grapheme, Func<string, string?> known)
+    {
+        if (Query(grapheme) is not { Length: > 0 } raw)
+        {
+            return null;
+        }
+        var spelled = new string[raw.Length];
+        for (int i = 0; i < raw.Length; i++)
+        {
+            if (known(raw[i]) is not { } symbol)
+            {
+                return null;
+            }
+            spelled[i] = symbol;
+        }
+        return spelled;
+    }
 }

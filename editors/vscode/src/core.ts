@@ -222,8 +222,8 @@ export function diffSingerEntriesIn(folder: string, listDirs: (dir: string) => s
         const character = readText(join(folder, name, 'character.yaml'));
         const label = (character && characterNameOf(character)) || name;
         const entry: VoiceEntry = { id: voiceId('diffsinger', name), engine: 'diffsinger', name, label };
-        // The voices sing what their dictionaries spell; this extension reads kana through them (ja) so far.
-        const languages = ['ja', 'en'].filter(l => exists(join(folder, name, 'dsdur', `dsdict-${l}.yaml`)));
+        // The voices sing what their dictionaries spell, in the languages the engine can read through them.
+        const languages = ['ja', 'en', 'zh', 'ko'].filter(l => exists(join(folder, name, 'dsdur', `dsdict-${l}.yaml`)));
         if (languages.length > 0) { entry.language = languages[0]; entry.languages = languages; }
         const colors = speakerColors(character);
         return [entry, ...diffSingerSpeakersOf(readText(join(folder, name, 'dsconfig.yaml')) ?? '').slice(1).map(speaker =>

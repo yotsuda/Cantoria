@@ -24,7 +24,8 @@ that is the one thing this library adds.
     format (a folder with `dsconfig.yaml`, as OpenUtau installs them) through
     ONNX Runtime, after the C# implementation in
     [OpenUtau](https://github.com/stakira/OpenUtau). Japanese lyrics (kana),
-    and English where the voice has a `dsdict-en.yaml`. On Windows the models run
+    and English, Chinese and Korean where the voice has that language's dictionary
+    (`dsdict-en.yaml`, `dsdict-zh.yaml`, `dsdict-ko.yaml`). On Windows the models run
     on the GPU through DirectML (any DirectX 12 device; the CPU where there is
     none, or with `--cpu`); on Linux and macOS on the CPU (CoreML on request,
     `--provider coreml`, untested).
@@ -80,10 +81,11 @@ NEUTRINO render of a score takes under half a second). See
 - Times are **seconds**: tempo, meter and repeats are the caller's business,
   already resolved. Gaps between notes are rests.
 - `pitch` is a MIDI note number (60 = C4); fractional values are allowed.
-- `language` says the words' language (`ja`, `en`). `lyric` is the syllable, in
-  the language's own script: hiragana or katakana for `ja`, a syllable of the
-  word for `en`, with `hyphen: true` on a note whose next syllable is of the
-  same word. A note with `melisma: true` continues the previous syllable's vowel
+- `language` says the words' language (`ja`, `en`, `zh`, `ko`). `lyric` is the
+  syllable, in the language's own script: hiragana or katakana for `ja`, a
+  syllable of the word for `en`, with `hyphen: true` on a note whose next
+  syllable is of the same word, a Han character or pinyin for `zh`, a Hangul
+  syllable or its romanisation for `ko`. A note with `melisma: true` continues the previous syllable's vowel
   and has no lyric of its own.
 - `breath: true` marks a phrase end after the note (the singer breathes), and
   `inhale: true` an audible breath before the next one. `level` and `levelEnd`

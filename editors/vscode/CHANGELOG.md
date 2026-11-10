@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- **DiffSinger voices sing Chinese and Korean**, where the voice has a `dsdict-zh.yaml` or `dsdict-ko.yaml`: Han characters by their customary reading or pinyin, Hangul syllables or their romanisation.
+
 ## 0.4.0
 
 - **A score can name its singer, or just its gender**: the settings `cantoria.defaultFemaleVoice` and `cantoria.defaultMaleVoice` take the place of `cantoria.voice`, with a picker each; empty is the first voice of that gender for the words' language. The API has `resolveSinger`. `sing` refuses words in a language the voice says it does not sing. `voices()` gives a voice's `gender` where its `info.toml` says.

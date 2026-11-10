@@ -87,8 +87,10 @@ Phonemisation is the backend's; the caller sends the text as sung and the langua
 
 - Japanese: kana (now); romaji → kana in the Japanese phonemiser so every caller gets it;
   kanji is the caller's to read (Lily# attaches a reading to the syllable).
-- Through DiffSinger voices: English, Chinese, Korean and others as their dictionaries allow;
-  the contract's `language` picks the dictionary; a mismatch is one sentence back.
+- Through DiffSinger voices: English, Chinese (Han characters by their customary reading, or
+  pinyin) and Korean (Hangul, each syllable by itself), and others as their dictionaries allow;
+  the contract's `language` picks the dictionary; a mismatch is one sentence back. Not done:
+  Mandarin readings that depend on the word, Korean final consonants carried to the next syllable.
 - An optional per-note `phonemes` override in the contract for what a dictionary gets wrong
   (stress, an unusual split). Older engines ignore unknown fields already.
 

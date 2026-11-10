@@ -9,6 +9,14 @@ program invoked as a separate process is not part of Cantoria at all.
 
 ## Included or referenced
 
+### Unihan database — Unicode License v3 (data derived)
+
+https://www.unicode.org/reports/tr38/
+
+`src/Cantoria.Core/DiffSinger/pinyin.txt` is generated from the `kMandarin` field of
+`Unihan_Readings.txt` (Unicode 18.0.0) by `tools/Generate-Pinyin.ps1`: each character's reading,
+tone removed. © 1991-2026 Unicode, Inc. Terms: https://www.unicode.org/license.txt
+
 ### OpenUtau — MIT (adapted)
 
 https://github.com/stakira/OpenUtau

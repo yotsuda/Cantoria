@@ -84,9 +84,9 @@ public sealed class DiffSingerSinger : ISinger, IDisposable
         var clock = System.Diagnostics.Stopwatch.StartNew();
         var voice = _voice;
         string language = score.Language.Split('-')[0];
-        if (language is not ("ja" or "en"))
+        if (language is not ("ja" or "en" or "zh" or "ko"))
         {
-            throw new SingerException($"{Name} cannot sing {score.Language} yet (it reads Japanese and English)");
+            throw new SingerException($"{Name} cannot sing {score.Language} yet (it reads Japanese, English, Chinese and Korean)");
         }
         voice.UseLanguage(language);
         var dur = voice.Dur;
@@ -130,7 +130,12 @@ public sealed class DiffSingerSinger : ISinger, IDisposable
             else
             {
                 var missing = new List<string>();
-                phonemes = KanaPhonemizer.Phonemes(n.Lyric!, dur.Dictionary, dur.Symbol, missing);
+                phonemes = language switch
+                {
+                    "zh" => ChinesePhonemizer.Phonemes(n.Lyric!, dur.Dictionary, dur.Symbol, missing),
+                    "ko" => KoreanPhonemizer.Phonemes(n.Lyric!, dur.Dictionary, dur.Symbol, missing),
+                    _ => KanaPhonemizer.Phonemes(n.Lyric!, dur.Dictionary, dur.Symbol, missing),
+                };
                 if (missing.Count > 0)
                 {
                     unknown.Add($"{n.Lyric} ({string.Join(" ", missing)})");
