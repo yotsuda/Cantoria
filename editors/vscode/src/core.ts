@@ -6,6 +6,7 @@
 // process here — test/core.test.ts drives it under node.
 
 import { createHash } from 'crypto';
+import { diffSingerGender } from './diffSingerGenders';
 import { voicevoxGender } from './voicevoxGenders';
 
 /** One sung note (the README's score): seconds, MIDI pitch, the syllable as pronounced. */
@@ -226,6 +227,8 @@ export function diffSingerEntriesIn(folder: string, listDirs: (dir: string) => s
         // The voices sing what their dictionaries spell, in the languages the engine can read through them.
         const languages = ['ja', 'en', 'zh', 'ko'].filter(l => exists(join(folder, name, 'dsdur', `dsdict-${l}.yaml`)));
         if (languages.length > 0) { entry.language = languages[0]; entry.languages = languages; }
+        const gender = diffSingerGender(name);
+        if (gender) { entry.gender = gender; }
         const colors = speakerColors(character);
         return [entry, ...diffSingerSpeakersOf(readText(join(folder, name, 'dsconfig.yaml')) ?? '').slice(1).map(speaker =>
             ({ ...entry, id: voiceId('diffsinger', `${name}/${speaker}`), name: `${name}/${speaker}`, label: `${label} (${colors.get(speaker) ?? speaker})` }))];

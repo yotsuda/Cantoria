@@ -3,6 +3,7 @@
 ## Unreleased
 
 - **VOICEVOX voices say their gender**, from a table in `src/voicevoxGenders.ts` (VOICEVOX does not): `singer male` and `singer female` can pick them, and the default-voice lists show it. A character the table does not list says nothing, as before.
+- **DiffSinger voices say their gender**, from a table in `src/diffSingerGenders.ts` (the voices do not): `singer male` and `singer female` can pick them, and the default-voice lists show it. A voice the table does not list says nothing, as before.
 - **DiffSinger voices sing Chinese and Korean**, where the voice has a `dsdict-zh.yaml` or `dsdict-ko.yaml`: Han characters by their customary reading or pinyin, Hangul syllables or their romanisation.
 
 ## 0.4.0

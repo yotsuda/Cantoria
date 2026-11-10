@@ -9,6 +9,7 @@ import {
     ENGINES, characterNameOf, diffSingerEntriesIn, diffSingerSpeakersOf, diffSingerVoicesIn, languageProblem, languageTag, missingProgramNote, neutrinoFolderProblems, parseLine, programCandidates,
     defaultVoiceFor, firstOfGender, genderOfWord, requestLine, resolveSinger, rid, scoreProblems, serveArgs, speakerOf, splitVoiceId, voiceEntriesIn, voiceId, voiceKey, voicePieces, voicesFolderProblems, voicesIn, voicevoxEntriesFrom, vsixTarget,
 } from '../src/core';
+import { DIFFSINGER_GENDERS, diffSingerGender } from '../src/diffSingerGenders';
 import { VOICEVOX_GENDERS, voicevoxGender } from '../src/voicevoxGenders';
 
 const join = (...parts: string[]) => parts.join('\\');
@@ -228,6 +229,17 @@ describe('where the program and the voices are', () => {
         ]);
     });
 
+    it('takes a DiffSinger voice\'s gender from the table, for its speakers too, and leaves one it does not list unsaid', () => {
+        const dsconfig = 'speakers:\n  - a/first\n  - a/second\n';
+        const text = (p: string) => p.endsWith('dsconfig.yaml') ? dsconfig : undefined;
+        const entries = (voice: string) => diffSingerEntriesIn('V', d => d === 'V' ? [voice] : [], p => p === 'V' || p.endsWith('dsconfig.yaml'), text, join);
+        assert.deepEqual(entries('TIGER').map(e => e.gender), ['male', 'male']);
+        assert.deepEqual(entries('Nishiren').map(e => e.gender), ['female', 'female']);
+        assert.deepEqual(entries('Unlisted').map(e => e.gender), [undefined, undefined]);
+        assert.equal(diffSingerGender('constructor'), undefined);
+        assert.ok(Object.values(DIFFSINGER_GENDERS).every(g => g === 'female' || g === 'male'));
+    });
+
     it('lists the DiffSinger voices: the subfolders with a dsconfig.yaml, each named by its character.yaml', () => {
         const tree = new Set(['V', 'V\\TIGER\\dsconfig.yaml', 'V\\TIGER\\character.yaml', 'V\\TIGER\\dsdur\\dsdict-ja.yaml', 'V\\Plain\\dsconfig.yaml', 'V\\notes']);
         const dirs = (d: string) => d === 'V' ? ['notes', 'TIGER', 'Plain'] : [];
@@ -236,7 +248,7 @@ describe('where the program and the voices are', () => {
         assert.deepEqual(diffSingerVoicesIn('', dirs, p => tree.has(p), join), []);
         assert.deepEqual(diffSingerEntriesIn('V', dirs, p => tree.has(p), text, join), [
             { id: 'diffsinger/Plain', engine: 'diffsinger', name: 'Plain', label: 'Plain' },
-            { id: 'diffsinger/TIGER', engine: 'diffsinger', name: 'TIGER', label: 'TIGER DS v106', language: 'ja', languages: ['ja'] },
+            { id: 'diffsinger/TIGER', engine: 'diffsinger', name: 'TIGER', label: 'TIGER DS v106', language: 'ja', languages: ['ja'], gender: 'male' },
         ]);
         assert.equal(characterNameOf("name: 'Momo'\n"), 'Momo');
         assert.equal(characterNameOf('singer_type: diffsinger\n'), undefined);
