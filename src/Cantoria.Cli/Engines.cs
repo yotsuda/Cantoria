@@ -201,11 +201,19 @@ sealed class Engines
         var (engine, name) = Split(pieces.Count == 1 ? pieces[0] : voice);
         return engine switch
         {
-            "neutrino" => new NeutrinoSinger(new NeutrinoOptions(NeutrinoFolder!, name) { UseGpu = UseGpu, Threads = Threads, KeepFiles = KeepFiles }),
+            "neutrino" => new PhrasedSinger(new NeutrinoSinger(new NeutrinoOptions(NeutrinoFolder!, name) { UseGpu = UseGpu, Threads = Threads, KeepFiles = KeepFiles }), RefuseWhatIsNotKana),
             "diffsinger" => DiffSingerOf(name),
             "voicevox" => new PhrasedSinger(Voicevox(name), score => VoicevoxScore.Notes(score.Notes)),
             _ => throw new SingerException($"no engine named {engine}"),
         };
+    }
+
+    private static void RefuseWhatIsNotKana(SungScore score)
+    {
+        if (NeutrinoMusicXml.NotKanaProblem(score) is { } problem)
+        {
+            throw new SingerException(problem);
+        }
     }
 
     /// <summary>A voice's speakers share its models, which are large: one singer a folder.</summary>

@@ -142,9 +142,9 @@ against 48 s).
 
 `PhrasedSinger` does the same around a singer of whole scores, each phrase given 0.5 s of rest before
 it for its first consonant; a melisma, a word that goes on, or a breath into the next note is never
-cut. VOICEVOX sings through it: Harukaze, 29.4 s whole, 18.0 s in phrases, 1.8 s after changing one
-syllable. NEUTRINO does not yet; through the same layer it took 24.0 s against 29.6 s whole and 1.5 s
-after one syllable, and whether it sounds the same is still to be heard.
+cut. VOICEVOX and NEUTRINO sing through it. Harukaze: VOICEVOX 29.4 s whole, 18.0 s in phrases, 1.8 s
+after changing one syllable; NEUTRINO 29.6 s whole, 24.0 s in phrases, 1.5 s after one syllable. The
+owner compared the renders by ear and heard no problem.
 
 ## 4. CLI
 
