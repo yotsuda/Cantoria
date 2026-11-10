@@ -205,13 +205,14 @@ sealed class Engines
         {
             "neutrino" => Phrased(new NeutrinoSinger(new NeutrinoOptions(NeutrinoFolder!, name) { UseGpu = UseGpu, Threads = Threads, KeepFiles = KeepFiles }), RefuseWhatIsNotKana),
             "diffsinger" => DiffSingerOf(name),
-            "voicevox" => Phrased(Voicevox(name), score => VoicevoxScore.Notes(score.Notes)),
+            // The revision: phrases sung before low notes were brought down are not to be found again.
+            "voicevox" => Phrased(Voicevox(name), score => VoicevoxScore.Notes(score.Notes), "@2"),
             _ => throw new SingerException($"no engine named {engine}"),
         };
     }
 
-    private PhrasedSinger Phrased(ISinger inner, Action<SungScore> check)
-        => new(inner, check, PhraseFolder is { } folder ? new PhraseDisk(folder, inner.Name) : null);
+    private PhrasedSinger Phrased(ISinger inner, Action<SungScore> check, string revision = "")
+        => new(inner, check, PhraseFolder is { } folder ? new PhraseDisk(folder, inner.Name + revision) : null);
 
     private static void RefuseWhatIsNotKana(SungScore score)
     {

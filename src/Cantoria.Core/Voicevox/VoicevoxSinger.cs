@@ -110,6 +110,19 @@ public static class VoicevoxScore
         return result;
     }
 
+    /// <summary>The lowest key the singing style that writes the pitch answers in tune (VOICEVOX 0.26.1,
+    /// measured 2026-11-10): below E3 its pitch came 13 to 31 semitones too high, every voice with it.</summary>
+    public const int LowestKey = 52;
+
+    /// <summary>How many octaves up the notes must be asked for, so that none is below
+    /// <see cref="LowestKey"/>; the answer's pitch is brought down as many. The whole phrase moves
+    /// together, so its melody keeps its shape.</summary>
+    public static int OctavesUp(IEnumerable<VoicevoxNote> notes)
+    {
+        int? lowest = notes.Min(n => n.Key);
+        return lowest is { } key && key < LowestKey ? (LowestKey - key + 11) / 12 : 0;
+    }
+
     private static string? VowelOf(string mora)
     {
         char last = mora[^1];
@@ -150,12 +163,22 @@ public sealed class VoicevoxSinger : ISinger, IDisposable
         {
             throw new SingerException($"{Name} sings Japanese, and these words are {score.Language}");
         }
+        var sung = VoicevoxScore.Notes(score.Notes);
+        int octaves = VoicevoxScore.OctavesUp(sung);
         var notes = new JsonArray();
-        foreach (var n in VoicevoxScore.Notes(score.Notes))
+        foreach (var n in sung)
         {
-            notes.Add(new JsonObject { ["key"] = n.Key, ["frame_length"] = n.FrameLength, ["lyric"] = n.Lyric });
+            notes.Add(new JsonObject { ["key"] = n.Key + 12 * octaves, ["frame_length"] = n.FrameLength, ["lyric"] = n.Lyric });
         }
         var query = JsonNode.Parse(await Post($"sing_frame_audio_query?speaker={_teacher}", new JsonObject { ["notes"] = notes }.ToJsonString(), ct).ConfigureAwait(false))!;
+        if (octaves > 0)
+        {
+            var f0 = query["f0"]!.AsArray();
+            for (int i = 0; i < f0.Count; i++)
+            {
+                f0[i] = (double)f0[i]! / (1 << octaves);
+            }
+        }
         query["outputSamplingRate"] = score.SampleRate;
         var audio = Wav.Read(await Post($"frame_synthesis?speaker={_voice.StyleId}", query.ToJsonString(), ct).ConfigureAwait(false));
         int lead = Math.Min(audio.Samples.Length, (int)Math.Round(VoicevoxScore.LeadFrames / VoicevoxScore.FrameRate * audio.SampleRate));

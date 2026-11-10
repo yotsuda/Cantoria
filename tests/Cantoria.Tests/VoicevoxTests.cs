@@ -105,6 +105,44 @@ public class VoicevoxTests
         Assert.Equal("voicevox/ずんだもん-あまあま", singer.Name);
     }
 
+    [Theory]
+    [InlineData(52, 0)]
+    [InlineData(51, 1)]
+    [InlineData(40, 1)]
+    [InlineData(39, 2)]
+    [InlineData(28, 2)]
+    [InlineData(27, 3)]
+    public void OctavesUp_BringTheLowestNoteToWhereThePitchIsInTune(int key, int octaves)
+        => Assert.Equal(octaves, VoicevoxScore.OctavesUp([new VoicevoxNote(null, 47, ""), new VoicevoxNote(key, 47, "カ"), new VoicevoxNote(70, 47, "カ")]));
+
+    [Fact]
+    public void OctavesUp_OfOnlyRests_IsNone() => Assert.Equal(0, VoicevoxScore.OctavesUp([new VoicevoxNote(null, 47, "")]));
+
+    [Fact]
+    public async Task ALowPhrase_IsAskedForHigher_AndItsPitchBroughtDown()
+    {
+        var fake = new FakeEngine(Wav.Write(new SungAudio(new float[48000], 48000)));
+        using var singer = new VoicevoxSinger(VoicevoxEngine.Client(VoicevoxEngine.DefaultUrl, fake), Zunda, 6000);
+        await singer.SingAsync(new SungScore([new SungNote(0, 0.5, 48, "か"), new SungNote(0.5, 0.5, 60, "き")], "ja", 48000));
+
+        var notes = JsonNode.Parse(fake.Asked[0].Body)!["notes"]!.AsArray();
+        Assert.Null(notes[0]!["key"]);
+        Assert.Equal(60, (int)notes[1]!["key"]!);
+        Assert.Equal(72, (int)notes[2]!["key"]!);       // the whole phrase moves
+        Assert.Equal(0.5, (double)JsonNode.Parse(fake.Asked[1].Body)!["f0"]![0]!);
+    }
+
+    [Fact]
+    public async Task APhraseInRange_IsAskedForAsWritten()
+    {
+        var fake = new FakeEngine(Wav.Write(new SungAudio(new float[48000], 48000)));
+        using var singer = new VoicevoxSinger(VoicevoxEngine.Client(VoicevoxEngine.DefaultUrl, fake), Zunda, 6000);
+        await singer.SingAsync(new SungScore([new SungNote(0, 0.5, 52, "か")], "ja", 48000));
+
+        Assert.Equal(52, (int)JsonNode.Parse(fake.Asked[0].Body)!["notes"]![1]!["key"]!);
+        Assert.Equal(1, (double)JsonNode.Parse(fake.Asked[1].Body)!["f0"]![0]!);
+    }
+
     [Fact]
     public async Task EnglishWords_AreRefused()
     {
