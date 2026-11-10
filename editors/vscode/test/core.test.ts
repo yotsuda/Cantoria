@@ -234,7 +234,7 @@ describe('where the program and the voices are', () => {
         const text = (p: string) => p.endsWith('dsconfig.yaml') ? dsconfig : undefined;
         const entries = (voice: string) => diffSingerEntriesIn('V', d => d === 'V' ? [voice] : [], p => p === 'V' || p.endsWith('dsconfig.yaml'), text, join);
         assert.deepEqual(entries('TIGER').map(e => e.gender), ['male', 'male']);
-        assert.deepEqual(entries('Nishiren').map(e => e.gender), ['female', 'female']);
+        assert.deepEqual(entries('Nishiren').map(e => e.gender), [undefined, undefined]);
         assert.deepEqual(entries('Unlisted').map(e => e.gender), [undefined, undefined]);
         assert.equal(diffSingerGender('constructor'), undefined);
         assert.ok(Object.values(DIFFSINGER_GENDERS).every(g => g === 'female' || g === 'male'));

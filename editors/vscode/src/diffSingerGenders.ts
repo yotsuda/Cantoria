@@ -13,8 +13,7 @@ export const DIFFSINGER_GENDERS: Readonly<Record<string, 'female' | 'male'>> = {
     // Its author's or the wiki's page says so.
     'TIGER': 'male',
 
-    // The page does not say: what the voice is described as. Corrections are welcome.
-    'Nishiren': 'female',   // a contralto
+    // Not listed on purpose: Nishiren, a non-binary voice.
 };
 
 /** The gender of a DiffSinger voice by its folder name, or undefined when the table does not say. */
