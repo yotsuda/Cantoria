@@ -38,7 +38,7 @@ public sealed class DiffSingerSinger : ISinger, IDisposable
     private const int PhrasesKept = 64 * 1024 * 1024;
 
     private readonly DiffSingerVoice _voice;
-    private readonly PhraseCache _phrases = new(PhrasesKept);       // used under _oneAtATime
+    private readonly PhraseCache _phrases;      // used under _oneAtATime
     private readonly SemaphoreSlim _oneAtATime = new(1, 1);
     private bool _disposed;
 
@@ -46,6 +46,7 @@ public sealed class DiffSingerSinger : ISinger, IDisposable
     public DiffSingerSinger(DiffSingerOptions options)
     {
         _voice = new DiffSingerVoice(options);
+        _phrases = new PhraseCache(PhrasesKept, options.PhraseFolder is { } folder ? new PhraseDisk(folder, $"diffsinger/{options.Name}@{options.Steps}") : null);
     }
 
     public string Name => $"diffsinger/{_voice.Options.Name}";

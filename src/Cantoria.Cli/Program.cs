@@ -65,7 +65,9 @@ static int Help(int code)
           --backend <name>            (older form) the engine of a bare --voice name
 
         serve: the same options but -o and --keep, plus --out-dir <folder> for the WAVs (default
-        %TEMP%\cantoria). The engines stay warm between requests. One request per line on stdin:
+        %TEMP%\cantoria) and --cache-mb <n>, which also keeps sung phrases on disk under that folder
+        and holds its .wav files and the phrases to n megabytes together, the longest unused going
+        first. The engines stay warm between requests. One request per line on stdin:
           {"id":"1","score":{…},"voice":"neutrino/MERROW","output":"C:\\x.wav"}   score, voice and output optional
           {"id":"1","scoreFile":"C:\\score.json"}
           {"command":"voices"}                                                    → {"voices":["neutrino/MERROW", …]}
@@ -257,6 +259,10 @@ static async Task<int> Serve(string[] rest)
     }
     var outDir = a.OutDir ?? Path.Combine(Path.GetTempPath(), "cantoria");
     Directory.CreateDirectory(outDir);
+    if (a.CacheMb > 0)
+    {
+        engines.PhraseFolder = Cantoria.DiffSinger.PhraseDisk.FolderIn(outDir);
+    }
 
     // The wire is UTF-8 both ways whatever the console's code page: paths and lyrics are not ASCII.
     var utf8 = new System.Text.UTF8Encoding(false);
@@ -329,6 +335,7 @@ static async Task<int> Serve(string[] rest)
                     engines.VoicevoxUrl = voicevoxUrl;
                 }
                 var singer = SingerOf(request.Voice);
+                Console.Error.WriteLine($"cantoria: {DateTime.Now:HH:mm:ss} singing {FileNameOf(id)} in {singer.Name}, {score.Notes.Count} notes");
                 var watch = Stopwatch.StartNew();
                 var audio = SungLevels.Apply(await singer.SingAsync(score), score);
                 var output = request.Output ?? Path.Combine(outDir, FileNameOf(id) + ".wav");
@@ -338,6 +345,10 @@ static async Task<int> Serve(string[] rest)
                     Directory.CreateDirectory(dirName);
                 }
                 await File.WriteAllBytesAsync(output, Wav.Write(audio));
+                if (a.CacheMb > 0)
+                {
+                    Cantoria.DiffSinger.PhraseDisk.Trim(outDir, a.CacheMb * 1024L * 1024);
+                }
                 stdout.WriteLine(JsonSerializer.Serialize(new
                 {
                     id,
@@ -392,7 +403,7 @@ sealed class EngineArgs
     public string? Voice, Backend, NeutrinoDir, VoicesDir, VocoderDir, VoicevoxUrl, Output, OutDir, Path;
     public bool Keep;
     public OnnxProvider Provider = OnnxProvider.Auto;
-    public int Threads = 4, Steps = 20;
+    public int Threads = 4, Steps = 20, CacheMb;
     public List<string> Unknown = [];
 
     public static EngineArgs Parse(string[] rest)
@@ -412,6 +423,7 @@ sealed class EngineArgs
                 case "--voicevox-url" when i + 1 < rest.Length: a.VoicevoxUrl = rest[++i]; break;
                 case "--threads" when i + 1 < rest.Length && int.TryParse(rest[i + 1], out a.Threads): i++; break;
                 case "--steps" when i + 1 < rest.Length && int.TryParse(rest[i + 1], out a.Steps): i++; break;
+                case "--cache-mb" when i + 1 < rest.Length && int.TryParse(rest[i + 1], out a.CacheMb): i++; break;
                 case "--cpu": a.Provider = OnnxProvider.Cpu; break;
                 case "--provider" when i + 1 < rest.Length:
                     i++;

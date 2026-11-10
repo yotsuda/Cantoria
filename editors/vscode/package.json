@@ -57,6 +57,13 @@
               "default": true,
               "scope": "machine-overridable",
               "markdownDescription": "Render on the GPU where the engine can: NEUTRINO through CUDA, a DiffSinger voice through DirectML (any DirectX 12 GPU; the CPU stands in where there is none). Off: the CPU, slower by an order of magnitude."
+            },
+            "cantoria.cacheSizeMB": {
+              "type": "number",
+              "default": 1000,
+              "minimum": 100,
+              "scope": "machine-overridable",
+              "markdownDescription": "The disk, in megabytes, that rendered voices and their phrases may take together. Past it, what has gone unused longest is removed and rendered again when it is next needed. A three-minute voice takes about 33 MB: 16 MB of phrases and 16 MB for the voice laid together."
             }
         }
       },

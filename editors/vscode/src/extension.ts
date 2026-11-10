@@ -141,7 +141,7 @@ function setupNow(context: vscode.ExtensionContext): { setup?: EngineSetup; prob
     problems.push(...voicesFolderProblems(d, fs.existsSync));
     if (problems.length > 0) { return { problems, program: prog }; }
     return {
-        setup: { program: prog!, neutrinoFolder: n, voicesFolder: d, vocoderFolder: vocoderFolder(), gpu: settings().get<boolean>('gpu', true), threads: settings().get<number>('threads', 4) },
+        setup: { program: prog!, neutrinoFolder: n, voicesFolder: d, vocoderFolder: vocoderFolder(), gpu: settings().get<boolean>('gpu', true), threads: settings().get<number>('threads', 4), cacheSizeMB: settings().get<number>('cacheSizeMB', 1000) },
         problems, program: prog,
     };
 }
@@ -152,7 +152,7 @@ function engineFor(context: vscode.ExtensionContext): Engine {
     if (!setup) { throw new Error(problems.join('; ')); }
     if (engine && (engine.setup.program !== setup.program || engine.setup.neutrinoFolder !== setup.neutrinoFolder
         || engine.setup.voicesFolder !== setup.voicesFolder || engine.setup.vocoderFolder !== setup.vocoderFolder
-        || engine.setup.gpu !== setup.gpu || engine.setup.threads !== setup.threads)) {
+        || engine.setup.gpu !== setup.gpu || engine.setup.threads !== setup.threads || engine.setup.cacheSizeMB !== setup.cacheSizeMB)) {
         engine.dispose();
         engine = undefined;
     }
@@ -301,13 +301,13 @@ export function activate(context: vscode.ExtensionContext): CantoriaApi {
         vscode.commands.registerCommand('cantoria.chooseMaleVoice', () => chooseDefaultVoice(context, 'male')),
         vscode.commands.registerCommand('cantoria.checkSetup', () => checkSetup(context)),
         vscode.commands.registerCommand('cantoria.forgetVoices', () => {
-            const e = engine ?? new Engine({ program: '', neutrinoFolder: '', voicesFolder: '', vocoderFolder: '', gpu: true, threads: 1 }, path.join(storage, 'voices'), () => undefined);
-            const n = e.forget();
+            release();      // the engine holds phrases in memory too
+            const n = new Engine({ program: '', neutrinoFolder: '', voicesFolder: '', vocoderFolder: '', gpu: true, threads: 1, cacheSizeMB: 0 }, path.join(storage, 'voices'), () => undefined).forget();
             vscode.window.setStatusBarMessage(`Cantoria: ${n} rendered voice${n === 1 ? '' : 's'} forgotten`, 4000);
         }),
         // A changed engine setting lets the engine go; the next sing starts one for the new settings.
         vscode.workspace.onDidChangeConfiguration(e => {
-            if (['neutrinoFolder', 'voicesFolder', 'vocoderFolder', 'program', 'gpu', 'threads'].some(s => e.affectsConfiguration('cantoria.' + s))) {
+            if (['neutrinoFolder', 'voicesFolder', 'vocoderFolder', 'program', 'gpu', 'threads', 'cacheSizeMB'].some(s => e.affectsConfiguration('cantoria.' + s))) {
                 release();
             }
             if (['voicevoxUrl', 'voicevoxFolder', 'gpu'].some(s => e.affectsConfiguration('cantoria.' + s))) { voicevox.changed(); }

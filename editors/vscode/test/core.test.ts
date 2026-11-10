@@ -131,6 +131,7 @@ describe('the engine\'s wire', () => {
         assert.deepEqual(serveArgs('C:\\v', false, 0), ['serve', '--out-dir', 'C:\\v', '--threads', '1', '--cpu']);
         assert.deepEqual(serveArgs('C:\\v', true, 4, 'C:\\voices', ' '), ['serve', '--out-dir', 'C:\\v', '--threads', '4', '--voices-dir', 'C:\\voices']);
         assert.deepEqual(serveArgs('C:\\v', true, 4, '', 'C:\\voc'), ['serve', '--out-dir', 'C:\\v', '--threads', '4', '--vocoder-dir', 'C:\\voc']);
+        assert.deepEqual(serveArgs('C:\\v', true, 4, '', '', 500), ['serve', '--out-dir', 'C:\\v', '--threads', '4', '--cache-mb', '500']);
         assert.equal(JSON.parse(requestLine('k', { notes: [] }, 'voicevox/x', 'o', 'http://x:1')).voicevoxUrl, 'http://x:1');
         assert.deepEqual(voicevoxEntriesFrom({ detail: 'no' }), [], 'not a list of singers');
         assert.deepEqual(voicevoxEntriesFrom([{ name: 'ず', styles: [{ name: 'ふつう', type: 'talk' }, { name: 'ノーマル', type: 'frame_decode' }] }]),
@@ -282,7 +283,7 @@ describe('the manifest', () => {
     it('groups the settings by what they are for', () => {
         const groups = Object.fromEntries(manifest.contributes.configuration.map((c: { title: string; properties: object }) => [c.title, Object.keys(c.properties).map(k => k.replace('cantoria.', '')).sort()]));
         assert.deepEqual(groups, {
-            General: ['defaultFemaleVoice', 'defaultMaleVoice', 'gpu'],
+            General: ['cacheSizeMB', 'defaultFemaleVoice', 'defaultMaleVoice', 'gpu'],
             NEUTRINO: ['neutrinoFolder', 'threads'],
             DiffSinger: ['vocoderFolder', 'voicesFolder'],
             VOICEVOX: ['voicevoxFolder', 'voicevoxUrl'],
@@ -293,7 +294,7 @@ describe('the manifest', () => {
     const commands = (manifest.contributes.commands as { command: string }[]).map(c => c.command);
 
     it('holds the settings, each engine setting machine-overridable', () => {
-        for (const name of ['cantoria.neutrinoFolder', 'cantoria.voicesFolder', 'cantoria.vocoderFolder', 'cantoria.defaultFemaleVoice', 'cantoria.defaultMaleVoice', 'cantoria.gpu', 'cantoria.threads', 'cantoria.program']) {
+        for (const name of ['cantoria.neutrinoFolder', 'cantoria.voicesFolder', 'cantoria.vocoderFolder', 'cantoria.defaultFemaleVoice', 'cantoria.defaultMaleVoice', 'cantoria.gpu', 'cantoria.threads', 'cantoria.program', 'cantoria.cacheSizeMB']) {
             assert.ok(props[name], `${name} is contributed`);
             assert.equal(props[name].scope, 'machine-overridable', name);
         }

@@ -63,8 +63,8 @@ Several voices joined by commas sing the part together, and they may come from d
 
 The first phrase takes a while: NEUTRINO loads its models for up to a minute, and a DiffSinger voice
 takes a couple of seconds on a DirectX 12 GPU through DirectML, or ten or more on the CPU where
-there is none. The same phrase is sung once and kept (**Cantoria: Forget Rendered Voices** clears
-them).
+there is none. The same phrase is sung once and kept, even after VS Code closes, up to the disk
+`cantoria.cacheSizeMB` allows (**Cantoria: Forget Rendered Voices** clears them).
 
 ## For extension authors
 

@@ -27,6 +27,9 @@ public sealed record DiffSingerOptions(string Folder)
     /// the CPU always, or DirectML or an error.</summary>
     public OnnxProvider Provider { get; init; } = OnnxProvider.Auto;
 
+    /// <summary>Where sung phrases are kept on disk (<see cref="PhraseDisk.FolderIn"/>); null keeps them in memory only.</summary>
+    public string? PhraseFolder { get; init; }
+
     /// <summary>The name of the voice: its folder's name.</summary>
     public string Name => Path.GetFileName(Path.TrimEndingDirectorySeparator(Folder));
 

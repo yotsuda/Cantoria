@@ -35,6 +35,8 @@ sealed class Engines
     public int Threads { get; init; } = 4;
     public int Steps { get; init; } = 20;
     public bool KeepFiles { get; init; }
+    /// <summary>Where sung phrases are kept on disk; null keeps them in memory only.</summary>
+    public string? PhraseFolder { get; set; }
 
     /// <summary>
     /// The folders from the options, else the environment (<c>CANTORIA_NEUTRINO_DIR</c>,
@@ -201,12 +203,15 @@ sealed class Engines
         var (engine, name) = Split(pieces.Count == 1 ? pieces[0] : voice);
         return engine switch
         {
-            "neutrino" => new PhrasedSinger(new NeutrinoSinger(new NeutrinoOptions(NeutrinoFolder!, name) { UseGpu = UseGpu, Threads = Threads, KeepFiles = KeepFiles }), RefuseWhatIsNotKana),
+            "neutrino" => Phrased(new NeutrinoSinger(new NeutrinoOptions(NeutrinoFolder!, name) { UseGpu = UseGpu, Threads = Threads, KeepFiles = KeepFiles }), RefuseWhatIsNotKana),
             "diffsinger" => DiffSingerOf(name),
-            "voicevox" => new PhrasedSinger(Voicevox(name), score => VoicevoxScore.Notes(score.Notes)),
+            "voicevox" => Phrased(Voicevox(name), score => VoicevoxScore.Notes(score.Notes)),
             _ => throw new SingerException($"no engine named {engine}"),
         };
     }
+
+    private PhrasedSinger Phrased(ISinger inner, Action<SungScore> check)
+        => new(inner, check, PhraseFolder is { } folder ? new PhraseDisk(folder, inner.Name) : null);
 
     private static void RefuseWhatIsNotKana(SungScore score)
     {
@@ -254,6 +259,7 @@ sealed class Engines
         VocoderFolder = VocoderFolder,
         Steps = Steps,
         Provider = Provider,
+        PhraseFolder = PhraseFolder,
     };
 
     /// <summary>Every voice installed, as <c>engine/name</c>: NEUTRINO's, then the DiffSinger voices folder's.</summary>

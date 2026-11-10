@@ -64,12 +64,13 @@ public sealed record PhraseKey(string? Speaker, string Language, IReadOnlyList<s
 
 /// <summary>
 /// The phrases already sung, so that an edit sings only the phrase it changed, and a phrase the piece
-/// repeats is sung once. The ones used longest ago go first when <c>maxSamples</c> is passed. Not
-/// thread-safe: the singer holds it under its one-at-a-time lock.
+/// repeats is sung once. The ones used longest ago go first when <c>maxSamples</c> is passed. With
+/// a <paramref name="disk"/>, what memory has let go, or an engine before this one sang, is found
+/// there. Not thread-safe: the singer holds it under its one-at-a-time lock.
 /// </summary>
-public sealed class PhraseCache(long maxSamples)
+public sealed class PhraseCache(long maxSamples, PhraseDisk? disk = null)
 {
-    private readonly LinkedList<(PhraseKey Key, SungPhrase Phrase)> _recentFirst = new();
+    private readonly LinkedList<(PhraseKey Key, SungPhrase Phrase, string? File)> _recentFirst = new();
     private long _samples;
 
     public int Count => _recentFirst.Count;
@@ -83,16 +84,27 @@ public sealed class PhraseCache(long maxSamples)
                 _recentFirst.Remove(node);
                 _recentFirst.AddFirst(node);
                 phrase = node.Value.Phrase;
+                if (node.Value.File is { } file)
+                {
+                    PhraseDisk.Touch(file);
+                }
                 return true;
             }
+        }
+        if (disk is not null && disk.TryLoad(key, out phrase, out var found))
+        {
+            Keep(key, phrase, found);
+            return true;
         }
         phrase = null!;
         return false;
     }
 
-    public void Add(PhraseKey key, SungPhrase phrase)
+    public void Add(PhraseKey key, SungPhrase phrase) => Keep(key, phrase, disk?.Save(key, phrase));
+
+    private void Keep(PhraseKey key, SungPhrase phrase, string? file)
     {
-        _recentFirst.AddFirst((key, phrase));
+        _recentFirst.AddFirst((key, phrase, file));
         _samples += phrase.Samples.Length;
         while (_samples > maxSamples && _recentFirst.Count > 1)
         {

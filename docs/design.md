@@ -146,6 +146,13 @@ cut. VOICEVOX and NEUTRINO sing through it. Harukaze: VOICEVOX 29.4 s whole, 18.
 after changing one syllable; NEUTRINO 29.6 s whole, 24.0 s in phrases, 1.5 s after one syllable. The
 owner compared the renders by ear and heard no problem.
 
+With `serve --cache-mb <n>` the phrases are also kept on disk (`PhraseDisk`, under `<out-dir>/phrases`,
+16-bit as the WAVs are), so an engine started again sings only what changed: 5.3 s for one syllable
+in a fresh process, the models' loading included, against 29 s before. One budget holds the rendered
+WAVs and the phrases together, the longest unused going first; a WAV removed is laid together again
+from its phrases in a tenth of a second, so the two need no limits of their own. The extension's
+`cantoria.cacheSizeMB` is that budget.
+
 ## 4. CLI
 
 ```

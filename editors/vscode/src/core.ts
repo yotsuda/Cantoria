@@ -330,12 +330,13 @@ export function requestLine(id: string, score: CantoriaScore, voice: string, out
 /** The shutdown request. */
 export const SHUTDOWN_LINE = '{"command":"shutdown"}\n';
 
-/** The arguments of the resident engine: where the WAVs go, the GPU or not, the threads, the DiffSinger folders when set. */
-export function serveArgs(outDir: string, gpu: boolean, threads: number, voicesFolder = '', vocoderFolder = ''): string[] {
+/** The arguments of the resident engine: where the WAVs go, the GPU or not, the threads, the DiffSinger folders when set, the disk its renders may take. */
+export function serveArgs(outDir: string, gpu: boolean, threads: number, voicesFolder = '', vocoderFolder = '', cacheSizeMB = 0): string[] {
     const args = ['serve', '--out-dir', outDir, '--threads', String(Math.max(1, Math.floor(threads) || 1))];
     if (!gpu) { args.push('--cpu'); }
     if (voicesFolder.trim()) { args.push('--voices-dir', voicesFolder.trim()); }
     if (vocoderFolder.trim()) { args.push('--vocoder-dir', vocoderFolder.trim()); }
+    if (cacheSizeMB > 0) { args.push('--cache-mb', String(Math.floor(cacheSizeMB))); }
     return args;
 }
 

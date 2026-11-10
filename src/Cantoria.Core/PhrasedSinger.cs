@@ -13,7 +13,8 @@ namespace Cantoria;
 /// <param name="inner">The singer of each phrase.</param>
 /// <param name="check">Throws <see cref="SingerException"/> for what is wrong with the whole score,
 /// before any phrase is sung, so that the message speaks of the score and not of one phrase.</param>
-public sealed class PhrasedSinger(ISinger inner, Action<SungScore>? check = null) : ISinger, IDisposable
+/// <param name="disk">Where phrases are kept beyond this engine's life; null keeps them in memory only.</param>
+public sealed class PhrasedSinger(ISinger inner, Action<SungScore>? check = null, PhraseDisk? disk = null) : ISinger, IDisposable
 {
     private const double RestBetweenPhrases = 0.3;
     private const double LongestPhrase = 60;
@@ -25,7 +26,7 @@ public sealed class PhrasedSinger(ISinger inner, Action<SungScore>? check = null
     /// <summary>4 bytes a sample, 256 MiB a voice.</summary>
     private const int PhrasesKept = 64 * 1024 * 1024;
 
-    private readonly PhraseCache _phrases = new(PhrasesKept);
+    private readonly PhraseCache _phrases = new(PhrasesKept, disk);
     private readonly SemaphoreSlim _oneAtATime = new(1, 1);
 
     public string Name => inner.Name;
