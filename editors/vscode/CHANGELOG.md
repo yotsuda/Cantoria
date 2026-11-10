@@ -4,6 +4,7 @@
 
 - **A DiffSinger voice sings a phrase at a time**: the score is cut at its rests, and each phrase is sung once and kept while the engine runs, so changing a note or a word sings only that phrase again. A score longer than about two minutes no longer stops the engine on DirectML, and a model's failure is now reported as that voice's error instead of ending the engine.
 - **VOICEVOX and NEUTRINO voices sing a phrase at a time too**, kept the same way.
+- **A VOICEVOX voice no longer fails with `Internal Server Error` on notes that touch**: two notes rounded a hundredth of a second apart were sent with a rest between them too short for the engine.
 - **VOICEVOX voices sing below E3 in tune**: the singing style that writes the pitch came 13 to 31 semitones too high there, on every voice, so a low phrase is now asked for an octave or two up and its pitch brought back down.
 - **A render no longer wanted can be let go of**: `sing` takes an `AbortSignal` in `options.signal`, and `serve` a `{"command":"cancel","id":…}`. The engine finishes the phrase it is on, keeps what it sang, and goes on to the next request.
 - **Phrases are kept on disk**, so an edit after the engine or VS Code restarts sings only what changed. The new setting `cantoria.cacheSizeMB` (1000 by default) holds the rendered voices and the phrases together to that size, the longest unused going first; the rendered voices had no limit before. **Forget Rendered Voices** clears the phrases too.

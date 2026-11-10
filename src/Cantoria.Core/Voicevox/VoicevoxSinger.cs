@@ -72,7 +72,8 @@ public static class VoicevoxScore
         foreach (var n in notes)
         {
             int start = Frame(n.Start);
-            if (start > cursor)
+            // One frame is rounding, not a rest, and the engine answers 500 to it before a consonant.
+            if (start > cursor + 1)
             {
                 result.Add(new VoicevoxNote(null, start - cursor, ""));
                 cursor = start;

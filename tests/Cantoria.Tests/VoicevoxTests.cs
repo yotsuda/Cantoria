@@ -26,6 +26,14 @@ public class VoicevoxTests
     }
 
     [Fact]
+    public void AGapOfOneFrame_IsNoRest_TheEngineRefusesOne()
+        => Assert.Equal("-47 カ60:47 キ60:57 -47", Show(VoicevoxScore.Notes([new SungNote(0, 0.5, 60, "か"), new SungNote(0.51, 0.6, 60, "き")])));
+
+    [Fact]
+    public void AGapOfTwoFrames_IsARest()
+        => Assert.Equal("-47 カ60:47 -2 キ60:56 -47", Show(VoicevoxScore.Notes([new SungNote(0, 0.5, 60, "か"), new SungNote(0.52, 0.6, 60, "き")])));
+
+    [Fact]
     public void ASyllableOfTwoMorae_SharesItsNote()
     {
         var notes = VoicevoxScore.Notes([new SungNote(0, 1, 60, "こん")]);
