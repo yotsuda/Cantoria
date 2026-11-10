@@ -49,16 +49,17 @@ and **Cantoria: Check Setup** to see that all is well.
 
 ## Singing in Lily#
 
-Needs the Lily# extension 0.16.0 or later. The preview's Play sings every part a lyrics row sings, in time with the other parts. Write kana for
-a Japanese voice and syllables of English words for an English one. A lyrics row names who sings it:
+Needs the Lily# extension 0.16.0 or later. The preview's Play sings every part a `singer` line sings, in time with the other parts. Write kana for
+a Japanese voice and syllables of English words for an English one. A top-level line says who sings what
+([the page on singing](https://yotsuda.github.io/LilySharp/sing.html) has the rest):
 
 ```
-lyrics verse sings melody singer "neutrino/MERROW"
-lyrics verse sings melody singer "neutrino/MERROW","diffsinger/TIGER"
-lyrics verse sings melody singer female
+singer "neutrino/MERROW" sings verse on melody
+singer "diffsinger/TIGER" sings verse on melody
+singer female sings verse on melody
 ```
 
-Several voices joined by commas sing the part together, and they may come from different engines.
+Several lines with the same words on one part sing it together, and they may come from different engines.
 `male` or `female` takes the default voice of that gender.
 
 The first phrase takes a while: NEUTRINO loads its models for up to a minute, and a DiffSinger voice
