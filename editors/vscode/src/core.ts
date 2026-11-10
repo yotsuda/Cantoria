@@ -6,6 +6,7 @@
 // process here — test/core.test.ts drives it under node.
 
 import { createHash } from 'crypto';
+import { voicevoxGender } from './voicevoxGenders';
 
 /** One sung note (the README's score): seconds, MIDI pitch, the syllable as pronounced. */
 export interface CantoriaNote {
@@ -261,7 +262,8 @@ export function voicevoxEntriesFrom(singers: unknown): VoiceEntry[] {
         for (const style of singer.styles ?? []) {
             if ((style.type !== 'sing' && style.type !== 'frame_decode') || !singer.name || !style.name) { continue; }
             const name = `${singer.name}-${style.name}`;
-            entries.push({ id: voiceId('voicevox', name), engine: 'voicevox', name, label: `${singer.name} (${style.name})`, language: 'ja', licence: `Credit "VOICEVOX:${singer.name}" and follow the character's terms` });
+            const gender = voicevoxGender(singer.name);
+            entries.push({ id: voiceId('voicevox', name), engine: 'voicevox', name, label: `${singer.name} (${style.name})`, language: 'ja', licence: `Credit "VOICEVOX:${singer.name}" and follow the character's terms`, ...(gender ? { gender } : {}) });
         }
     }
     return entries;

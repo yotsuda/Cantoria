@@ -9,6 +9,7 @@ import {
     ENGINES, characterNameOf, diffSingerEntriesIn, diffSingerSpeakersOf, diffSingerVoicesIn, languageProblem, languageTag, missingProgramNote, neutrinoFolderProblems, parseLine, programCandidates,
     defaultVoiceFor, firstOfGender, genderOfWord, requestLine, resolveSinger, rid, scoreProblems, serveArgs, speakerOf, splitVoiceId, voiceEntriesIn, voiceId, voiceKey, voicePieces, voicesFolderProblems, voicesIn, voicevoxEntriesFrom, vsixTarget,
 } from '../src/core';
+import { VOICEVOX_GENDERS, voicevoxGender } from '../src/voicevoxGenders';
 
 const join = (...parts: string[]) => parts.join('\\');
 
@@ -133,6 +134,19 @@ describe('the engine\'s wire', () => {
         assert.deepEqual(voicevoxEntriesFrom({ detail: 'no' }), [], 'not a list of singers');
         assert.deepEqual(voicevoxEntriesFrom([{ name: 'ず', styles: [{ name: 'ふつう', type: 'talk' }, { name: 'ノーマル', type: 'frame_decode' }] }]),
             [{ id: 'voicevox/ず-ノーマル', engine: 'voicevox', name: 'ず-ノーマル', label: 'ず (ノーマル)', language: 'ja', licence: 'Credit "VOICEVOX:ず" and follow the character\'s terms' }]);
+    });
+
+    it('takes a VOICEVOX voice\'s gender from the table, and leaves one it does not list unsaid', () => {
+        const styles = [{ name: 'ノーマル', type: 'frame_decode' }];
+        assert.equal(voicevoxEntriesFrom([{ name: '春日部つむぎ', styles }])[0].gender, 'female');
+        assert.equal(voicevoxEntriesFrom([{ name: '玄野武宏', styles }])[0].gender, 'male');
+        assert.ok(!('gender' in voicevoxEntriesFrom([{ name: 'だれか', styles }])[0]));
+        assert.equal(voicevoxGender('constructor'), undefined, 'a name that is an Object member is not listed');
+        assert.equal(firstOfGender(voicevoxEntriesFrom([{ name: '玄野武宏', styles }]), 'male', 'ja'), 'voicevox/玄野武宏-ノーマル');
+    });
+
+    it('writes only female or male in the table', () => {
+        assert.deepEqual([...new Set(Object.values(VOICEVOX_GENDERS))].sort(), ['female', 'male']);
     });
 });
 
