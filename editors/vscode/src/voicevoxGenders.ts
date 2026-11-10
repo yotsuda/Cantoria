@@ -54,8 +54,8 @@ export const VOICEVOX_GENDERS: Readonly<Record<string, 'female' | 'male'>> = {
     '暁記ミタマ': 'female',
     'あんこもん': 'female',
     'ブイブイ・コバコ': 'female',
-    '†聖騎士 紅桜†': 'female',
     'ちび式じい': 'male',
+    '†聖騎士 紅桜†': 'male',
     // Officially neither, usable as both; listed as male because few voices are.
     '満別花丸': 'male',
 };
