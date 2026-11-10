@@ -9,7 +9,7 @@ import * as cp from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as readline from 'readline';
-import { CantoriaScore, SHUTDOWN_LINE, parseLine, requestLine, serveArgs, voiceKey } from './core';
+import { CantoriaScore, SHUTDOWN_LINE, cancelLine, parseLine, requestLine, serveArgs, voiceKey } from './core';
 
 /** A voice the engine rendered: the WAV's path, its length, its rate. */
 export interface RenderedVoice { wav: string; duration: number; sampleRate: number }
@@ -28,6 +28,9 @@ export class Engine {
     private readonly pending = new Map<string, { resolve: (v: RenderedVoice) => void; reject: (e: Error) => void }>();
     private readonly done = new Map<string, RenderedVoice>();
     private readonly inFlight = new Map<string, Promise<RenderedVoice>>();
+    /** The request a key's render went out as: a render let go of and asked again is another request. */
+    private readonly requestOf = new Map<string, string>();
+    private requests = 0;
     /** What the engine said on its first line: its voices. */
     voices: string[] = [];
     /** Where the last DiffSinger render ran (`DirectML` or `CPU`), once one has; logged when it changes. */
@@ -68,6 +71,7 @@ export class Engine {
         const waiting = answer.id ? this.pending.get(answer.id) : undefined;
         if (!waiting || !answer.id) { return; }
         this.pending.delete(answer.id);
+        for (const [key, id] of this.requestOf) { if (id === answer.id) { this.requestOf.delete(key); break; } }
         if (answer.provider && answer.provider !== this.provider) {
             this.provider = answer.provider;
             this.log(`diffsinger: the models run on ${answer.provider}`);
@@ -82,6 +86,20 @@ export class Engine {
         this.log(why);
         for (const waiting of this.pending.values()) { waiting.reject(new Error(why)); }
         this.pending.clear();
+        this.requestOf.clear();
+    }
+
+    /** Lets go of the render of `key`: the engine stops at its next phrase, keeping the phrases it
+     *  sang, and whoever waits for it hears `cancelled` now. A render not in flight: nothing. */
+    cancel(key: string): void {
+        const id = this.requestOf.get(key);
+        const waiting = id ? this.pending.get(id) : undefined;
+        if (!id || !waiting) { return; }
+        this.requestOf.delete(key);
+        this.pending.delete(id);
+        this.inFlight.delete(key);
+        waiting.reject(new Error('cancelled'));
+        try { this.child?.stdin!.write(cancelLine(id)); } catch { /* gone */ }
     }
 
     /** The voice for `score` in `voice` (the engine's own name for it; `id` its `engine/name`, what
@@ -97,19 +115,22 @@ export class Engine {
         }
         let rendered = this.inFlight.get(key);
         if (!rendered) {
-            rendered = this.request(key, score, voice, output, voicevoxUrl).then(v => { this.done.set(key, v); return v; });
-            this.inFlight.set(key, rendered);
-            rendered.finally(() => this.inFlight.delete(key)).catch(() => undefined);
+            const asked: Promise<RenderedVoice> = this.request(key, score, voice, output, voicevoxUrl).then(v => { this.done.set(key, v); return v; });
+            rendered = asked;
+            this.inFlight.set(key, asked);
+            asked.finally(() => { if (this.inFlight.get(key) === asked) { this.inFlight.delete(key); } }).catch(() => undefined);
         }
         return { key, rendered, cached: false };
     }
 
     private request(key: string, score: CantoriaScore, voice: string, output: string, voicevoxUrl?: string): Promise<RenderedVoice> {
         const child = this.child ?? this.start();
+        const id = `${key}.${++this.requests}`;
+        this.requestOf.set(key, id);
         return new Promise<RenderedVoice>((resolve, reject) => {
-            this.pending.set(key, { resolve, reject });
-            child.stdin!.write(requestLine(key, score, voice, output, voicevoxUrl), e => {
-                if (e) { this.pending.delete(key); reject(e); }
+            this.pending.set(id, { resolve, reject });
+            child.stdin!.write(requestLine(id, score, voice, output, voicevoxUrl), e => {
+                if (e) { this.pending.delete(id); reject(e); }
             });
         });
     }

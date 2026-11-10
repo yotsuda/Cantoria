@@ -48,8 +48,10 @@ export interface CantoriaApi {
      *  `engine/name` from `voices()`, or a bare NEUTRINO voice name — else the setting's voice. The
      *  WAV is kept under the extension's storage until "Forget Rendered Voices"; the same score in
      *  the same voice is sung once. Throws with a sentence when it cannot: no program, no engine set
-     *  up, a voice or an engine that is not there, a score the engine refused. */
-    sing(score: CantoriaScore, options?: { voice?: string }): Promise<RenderedVoice & { cached: boolean }>;
+     *  up, a voice or an engine that is not there, a score the engine refused. `options.signal`
+     *  lets go of a render no longer wanted: it rejects at once, and the engine stops at its next
+     *  phrase, keeping the phrases it sang. */
+    sing(score: CantoriaScore, options?: { voice?: string; signal?: AbortSignal }): Promise<RenderedVoice & { cached: boolean }>;
     /** Lets the engine go (NEUTRINO's server and the DiffSinger sessions with it); the next `sing` starts it again. */
     release(): void;
     /** The voice a score's `singer` string comes to here: the voice it names when installed, else the
@@ -193,7 +195,7 @@ async function status(context: vscode.ExtensionContext): Promise<CantoriaStatus>
     return { ready: problems.length === 0, program: prog, backend, neutrinoFolder: neutrinoFolder(), voicesFolder: voicesFolder(), voice: voice.id, voices: voices().map(v => v.id), problems };
 }
 
-async function sing(context: vscode.ExtensionContext, score: CantoriaScore, options?: { voice?: string }): Promise<RenderedVoice & { cached: boolean }> {
+async function sing(context: vscode.ExtensionContext, score: CantoriaScore, options?: { voice?: string; signal?: AbortSignal }): Promise<RenderedVoice & { cached: boolean }> {
     const problems = scoreProblems(score);
     if (problems.length > 0) { throw new Error(problems.join('; ')); }
     const asked = (options?.voice ?? '').trim();
@@ -204,7 +206,11 @@ async function sing(context: vscode.ExtensionContext, score: CantoriaScore, opti
     const language = singers.map(s => languageProblem(voices().find(v => v.id === s.id), score.language)).find(Boolean);
     if (language) { throw new Error(language); }
     const voice = { id: singers.map(s => s.id).join('+') };
-    const { key, rendered, cached } = engineFor(context).sing(score, voice.id, voice.id, voicevox.answering);
+    const singing = engineFor(context);
+    const { key, rendered, cached } = singing.sing(score, voice.id, voice.id, voicevox.answering);
+    if (options?.signal && !cached) {
+        if (options.signal.aborted) { singing.cancel(key); } else { options.signal.addEventListener('abort', () => singing.cancel(key), { once: true }); }
+    }
     const t0 = Date.now();
     const v = await rendered;
     if (!cached) { output.appendLine(`sung ${key.slice(0, 8)} in ${voice.id}: ${v.duration.toFixed(1)} s, ${Date.now() - t0} ms`); }

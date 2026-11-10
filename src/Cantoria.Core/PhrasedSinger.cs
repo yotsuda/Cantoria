@@ -71,7 +71,8 @@ public sealed class PhrasedSinger(ISinger inner, Action<SungScore>? check = null
                     null);
                 if (!_phrases.TryGet(key, out var sung))
                 {
-                    var audio = await inner.SingAsync(score with { Notes = phrase }, ct).ConfigureAwait(false);
+                    // A phrase begun is finished and kept: asked to stop, the score stops at the next phrase.
+                    var audio = await inner.SingAsync(score with { Notes = phrase }, CancellationToken.None).ConfigureAwait(false);
                     sung = new SungPhrase(audio.Samples, -Lead * 1000, audio.SampleRate);
                     _phrases.Add(key, sung);
                 }

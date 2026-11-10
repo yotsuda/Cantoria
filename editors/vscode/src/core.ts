@@ -327,6 +327,11 @@ export function requestLine(id: string, score: CantoriaScore, voice: string, out
     return JSON.stringify({ id, score, voice, output, voicevoxUrl }) + '\n';
 }
 
+/** Lets go of request `id` at its next phrase. */
+export function cancelLine(id: string): string {
+    return JSON.stringify({ command: 'cancel', id }) + '\n';
+}
+
 /** The shutdown request. */
 export const SHUTDOWN_LINE = '{"command":"shutdown"}\n';
 

@@ -218,7 +218,7 @@ developer's build — with pickers (**Choose NEUTRINO Folder…**, **Choose Defa
   version: string, apiVersion: 1,
   status(): Promise<{ ready, program, backend: 'neutrino', neutrinoFolder, voice, voices, problems }>,
   voices(): Promise<{ id, engine, name, label, language?, licence? }[]>,    // id = 'engine/name' (0.2.0)
-  sing(score, { voice? }): Promise<{ wav, duration, sampleRate, cached }>,   // the README's score; voice an id
+  sing(score, { voice?, signal? }): Promise<{ wav, duration, sampleRate, cached }>,   // the README's score; voice an id; signal lets go at the next phrase
   release(): void,                                                          // let the engine go
 }
 ```

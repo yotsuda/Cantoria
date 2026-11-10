@@ -146,6 +146,37 @@ public class PhrasedSingerTests
         Assert.Empty(fake.Sung);
     }
 
+    /// <summary>Asked to stop while singing its first phrase; says whether it was asked to stop mid-phrase.</summary>
+    private sealed class StoppedWhileSinging(CancellationTokenSource stop) : ISinger
+    {
+        public int Sung { get; private set; }
+        public bool ToldMidPhrase { get; private set; }
+        public string Name => "fake/voice";
+
+        public Task<SungAudio> SingAsync(SungScore score, CancellationToken ct = default)
+        {
+            Sung++;
+            stop.Cancel();
+            ToldMidPhrase |= ct.IsCancellationRequested;
+            return Task.FromResult(new SungAudio(new float[(int)(score.End * Rate)], Rate));
+        }
+    }
+
+    [Fact]
+    public async Task AskedToStop_ItFinishesThePhraseItIsOn_KeepsIt_AndGoesNoFurther()
+    {
+        using var stop = new CancellationTokenSource();
+        var stopped = new StoppedWhileSinging(stop);
+        using var singer = new PhrasedSinger(stopped);
+        var score = new SungScore([.. Phrase(0, "か", "き"), .. Phrase(2, "さ", "し")]);
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => singer.SingAsync(score, stop.Token));
+        Assert.Equal(1, stopped.Sung);
+        Assert.False(stopped.ToldMidPhrase);
+
+        await singer.SingAsync(score);
+        Assert.Equal(2, stopped.Sung);      // the first phrase was kept: only the second is sung
+    }
+
     [Fact]
     public async Task AnUnsoundScore_IsRefused()
     {

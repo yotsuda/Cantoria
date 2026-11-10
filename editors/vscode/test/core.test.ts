@@ -7,7 +7,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import {
     ENGINES, characterNameOf, diffSingerEntriesIn, diffSingerSpeakersOf, diffSingerVoicesIn, languageProblem, languageTag, missingProgramNote, neutrinoFolderProblems, parseLine, programCandidates,
-    defaultVoiceFor, firstOfGender, genderOfWord, requestLine, resolveSinger, rid, scoreProblems, serveArgs, speakerOf, splitVoiceId, voiceEntriesIn, voiceId, voiceKey, voicePieces, voicesFolderProblems, voicesIn, voicevoxEntriesFrom, vsixTarget,
+    cancelLine, defaultVoiceFor, firstOfGender, genderOfWord, requestLine, resolveSinger, rid, scoreProblems, serveArgs, speakerOf, splitVoiceId, voiceEntriesIn, voiceId, voiceKey, voicePieces, voicesFolderProblems, voicesIn, voicevoxEntriesFrom, vsixTarget,
 } from '../src/core';
 import { DIFFSINGER_GENDERS, diffSingerGender } from '../src/diffSingerGenders';
 import { VOICEVOX_GENDERS, voicevoxGender } from '../src/voicevoxGenders';
@@ -131,6 +131,7 @@ describe('the engine\'s wire', () => {
         assert.deepEqual(serveArgs('C:\\v', false, 0), ['serve', '--out-dir', 'C:\\v', '--threads', '1', '--cpu']);
         assert.deepEqual(serveArgs('C:\\v', true, 4, 'C:\\voices', ' '), ['serve', '--out-dir', 'C:\\v', '--threads', '4', '--voices-dir', 'C:\\voices']);
         assert.deepEqual(serveArgs('C:\\v', true, 4, '', 'C:\\voc'), ['serve', '--out-dir', 'C:\\v', '--threads', '4', '--vocoder-dir', 'C:\\voc']);
+        assert.deepEqual(JSON.parse(cancelLine('k.1')), { command: 'cancel', id: 'k.1' });
         assert.deepEqual(serveArgs('C:\\v', true, 4, '', '', 500), ['serve', '--out-dir', 'C:\\v', '--threads', '4', '--cache-mb', '500']);
         assert.equal(JSON.parse(requestLine('k', { notes: [] }, 'voicevox/x', 'o', 'http://x:1')).voicevoxUrl, 'http://x:1');
         assert.deepEqual(voicevoxEntriesFrom({ detail: 'no' }), [], 'not a list of singers');

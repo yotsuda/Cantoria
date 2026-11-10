@@ -71,6 +71,7 @@ static int Help(int code)
           {"id":"1","score":{…},"voice":"neutrino/MERROW","output":"C:\\x.wav"}   score, voice and output optional
           {"id":"1","scoreFile":"C:\\score.json"}
           {"command":"voices"}                                                    → {"voices":["neutrino/MERROW", …]}
+          {"command":"cancel","id":"1"}     lets go of request 1 at its next phrase → {"id":"1","cancelled":true}
           {"command":"shutdown"}
         One answer per line on stdout, in order: first {"ready":true,"voices":[…],"outDir":"…"},
         then {"id":"1","wav":"…","duration":8.0,"sampleRate":48000,"seconds":0.5} or {"id":"1","error":"…"}.
@@ -296,15 +297,56 @@ static async Task<int> Serve(string[] rest)
     stdout.WriteLine(JsonSerializer.Serialize(new { ready = true, backend, voices = engines.List(), outDir }, json));
     try
     {
-        int count = 0;
-        string? line;
-        while ((line = await stdin.ReadLineAsync()) is not null)
+        // Lines are read while a score is being sung, so that a cancel can reach it; everything else
+        // is done in order, one at a time.
+        var work = System.Threading.Channels.Channel.CreateUnbounded<(string Line, CancellationTokenSource Cancel)>();
+        var cancels = new Dictionary<string, CancellationTokenSource>();
+        _ = Task.Run(async () =>
         {
-            if (string.IsNullOrWhiteSpace(line))
+            string? read;
+            while ((read = await stdin.ReadLineAsync()) is not null)
             {
-                continue;
+                if (string.IsNullOrWhiteSpace(read))
+                {
+                    continue;
+                }
+                var cancel = new CancellationTokenSource();
+                try
+                {
+                    var asked = JsonSerializer.Deserialize<ServeRequest>(read, json);
+                    if (asked?.Command == "cancel")
+                    {
+                        lock (cancels)
+                        {
+                            if (asked.Id is not null && cancels.TryGetValue(asked.Id, out var running))
+                            {
+                                running.Cancel();
+                            }
+                        }
+                        continue;
+                    }
+                    if (asked?.Id is not null)
+                    {
+                        lock (cancels)
+                        {
+                            cancels[asked.Id] = cancel;
+                        }
+                    }
+                }
+                catch (JsonException)
+                {
+                    // Told when its turn comes.
+                }
+                work.Writer.TryWrite((read, cancel));
             }
+            work.Writer.Complete();
+        });
+
+        int count = 0;
+        await foreach (var (line, cancelled) in work.Reader.ReadAllAsync())
+        {
             string id = (++count).ToString();
+            var ct = cancelled.Token;
             try
             {
                 var request = JsonSerializer.Deserialize<ServeRequest>(line, json) ?? throw new JsonException("an empty request");
@@ -320,7 +362,7 @@ static async Task<int> Serve(string[] rest)
                 }
                 if (request.Command is not null)
                 {
-                    throw new SingerException($"no command named {request.Command} (there is: voices, shutdown)");
+                    throw new SingerException($"no command named {request.Command} (there is: voices, cancel, shutdown)");
                 }
                 var score = request.Score is { } element ? ScoreJson.Read(element.GetRawText())
                     : request.ScoreFile is { } file ? ScoreJson.Read(await File.ReadAllTextAsync(file))
@@ -334,10 +376,11 @@ static async Task<int> Serve(string[] rest)
                 {
                     engines.VoicevoxUrl = voicevoxUrl;
                 }
+                ct.ThrowIfCancellationRequested();
                 var singer = SingerOf(request.Voice);
                 Console.Error.WriteLine($"cantoria: {DateTime.Now:HH:mm:ss} singing {FileNameOf(id)} in {singer.Name}, {score.Notes.Count} notes");
                 var watch = Stopwatch.StartNew();
-                var audio = SungLevels.Apply(await singer.SingAsync(score), score);
+                var audio = SungLevels.Apply(await singer.SingAsync(score, ct), score);
                 var output = request.Output ?? Path.Combine(outDir, FileNameOf(id) + ".wav");
                 var dirName = Path.GetDirectoryName(Path.GetFullPath(output));
                 if (!string.IsNullOrEmpty(dirName))
@@ -360,9 +403,25 @@ static async Task<int> Serve(string[] rest)
                     provider = DiffSingerOf(singer)?.Provider,
                 }, json));
             }
+            catch (OperationCanceledException)
+            {
+                Console.Error.WriteLine($"cantoria: {DateTime.Now:HH:mm:ss} let go of {FileNameOf(id)}");
+                stdout.WriteLine(JsonSerializer.Serialize(new { id, cancelled = true }, json));
+            }
             catch (Exception e) when (e is SingerException or JsonException or IOException or UnauthorizedAccessException or InvalidDataException or ArgumentException)
             {
                 stdout.WriteLine(JsonSerializer.Serialize(new { id, error = e.Message }, json));
+            }
+            finally
+            {
+                lock (cancels)
+                {
+                    if (cancels.TryGetValue(id, out var mine) && ReferenceEquals(mine, cancelled))
+                    {
+                        cancels.Remove(id);
+                    }
+                }
+                cancelled.Dispose();
             }
         }
     }

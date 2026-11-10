@@ -194,7 +194,7 @@ public sealed class DiffSingerSinger : ISinger, IDisposable
                 breathRoom);
             if (!_phrases.TryGet(key, out var sung))
             {
-                sung = SingPhrase(phrase, breathRoom, log, ct);
+                sung = SingPhrase(phrase, breathRoom, log);
                 _phrases.Add(key, sung);
                 fresh++;
             }
@@ -223,8 +223,8 @@ public sealed class DiffSingerSinger : ISinger, IDisposable
         return last.Notes[^1].Breath && room >= BreathMinMs ? Math.Min(room, BreathMaxMs + BreathClearMs) : null;
     }
 
-    /// <summary>One phrase, its first note at time 0, through every model.</summary>
-    private SungPhrase SingPhrase(List<Word> words, double? breathRoom, System.Text.StringBuilder log, CancellationToken ct)
+    /// <summary>One phrase, its first note at time 0, through every model. A phrase begun is finished: asked to stop, a render stops at the next phrase.</summary>
+    private SungPhrase SingPhrase(List<Word> words, double? breathRoom, System.Text.StringBuilder log)
     {
         var clock = System.Diagnostics.Stopwatch.StartNew();
         var voice = _voice;
@@ -247,7 +247,6 @@ public sealed class DiffSingerSinger : ISinger, IDisposable
         var phones = new List<Phone>();
         foreach (var phrase in phrases)
         {
-            ct.ThrowIfCancellationRequested();
             phones.AddRange(Time(phrase, dur));
         }
         // A breath: the voice's AP in the gap after the note, where there is a gap and the voice has AP.
@@ -294,13 +293,11 @@ public sealed class DiffSingerSinger : ISinger, IDisposable
         float[] f0Midi = voice.Pitch is { } pitch
             ? PredictPitch(pitch, segments, phDur, totalFrames, notes, phones, renderStartMs, isVowel, log)
             : FlatPitch(segments, phDur, totalFrames, notes, phones);
-        ct.ThrowIfCancellationRequested();
 
         // ---- variance ----
         var acoustic = voice.Acoustic;
         bool wantsVariance = acoustic.UseEnergyEmbed || acoustic.UseBreathinessEmbed || acoustic.UseVoicingEmbed || acoustic.UseTensionEmbed;
         var variance = wantsVariance ? PredictVariance(voice.Variance, segments, phDur, totalFrames, f0Midi, isVowel, log) : new Dictionary<string, float[]>();
-        ct.ThrowIfCancellationRequested();
 
         // ---- acoustic ----
         var f0Hz = f0Midi.Select(ToHz).ToArray();
@@ -374,7 +371,6 @@ public sealed class DiffSingerSinger : ISinger, IDisposable
                 }
             }
         }
-        ct.ThrowIfCancellationRequested();
 
         // ---- vocoder ----
         var waveform = Run(voice.VocoderSession, [NamedOnnxValue.CreateFromTensor("mel", mel), Row("f0", f0Hz)], "vocoder");
