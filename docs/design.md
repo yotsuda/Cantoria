@@ -140,6 +140,12 @@ DirectML: 28 s the first time with the models' loading, 2.6 s after changing one
 for the same notes two bars later. On the CPU the first time costs more than one long run (77 s
 against 48 s).
 
+`PhrasedSinger` does the same around a singer of whole scores, each phrase given 0.5 s of rest before
+it for its first consonant; a melisma, a word that goes on, or a breath into the next note is never
+cut. VOICEVOX sings through it: Harukaze, 29.4 s whole, 18.0 s in phrases, 1.8 s after changing one
+syllable. NEUTRINO does not yet; through the same layer it took 24.0 s against 29.6 s whole and 1.5 s
+after one syllable, and whether it sounds the same is still to be heard.
+
 ## 4. CLI
 
 ```

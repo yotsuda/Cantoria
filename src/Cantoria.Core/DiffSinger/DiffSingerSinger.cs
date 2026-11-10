@@ -179,7 +179,7 @@ public sealed class DiffSingerSinger : ISinger, IDisposable
         // ---- the phrases: each sung from its own time 0, once, and laid at its place in the score ----
         var cuts = PhraseCut.Split(words.Select(w => (w.StartMs / 1000, w.EndMs / 1000)).ToList(), RestBetweenPhrases, LongestPhrase);
         int rate = voice.Vocoder.SampleRate;
-        var placed = new List<(int At, float[] Samples)>();
+        var placed = new List<(double Seconds, SungPhrase Phrase)>();
         int fresh = 0;
         foreach (var (first, count) in cuts)
         {
@@ -197,22 +197,12 @@ public sealed class DiffSingerSinger : ISinger, IDisposable
                 _phrases.Add(key, sung);
                 fresh++;
             }
-            placed.Add(((int)Math.Round((startSeconds * 1000 + sung.StartMs) / 1000 * rate), sung.Samples));
+            placed.Add((startSeconds, sung));
         }
         log.AppendLine($"phrases: {cuts.Count}, {fresh} sung, {cuts.Count - fresh} kept from before");
         log.AppendLine($"provider: {voice.Provider}" + (voice.ProviderNote is { } note ? $" ({note})" : ""));
-
-        // Sample 0 is the score's 0: what sounds before it (the first consonant) is cut.
-        var aligned = new float[placed.Count == 0 ? 0 : Math.Max(0, placed.Max(p => p.At + p.Samples.Length))];
-        foreach (var (at, samples) in placed)
-        {
-            for (int i = Math.Max(0, -at); i < samples.Length; i++)
-            {
-                aligned[at + i] += samples[i];
-            }
-        }
         LastLog = log.ToString();
-        return new SungAudio(aligned, rate);
+        return new SungAudio(SungPhrase.Lay(placed, rate), rate);
     }
 
     /// <summary>The word with its notes' times counted from <paramref name="seconds"/>.</summary>
@@ -390,7 +380,7 @@ public sealed class DiffSingerSinger : ISinger, IDisposable
         var samples = waveform.First().AsTensor<float>().ToArray();
         int rate = voice.Vocoder.SampleRate;
         log.AppendLine($"vocoder: {samples.Length / (double)rate:0.00} s at {rate} Hz in {clock.Elapsed.TotalSeconds:0.00} s");
-        return new SungPhrase(samples, renderStartMs);
+        return new SungPhrase(samples, renderStartMs, rate);
     }
 
     private long AcousticToken(string symbol)

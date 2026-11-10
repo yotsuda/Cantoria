@@ -203,7 +203,7 @@ sealed class Engines
         {
             "neutrino" => new NeutrinoSinger(new NeutrinoOptions(NeutrinoFolder!, name) { UseGpu = UseGpu, Threads = Threads, KeepFiles = KeepFiles }),
             "diffsinger" => DiffSingerOf(name),
-            "voicevox" => Voicevox(name),
+            "voicevox" => new PhrasedSinger(Voicevox(name), score => VoicevoxScore.Notes(score.Notes)),
             _ => throw new SingerException($"no engine named {engine}"),
         };
     }

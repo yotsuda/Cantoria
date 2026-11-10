@@ -107,7 +107,7 @@ public class PhraseTests
     public void Cache_GivesBackWhatWasPut_AndFailsOnAnotherPhrase()
     {
         var cache = new PhraseCache(100);
-        var sung = new SungPhrase(new float[10], -100);
+        var sung = new SungPhrase(new float[10], -100, 1000);
         cache.Add(Key(), sung);
         Assert.True(cache.TryGet(Key(), out var found));
         Assert.Same(sung, found);
@@ -118,10 +118,10 @@ public class PhraseTests
     public void Cache_LetsTheLongestUnusedGo()
     {
         var cache = new PhraseCache(20);
-        cache.Add(Key(pitch: 60), new SungPhrase(new float[10], 0));
-        cache.Add(Key(pitch: 61), new SungPhrase(new float[10], 0));
+        cache.Add(Key(pitch: 60), new SungPhrase(new float[10], 0, 1000));
+        cache.Add(Key(pitch: 61), new SungPhrase(new float[10], 0, 1000));
         Assert.True(cache.TryGet(Key(pitch: 60), out _));           // 60 is now the most recent
-        cache.Add(Key(pitch: 62), new SungPhrase(new float[10], 0));
+        cache.Add(Key(pitch: 62), new SungPhrase(new float[10], 0, 1000));
         Assert.Equal(2, cache.Count);
         Assert.False(cache.TryGet(Key(pitch: 61), out _));
         Assert.True(cache.TryGet(Key(pitch: 60), out _));
@@ -131,7 +131,7 @@ public class PhraseTests
     public void Cache_KeepsAPhraseLargerThanItAll_UntilTheNextOne()
     {
         var cache = new PhraseCache(5);
-        cache.Add(Key(pitch: 60), new SungPhrase(new float[10], 0));
+        cache.Add(Key(pitch: 60), new SungPhrase(new float[10], 0, 1000));
         Assert.True(cache.TryGet(Key(pitch: 60), out _));
     }
 }

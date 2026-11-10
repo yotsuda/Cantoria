@@ -4,7 +4,25 @@
 namespace Cantoria.DiffSinger;
 
 /// <summary>A phrase's audio; its sample 0 stands <paramref name="StartMs"/> from the phrase's first note.</summary>
-public sealed record SungPhrase(float[] Samples, double StartMs);
+public sealed record SungPhrase(float[] Samples, double StartMs, int SampleRate)
+{
+    /// <summary>The phrases laid together, each with its first note at the seconds given; sample 0
+    /// is the score's 0, and what sounds before it (the first consonant) is cut.</summary>
+    public static float[] Lay(IReadOnlyList<(double Seconds, SungPhrase Phrase)> placed, int sampleRate)
+    {
+        var at = placed.Select(p => (int)Math.Round((p.Seconds * 1000 + p.Phrase.StartMs) / 1000 * sampleRate)).ToList();
+        var all = new float[placed.Count == 0 ? 0 : Math.Max(0, placed.Select((p, k) => at[k] + p.Phrase.Samples.Length).Max())];
+        for (int k = 0; k < placed.Count; k++)
+        {
+            var samples = placed[k].Phrase.Samples;
+            for (int i = Math.Max(0, -at[k]); i < samples.Length; i++)
+            {
+                all[at[k] + i] += samples[i];
+            }
+        }
+        return all;
+    }
+}
 
 /// <summary>A note as the models hear it, its start counted from the phrase's first note.</summary>
 public sealed record PhraseNote(double Start, double Duration, double Pitch, bool Breath);
