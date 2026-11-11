@@ -43,11 +43,14 @@ public static class SingCurves
                 SingReport.Note($"{voice} does not take the setting \"{name}\" ({there}); it sings without it");
                 continue;
             }
-            if (parameter.Scope != SingScope.Curve)
+            if (parameter.Scope == SingScope.Voice || parameter.Word)
             {
-                SingReport.Note($"{voice}: \"{name}\" is one value {(parameter.Scope == SingScope.Phrase ? "a phrase" : "for the voice")}; it cannot change inside the music, and is left as the singer line has it");
+                SingReport.Note($"{voice}: \"{name}\" is one value for the voice; it cannot change inside the music, and is left as the singer line has it");
                 continue;
             }
+            // One value a phrase: it steps, and where it steps is where a phrase begins
+            // (PhraseValues). It cannot glide.
+            bool steps = parameter.Scope == SingScope.Phrase;
             double own = score.Sing is { } whole && whole.TryGetValue(name, out var set) && set.Number is { } number
                 ? Clamp(number, parameter) : parameter.Default ?? 0;
             // The places the value is written: (the note, its value, whether it is arrived at).
@@ -60,7 +63,11 @@ public static class SingCurves
                 }
                 else if (notes[i].SingTo is { } to && to.TryGetValue(name, out var target) && Number(target, own, parameter, name, voice) is { } t)
                 {
-                    marks.Add((i, t, true));
+                    if (steps)
+                    {
+                        SingReport.Note($"{voice}: \"{name}\" is one value a phrase and cannot glide; \"to {target}\" is taken as from its note");
+                    }
+                    marks.Add((i, t, !steps));
                 }
             }
             if (marks.Count == 0)
@@ -102,6 +109,34 @@ public static class SingCurves
             return score;
         }
         return score with { Notes = notes.Select((n, i) => curves[i] is { } c ? n with { Curve = c } : n).ToList() };
+    }
+
+    /// <summary>
+    /// What a phrase is sung with, of the settings that are one value a phrase: each such name's
+    /// value where the phrase's FIRST note starts. A value written on a later note of the phrase
+    /// is the next phrase's - said once (<see cref="SingReport.Note"/>), since the writer may
+    /// have meant this one. Empty when the music writes none.
+    /// </summary>
+    public static Dictionary<string, double> PhraseValues(IReadOnlyList<SungNote> phrase, IReadOnlyList<SingParameter> known, string voice)
+    {
+        var values = new Dictionary<string, double>(StringComparer.Ordinal);
+        if (phrase.Count == 0 || phrase[0].Curve is not { } first)
+        {
+            return values;
+        }
+        foreach (var parameter in known.Where(p => p.Scope == SingScope.Phrase))
+        {
+            if (!first.TryGetValue(parameter.Name, out var at))
+            {
+                continue;
+            }
+            values[parameter.Name] = at.Start;
+            if (phrase.Any(n => n.Curve is { } c && c.TryGetValue(parameter.Name, out var later) && later.Start != at.Start))
+            {
+                SingReport.Note($"{voice}: \"{parameter.Name}\" is one value a phrase; written inside a phrase it is sung from the next phrase on (a phrase begins after a rest)");
+            }
+        }
+        return values;
     }
 
     private static double Clamp(double value, SingParameter parameter)

@@ -151,6 +151,47 @@ public class SingSettingsTests
         Assert.Equal(3, first[1].Curve!["breathiness"].Start, 6);
     }
 
+    // A setting that is one value a phrase (NEUTRINO's transpose) steps where a phrase begins.
+    [Fact]
+    public async Task ASettingOfOneValueAPhrase_WrittenOnANote_IsThatPhrasesAndTheOnesAfter()
+    {
+        var engine = new Keyed();
+        using var singer = new PhrasedSinger(engine);
+        var said = new List<string>();
+        using (SingReport.ListenNotes(said.Add))
+        {
+            // Each phrase at a pitch of its own, so that none is another one kept.
+            await singer.SingAsync(new SungScore(
+            [
+                Note(0), Note(1),                                                                   // phrase 1: the singer line's value
+                Note(3) with { Pitch = 62, Sing = Set("transpose", 2) }, Note(4),                   // phrase 2: 2 from its first note
+                Note(6) with { Pitch = 64 }, Note(7) with { SingTo = Set("transpose", 5) },         // phrase 3: still 2; the 5 is the next one's, and cannot glide
+                Note(9) with { Pitch = 65 },                                                        // phrase 4: 5
+                Note(11) with { Pitch = 67, Sing = new Dictionary<string, SingValue> { ["transpose"] = SingValue.Of(SingValue.DefaultWord) } },   // phrase 5: the line's again
+            ], Sing: Set("transpose", -1)));
+        }
+        Assert.Equal(new double?[] { -1, 2, 2, 5, -1 }, engine.Sung.Select(s => s.Sing?["transpose"].Number));
+        Assert.Contains(said, s => s.Contains("\"transpose\" is one value a phrase and cannot glide"));
+        Assert.Contains(said, s => s.Contains("written inside a phrase it is sung from the next phrase on"));
+        // The phrases differ by their setting: the same notes at another value are sung anew, and at the same value kept.
+        engine.Sung.Clear();
+        await singer.SingAsync(new SungScore([Note(0), Note(1), Note(3) with { Pitch = 62 }, Note(4)], Sing: Set("transpose", -1)));
+        Assert.Single(engine.Sung);     // phrase 1 was kept at -1; phrase 2's notes were sung at 2 before, not at -1
+    }
+
+    /// <summary>An engine with one setting a phrase, remembering what it was asked.</summary>
+    private sealed class Keyed : ISinger, ISingParameters
+    {
+        public List<SungScore> Sung { get; } = [];
+        public string Name => "keyed/voice";
+        public IReadOnlyList<SingParameter> Parameters => [new("transpose", SingScope.Phrase, "key", -12, 12, 0)];
+        public Task<SungAudio> SingAsync(SungScore score, CancellationToken ct = default)
+        {
+            Sung.Add(score);
+            return Task.FromResult(new SungAudio(new float[(int)Math.Round(score.End * 1000)], 1000));
+        }
+    }
+
     [Fact]
     public void WhatTheVoiceCannotChangeInsideTheMusic_IsSaid_AndLeftOut()
     {
@@ -165,9 +206,10 @@ public class SingSettingsTests
                 Note(1) with { SingTo = Set("support", 1) },
             ]), takes, "v");
         }
-        Assert.Equal(["breathiness"], resolved.Notes[0].Curve!.Keys);
+        // One value a phrase steps with the notes (a phrased singer takes each phrase's first); one for the voice does not move.
+        Assert.Equal(["breathiness", "transpose"], resolved.Notes[0].Curve!.Keys.OrderBy(k => k));
         Assert.Equal((12, 12), resolved.Notes[0].Curve!["breathiness"]);
-        Assert.Contains(said, s => s.Contains("\"transpose\" is one value a phrase; it cannot change inside the music"));
+        Assert.Equal((2, 2), resolved.Notes[1].Curve!["transpose"]);
         Assert.Contains(said, s => s.Contains("\"support\" is one value for the voice"));
         Assert.Contains(said, s => s.Contains("does not take the setting \"nosuch\""));
         Assert.Contains(said, s => s.Contains("\"breathiness 99\" is outside -12 to 12; sung as 12"));

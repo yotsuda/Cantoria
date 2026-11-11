@@ -111,7 +111,8 @@ const { wav, duration } = await api.sing({
   the answer's `notes`, sentences for whoever wrote the score. A NOTE's `sing` changes a setting
   from that note on, until the next one written for the same name (`"default"` gives it back to
   the score's value), and its `singTo` arrives at a value with the note, gliding from where the
-  value before was written — for a setting of scope `curve`.
+  value before was written — for a setting of scope `curve`. A setting of scope `phrase` may be
+  written on a note too: it steps, and each phrase is sung with the value at its first note.
 - `sing`'s `options.onProgress` hears how far a render is, for a bar: `{ toSing, sung }` in seconds
   of music — what has to be sung **anew** (a phrase kept from an earlier sing costs nothing and is
   not counted) and how much of it is done. It is told once before the first phrase and once after
