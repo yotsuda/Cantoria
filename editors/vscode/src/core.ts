@@ -31,6 +31,9 @@ export interface CantoriaNote {
 export interface CantoriaScore {
     sampleRate?: number;
     language?: string;
+    /** How the voice sings the whole score, by the names the voice takes (`parameters(voice)`): a
+     *  number, or a word. A name the voice does not take is not sung, and said in the answer's `notes`. */
+    sing?: Record<string, number | string>;
     notes: CantoriaNote[];
 }
 
@@ -308,9 +311,24 @@ export interface ServeAnswer {
     id?: string; wav?: string; duration?: number; sampleRate?: number; seconds?: number; error?: string;
     /** Where a DiffSinger voice's models ran: `DirectML` or `CPU` (0.4.0); absent for NEUTRINO. */
     provider?: string;
+    /** What the singer has to say of the score it sang: a setting the voice does not take, a value
+     *  brought within its range. Sentences for whoever wrote the score. */
+    notes?: string[];
+    /** The answer to `{"command":"parameters","voice":…}`. */
+    parameters?: SingParameter[];
     /** How far a request is, a line a phrase sung: not an answer — the request's id is inside it,
      *  so a reader that knows only answers takes the line for none of its own. */
     progress?: { id: string } & SingProgress;
+}
+
+/** A setting a voice takes in a score's `sing`: its name; where it can change (`curve`: at any
+ *  note, and it can glide; `phrase`: where a phrase ends; `voice`: once a score); what it does;
+ *  and for a number the range that means something, the value that changes nothing, the unit. */
+export interface SingParameter { name: string; scope: 'curve' | 'phrase' | 'voice'; what: string; min?: number; max?: number; default?: number; unit?: string }
+
+/** One request for the settings a voice takes. */
+export function parametersLine(id: string, voice: string): string {
+    return JSON.stringify({ id, command: 'parameters', voice }) + '\n';
 }
 
 /** How far a score is while it is sung: the seconds of music to sing ANEW (phrases kept from an

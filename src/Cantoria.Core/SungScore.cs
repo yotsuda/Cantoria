@@ -49,10 +49,13 @@ public sealed record SungNote(
 /// <param name="Notes">Notes in ascending <see cref="SungNote.Start"/>, non-overlapping.</param>
 /// <param name="Language">A BCP-47 language tag, e.g. "ja".</param>
 /// <param name="SampleRate">Samples per second of the audio wanted, e.g. 44100.</param>
+/// <param name="Sing">How the voice sings the whole score, by the names the voice takes
+/// (<see cref="ISingParameters"/>): what its writer set, nothing for what was left to the voice.</param>
 public sealed record SungScore(
     IReadOnlyList<SungNote> Notes,
     string Language = "ja",
-    int SampleRate = 44100)
+    int SampleRate = 44100,
+    IReadOnlyDictionary<string, SingValue>? Sing = null)
 {
     /// <summary>Seconds at which the last note ends; 0 for an empty score.</summary>
     public double End => Notes.Count == 0 ? 0 : Notes[^1].End;

@@ -360,9 +360,21 @@ static async Task<int> Serve(string[] rest)
                     stdout.WriteLine(JsonSerializer.Serialize(new { id, voices = engines.List() }, json));
                     continue;
                 }
+                if (request.Command == "parameters")
+                {
+                    // The settings a voice takes ("sing" in a score), for an editor's list: each
+                    // with where it can change, what it does and its range.
+                    var taken = (SingerOf(request.Voice) as ISingParameters)?.Parameters ?? [];
+                    stdout.WriteLine(JsonSerializer.Serialize(new
+                    {
+                        id,
+                        parameters = taken.Select(p => new { name = p.Name, scope = p.Scope.ToString().ToLowerInvariant(), what = p.What, min = p.Min, max = p.Max, @default = p.Default, unit = p.Unit }),
+                    }, json));
+                    continue;
+                }
                 if (request.Command is not null)
                 {
-                    throw new SingerException($"no command named {request.Command} (there is: voices, cancel, shutdown)");
+                    throw new SingerException($"no command named {request.Command} (there is: voices, parameters, cancel, shutdown)");
                 }
                 var score = request.Score is { } element ? ScoreJson.Read(element.GetRawText())
                     : request.ScoreFile is { } file ? ScoreJson.Read(await File.ReadAllTextAsync(file))
@@ -386,10 +398,18 @@ static async Task<int> Serve(string[] rest)
                 // wav or an error - takes the line for none of its own.
                 string asked = id;
                 SungAudio audio;
+                // What the singer has to say of the score (a setting the voice does not take):
+                // sentences for whoever wrote it, sent back with the answer.
+                var said = new List<string>();
+                using (SingReport.ListenNotes(text => { lock (said) { said.Add(text); } }))
                 using (SingReport.Listen(p => stdout.WriteLine(JsonSerializer.Serialize(
                     new { progress = new { id = asked, toSing = Math.Round(p.ToSing, 3), sung = Math.Round(p.Sung, 3) } }, json))))
                 {
                     audio = SungLevels.Apply(await singer.SingAsync(score, ct), score);
+                }
+                foreach (string text in said)
+                {
+                    Console.Error.WriteLine($"cantoria: {text}");
                 }
                 var output = request.Output ?? Path.Combine(outDir, FileNameOf(id) + ".wav");
                 var dirName = Path.GetDirectoryName(Path.GetFullPath(output));
@@ -411,6 +431,7 @@ static async Task<int> Serve(string[] rest)
                     seconds = Math.Round(watch.Elapsed.TotalSeconds, 2),
                     voice = singer.Name,
                     provider = DiffSingerOf(singer)?.Provider,
+                    notes = said.Count > 0 ? said : null,
                 }, json));
             }
             catch (OperationCanceledException)

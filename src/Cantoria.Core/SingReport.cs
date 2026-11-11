@@ -37,6 +37,27 @@ public static class SingReport
     public static IDisposable ListenTogether()
         => Listener.Value is { } outer ? Listen(Together(outer)) : new Scope(null);
 
+    private static readonly AsyncLocal<Action<string>?> NoteListener = new();
+
+    /// <summary>Hears, from here until the answer is disposed, what a singer has to SAY of the score
+    /// it was given - a setting it does not take, a value it could not use: sentences for whoever
+    /// wrote the score, each said once a sing.</summary>
+    public static IDisposable ListenNotes(Action<string> listener)
+    {
+        var before = NoteListener.Value;
+        var said = new HashSet<string>(StringComparer.Ordinal);
+        NoteListener.Value = text => { lock (said) { if (!said.Add(text)) { return; } } listener(text); };
+        return new NoteScope(before);
+    }
+
+    /// <summary>Says a sentence to whoever listens for them.</summary>
+    public static void Note(string text) => NoteListener.Value?.Invoke(text);
+
+    private sealed class NoteScope(Action<string>? before) : IDisposable
+    {
+        public void Dispose() => NoteListener.Value = before;
+    }
+
     /// <summary>Tells the listener, if there is one.</summary>
     public static void Tell(double toSing, double sung) => Listener.Value?.Invoke(new SingProgress(toSing, sung));
 

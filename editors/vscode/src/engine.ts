@@ -9,10 +9,10 @@ import * as cp from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as readline from 'readline';
-import { SingProgress, CantoriaScore, SHUTDOWN_LINE, cancelLine, parseLine, requestLine, serveArgs, voiceKey } from './core';
+import { SingParameter, SingProgress, parametersLine, CantoriaScore, SHUTDOWN_LINE, cancelLine, parseLine, requestLine, serveArgs, voiceKey } from './core';
 
 /** A voice the engine rendered: the WAV's path, its length, its rate. */
-export interface RenderedVoice { wav: string; duration: number; sampleRate: number }
+export interface RenderedVoice { wav: string; duration: number; sampleRate: number; notes?: string[] }
 
 /** How the engine is to run: the program, NEUTRINO's folder (its environment), the DiffSinger voices and vocoder folders, the GPU, the threads, the disk its renders may take. */
 export interface EngineSetup { program: string; neutrinoFolder: string; voicesFolder: string; vocoderFolder: string; gpu: boolean; threads: number; cacheSizeMB: number }
@@ -30,6 +30,10 @@ export class Engine {
     private readonly inFlight = new Map<string, Promise<RenderedVoice>>();
     /** The request a key's render went out as: a render let go of and asked again is another request. */
     private readonly requestOf = new Map<string, string>();
+    /** The questions that are not renders (the settings a voice takes), by their request. */
+    private readonly asking = new Map<string, { resolve: (v: SingParameter[]) => void; reject: (e: Error) => void }>();
+    /** What each voice was found to take: it does not change while the engine runs. */
+    private readonly taken = new Map<string, SingParameter[]>();
     /** Who hears how far a key's render is, while it is in flight. */
     private readonly hearing = new Map<string, Set<(p: SingProgress) => void>>();
     private requests = 0;
@@ -79,6 +83,12 @@ export class Engine {
             }
             return;
         }
+        const asked = answer.id ? this.asking.get(answer.id) : undefined;
+        if (asked && answer.id) {
+            this.asking.delete(answer.id);
+            if (answer.error) { asked.reject(new Error(answer.error)); } else { asked.resolve(answer.parameters ?? []); }
+            return;
+        }
         const waiting = answer.id ? this.pending.get(answer.id) : undefined;
         if (!waiting || !answer.id) { return; }
         this.pending.delete(answer.id);
@@ -88,7 +98,7 @@ export class Engine {
             this.log(`diffsinger: the models run on ${answer.provider}`);
         }
         if (answer.error || !answer.wav) { waiting.reject(new Error(answer.error ?? 'the engine answered no WAV')); }
-        else { waiting.resolve({ wav: answer.wav, duration: answer.duration ?? 0, sampleRate: answer.sampleRate ?? 0 }); }
+        else { waiting.resolve({ wav: answer.wav, duration: answer.duration ?? 0, sampleRate: answer.sampleRate ?? 0, notes: answer.notes }); }
     }
 
     private gone(child: cp.ChildProcess, why: string): void {
@@ -97,6 +107,9 @@ export class Engine {
         this.log(why);
         for (const waiting of this.pending.values()) { waiting.reject(new Error(why)); }
         this.pending.clear();
+        for (const asked of this.asking.values()) { asked.reject(new Error(why)); }
+        this.asking.clear();
+        this.taken.clear();
         this.requestOf.clear();
     }
 
@@ -151,6 +164,21 @@ export class Engine {
             this.pending.set(id, { resolve, reject });
             child.stdin!.write(requestLine(id, score, voice, output, voicevoxUrl), e => {
                 if (e) { this.pending.delete(id); reject(e); }
+            });
+        });
+    }
+
+    /** The settings `voice` takes in a score's `sing` (the engine's own name for the voice): asked
+     *  of the engine once a voice, in its turn among the renders. */
+    parameters(voice: string): Promise<SingParameter[]> {
+        const known = this.taken.get(voice);
+        if (known) { return Promise.resolve(known); }
+        const child = this.child ?? this.start();
+        const id = `parameters.${++this.requests}`;
+        return new Promise<SingParameter[]>((resolve, reject) => {
+            this.asking.set(id, { resolve: list => { this.taken.set(voice, list); resolve(list); }, reject });
+            child.stdin!.write(parametersLine(id, voice), e => {
+                if (e) { this.asking.delete(id); reject(e); }
             });
         });
     }

@@ -14,8 +14,11 @@ namespace Cantoria;
 /// <param name="check">Throws <see cref="SingerException"/> for what is wrong with the whole score,
 /// before any phrase is sung, so that the message speaks of the score and not of one phrase.</param>
 /// <param name="disk">Where phrases are kept beyond this engine's life; null keeps them in memory only.</param>
-public sealed class PhrasedSinger(ISinger inner, Action<SungScore>? check = null, PhraseDisk? disk = null) : ISinger, IDisposable
+public sealed class PhrasedSinger(ISinger inner, Action<SungScore>? check = null, PhraseDisk? disk = null) : ISinger, ISingParameters, IDisposable
 {
+    /// <summary>The settings the engine behind takes: none, unless it says some.</summary>
+    public IReadOnlyList<SingParameter> Parameters => (inner as ISingParameters)?.Parameters ?? [];
+
     private const double RestBetweenPhrases = 0.3;
     private const double LongestPhrase = 60;
 
@@ -39,6 +42,11 @@ public sealed class PhrasedSinger(ISinger inner, Action<SungScore>? check = null
             throw new SingerException("the score is not sound: " + string.Join("; ", problems));
         }
         check?.Invoke(score);
+        // What the score sets and this voice does not take is said, and the score is sung without it.
+        if (inner is not ISingParameters)
+        {
+            SingSettings.Numbers(score.Sing, [], Name);
+        }
 
         var notes = score.Notes;
         var words = new List<(int First, int Last)>();

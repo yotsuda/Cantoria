@@ -123,9 +123,17 @@ describe('the engine\'s wire', () => {
         assert.equal((far as { id?: string }).id, undefined);
         const engine = fs.readFileSync(path.join(__dirname, '..', '..', 'src', 'engine.ts'), 'utf8');
         // Heard before the answers are looked for, by whoever asked the render that request is.
-        assert.match(engine, /if \(answer\.progress\) \{[\s\S]{0,420}hear\(\{ toSing, sung \}\)[\s\S]{0,120}return;\s*\}\s*const waiting = answer\.id/);
+        assert.match(engine, /if \(answer\.progress\) \{[\s\S]{0,420}hear\(\{ toSing, sung \}\)[\s\S]{0,120}return;\s*\}\s*const asked = answer\.id/);
         assert.match(engine, /rendered\.then\(over, over\);/);
+        // The settings a voice takes, and what the singer says of a score's: both come as answers.
+        assert.deepEqual(parseLine('{"id":"parameters.1","parameters":[{"name":"breathiness","scope":"curve","what":"breath","min":-12,"max":12,"default":0,"unit":"dB"}]}')!.parameters,
+            [{ name: 'breathiness', scope: 'curve', what: 'breath', min: -12, max: 12, default: 0, unit: 'dB' }]);
+        assert.deepEqual(parseLine('{"id":"k","wav":"w","notes":["x does not take the setting \\"tension\\""]}')!.notes, ['x does not take the setting "tension"']);
+        assert.match(engine, /waiting\.resolve\(\{ wav: answer\.wav, duration: answer\.duration \?\? 0, sampleRate: answer\.sampleRate \?\? 0, notes: answer\.notes \}\);/);
+        assert.match(engine, /const asked = answer\.id \? this\.asking\.get\(answer\.id\) : undefined;/);
         const program = fs.readFileSync(path.join(__dirname, '..', '..', '..', '..', 'src', 'Cantoria.Cli', 'Program.cs'), 'utf8');
+        assert.match(program, /if \(request\.Command == "parameters"\)/);
+        assert.match(program, /notes = said\.Count > 0 \? said : null,/);
         assert.match(program, /new \{ progress = new \{ id = asked, toSing = Math\.Round\(p\.ToSing, 3\), sung = Math\.Round\(p\.Sung, 3\) \} \}/);
         assert.equal(parseLine('cantoria: serving neutrino from …'), null);
         assert.equal(parseLine('{broken'), null);

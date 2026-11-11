@@ -34,7 +34,32 @@ public static class ScoreJson
         var notes = (dto.Notes ?? []).Select(n => new SungNote(
             n.Start, n.Duration, n.Pitch, n.Lyric, n.Melisma ?? false, n.Breath ?? false, n.Level, n.LevelEnd, n.Inhale ?? false, n.Hyphen ?? false,
             n.Vibrato, n.VibratoRate)).ToList();
-        return new SungScore(notes, dto.Language ?? "ja", dto.SampleRate ?? 44100).Tidy();
+        return new SungScore(notes, dto.Language ?? "ja", dto.SampleRate ?? 44100, SingOf(dto.Sing)).Tidy();
+    }
+
+    /// <summary>The settings of a "sing" object: a number or a word a name; anything else is not one.</summary>
+    private static Dictionary<string, SingValue>? SingOf(Dictionary<string, JsonElement>? sing)
+    {
+        if (sing is null || sing.Count == 0)
+        {
+            return null;
+        }
+        var values = new Dictionary<string, SingValue>(StringComparer.Ordinal);
+        foreach (var (name, value) in sing)
+        {
+            switch (value.ValueKind)
+            {
+                case JsonValueKind.Number:
+                    values[name] = SingValue.Of(value.GetDouble());
+                    break;
+                case JsonValueKind.String:
+                    values[name] = SingValue.Of(value.GetString() ?? "");
+                    break;
+                default:
+                    throw new JsonException($"sing.{name}: a setting is a number or a word");
+            }
+        }
+        return values;
     }
 
     /// <summary>Writes a score as indented JSON, lyrics unescaped.</summary>
@@ -44,6 +69,8 @@ public static class ScoreJson
         {
             SampleRate = score.SampleRate,
             Language = score.Language,
+            Sing = score.Sing?.ToDictionary(p => p.Key, p => p.Value.Number is { } n
+                ? JsonSerializer.SerializeToElement(n) : JsonSerializer.SerializeToElement(p.Value.Word)),
             Notes = score.Notes.Select(n => new NoteDto
             {
                 Start = n.Start, Duration = n.Duration, Pitch = n.Pitch, Lyric = n.Lyric,
@@ -59,6 +86,7 @@ public static class ScoreJson
     {
         public int? SampleRate { get; set; }
         public string? Language { get; set; }
+        public Dictionary<string, JsonElement>? Sing { get; set; }
         public List<NoteDto>? Notes { get; set; }
     }
 

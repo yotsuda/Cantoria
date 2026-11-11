@@ -13,7 +13,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import {
-    SingProgress,
+    SingParameter, SingProgress,
     CantoriaScore, DefaultVoices, ENGINES, EngineName, VOICEVOX_URL, VoiceEntry, VoiceGender, defaultVoiceFor, diffSingerEntriesIn, diffSingerVoicesIn, languageProblem, missingProgramNote, needsVoicevox, neutrinoFolderProblems, voicevoxRunIn, programCandidates,
     resolveSinger, scoreProblems, splitVoiceId, voiceEntriesIn, voiceId, voicePieces, voicesFolderProblems, voicesIn, 
 } from './core';
@@ -56,6 +56,11 @@ export interface CantoriaApi {
      *  kept from an earlier sing are not counted) and how much of it is done; told once before
      *  the first phrase and after each. A voice whose engine sings a score whole tells nothing. */
     sing(score: CantoriaScore, options?: { voice?: string; signal?: AbortSignal; onProgress?: (progress: SingProgress) => void }): Promise<RenderedVoice & { cached: boolean }>;
+    /** The settings a voice takes in a score's `sing` (after 0.4.0): each with its name, where it
+     *  can change, what it does and its range. `voice` as for `sing`; several joined by `+` take
+     *  what any of them does. None for a voice whose engine has no such setting. What a score
+     *  sets and the voice does not take is not sung, and said in `sing`'s `notes`. */
+    parameters(voice?: string): Promise<SingParameter[]>;
     /** Lets the engine go (NEUTRINO's server and the DiffSinger sessions with it); the next `sing` starts it again. */
     release(): void;
     /** The voice a score's `singer` string comes to here: the voice it names when installed, else the
@@ -332,6 +337,13 @@ export function activate(context: vscode.ExtensionContext): CantoriaApi {
         status: () => status(context),
         voices: async () => { await voicevox.ensure(); return voices(); },
         sing: (score, options) => sing(context, score, options),
+        parameters: async (voice) => {
+            const asked = (voice ?? '').trim();
+            const singers = asked && voicePieces(asked).length > 0 ? voicePieces(asked).map(voiceOf) : [voiceSetting()];
+            const wrong = singers.flatMap(voiceProblems);
+            if (wrong.length > 0) { throw new Error(wrong.join('; ')); }
+            return engineFor(context).parameters(singers.map(s => s.id).join('+'));
+        },
         release,
         resolveSinger: async (singer, options) => {
             if (needsVoicevox(singer, defaultVoices(), voices().length - voicevox.voices.length, options?.language)) { await voicevox.ensure(); } else { await voicevox.ask(); }

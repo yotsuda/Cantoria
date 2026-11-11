@@ -7,8 +7,13 @@ namespace Cantoria;
 /// Several voices singing one score together (<c>neutrino/MERROW+diffsinger/TIGER</c>): each sings
 /// it alone, one after another, and the sounds are laid over each other from the score's time 0.
 /// </summary>
-public sealed class ChorusSinger(IReadOnlyList<ISinger> singers) : ISinger, IDisposable
+public sealed class ChorusSinger(IReadOnlyList<ISinger> singers) : ISinger, ISingParameters, IDisposable
 {
+    /// <summary>What any of its voices takes: each takes its own of a score's settings, and says
+    /// what it does not.</summary>
+    public IReadOnlyList<SingParameter> Parameters => singers.OfType<ISingParameters>().SelectMany(s => s.Parameters)
+        .GroupBy(p => p.Name, StringComparer.Ordinal).Select(g => g.First()).ToList();
+
     public string Name => string.Join("+", singers.Select(s => s.Name));
 
     public async Task<SungAudio> SingAsync(SungScore score, CancellationToken ct = default)
@@ -17,6 +22,7 @@ public sealed class ChorusSinger(IReadOnlyList<ISinger> singers) : ISinger, IDis
         // count of them all (SingReport.Together).
         var sung = new List<SungAudio>(singers.Count);
         using var heard = SingReport.ListenTogether();
+        // A setting is each voice's own to take or to say it does not: all of them are asked.
         foreach (var singer in singers)
         {
             sung.Add(await singer.SingAsync(score, ct).ConfigureAwait(false));

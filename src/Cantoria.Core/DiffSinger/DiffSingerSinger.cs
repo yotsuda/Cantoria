@@ -16,7 +16,7 @@ namespace Cantoria.DiffSinger;
 /// Sings through a DiffSinger voice in the OpenUtau format, in this process over ONNX Runtime.
 /// The models stay loaded for this object's life (the first render pays for loading them).
 /// </summary>
-public sealed class DiffSingerSinger : ISinger, IDisposable
+public sealed class DiffSingerSinger : ISinger, ISingParameters, IDisposable
 {
     private const int HeadFrames = 8;
     private const int TailFrames = 8;
@@ -50,6 +50,29 @@ public sealed class DiffSingerSinger : ISinger, IDisposable
     }
 
     public string Name => $"diffsinger/{_voice.Options.Name}";
+
+    /// <summary>
+    /// The settings this voice takes: what its acoustic model was trained to be told. Each is the
+    /// model's own input, by the model's own name. The four the variance model predicts (energy,
+    /// breathiness, voicing, tension) are written as an OFFSET on what it predicts - the voice's
+    /// own expression stays under the setting, which moves it and does not flatten it; gender
+    /// and velocity are the inputs themselves, where the voice was trained with them.
+    /// </summary>
+    public IReadOnlyList<SingParameter> Parameters
+    {
+        get
+        {
+            var acoustic = _voice.Acoustic;
+            var list = new List<SingParameter>();
+            if (acoustic.UseBreathinessEmbed) { list.Add(new("breathiness", SingScope.Curve, "How much breath is in the voice: added to what the voice does by itself", -12, 12, 0, "dB")); }
+            if (acoustic.UseTensionEmbed) { list.Add(new("tension", SingScope.Curve, "How pressed the voice is, from soft to strained: added to what the voice does by itself", -10, 10, 0)); }
+            if (acoustic.UseEnergyEmbed) { list.Add(new("energy", SingScope.Curve, "How loud the voice sings (not how loud it is played): added to what the voice does by itself", -12, 12, 0, "dB")); }
+            if (acoustic.UseVoicingEmbed) { list.Add(new("voicing", SingScope.Curve, "How much of the voice is tone and not breath: added to what the voice does by itself", -12, 12, 0, "dB")); }
+            if (acoustic.UseKeyShiftEmbed) { list.Add(new("gender", SingScope.Curve, "The size of the voice: the model's own input, as it was trained", -1, 1, 0)); }
+            if (acoustic.UseSpeedEmbed) { list.Add(new("velocity", SingScope.Curve, "How fast the consonants are spoken: 1 as trained", 0.5, 2, 1)); }
+            return list;
+        }
+    }
 
     /// <summary>The voice this singer sings with.</summary>
     public DiffSingerVoice Voice => _voice;
@@ -180,6 +203,15 @@ public sealed class DiffSingerSinger : ISinger, IDisposable
         // ---- the phrases: each sung from its own time 0, once, and laid at its place in the score ----
         var cuts = PhraseCut.Split(words.Select(w => (w.StartMs / 1000, w.EndMs / 1000)).ToList(), RestBetweenPhrases, LongestPhrase);
         int rate = voice.Vocoder.SampleRate;
+        // How the score asks to be sung, among what this voice takes (SingSettings): what it does
+        // not take is said to the caller and left out. In every phrase's key, so a phrase sung
+        // with a setting is not the one kept without.
+        var sing = SingSettings.Numbers(score.Sing, Parameters, Name);
+        string[] singKey = SingSettings.KeyOf(sing) is { Length: > 0 } settings ? [settings] : [];
+        if (sing.Count > 0)
+        {
+            log.AppendLine("settings: " + string.Join(", ", sing.Select(p => $"{p.Key} {p.Value:0.###}")));
+        }
         // Every phrase is looked up first, so that what there is to sing ANEW is known before the
         // first is sung (SingReport): the phrases kept from before are held here meanwhile.
         // A phrase the score has twice is sung once: its second place waits for the first (Again).
@@ -191,7 +223,7 @@ public sealed class DiffSingerSinger : ISinger, IDisposable
             var phrase = words.GetRange(first, count).Select(w => Shifted(w, startSeconds)).ToList();
             double? breathRoom = first + count < words.Count ? EndBreathRoom(words[first + count - 1], words[first + count]) : null;
             var key = new PhraseKey(speaker, language,
-                phrase.Select(w => $"{string.Join(' ', w.Phonemes)}|{w.Notes.Count}{Vibrato.KeyOf(w.Notes)}").ToList(),
+                [.. phrase.Select(w => $"{string.Join(' ', w.Phonemes)}|{w.Notes.Count}{Vibrato.KeyOf(w.Notes)}"), .. singKey],
                 phrase.SelectMany(w => w.Notes).Select(n => new PhraseNote(n.Start, n.Duration, n.Pitch, n.Breath)).ToList(),
                 breathRoom);
             var kept = _phrases.TryGet(key, out var found) ? found : null;
@@ -213,7 +245,7 @@ public sealed class DiffSingerSinger : ISinger, IDisposable
             var sung = kept ?? (again && _phrases.TryGet(key, out var first) ? first : null);
             if (sung is null)
             {
-                sung = SingPhrase(phrase, breathRoom, log);
+                sung = SingPhrase(phrase, breathRoom, log, sing);
                 _phrases.Add(key, sung);
                 fresh++;
                 done = Math.Min(toSing, done + seconds);
@@ -245,7 +277,7 @@ public sealed class DiffSingerSinger : ISinger, IDisposable
     }
 
     /// <summary>One phrase, its first note at time 0, through every model. A phrase begun is finished: asked to stop, a render stops at the next phrase.</summary>
-    private SungPhrase SingPhrase(List<Word> words, double? breathRoom, System.Text.StringBuilder log)
+    private SungPhrase SingPhrase(List<Word> words, double? breathRoom, System.Text.StringBuilder log, IReadOnlyDictionary<string, double> sing)
     {
         var clock = System.Diagnostics.Stopwatch.StartNew();
         var voice = _voice;
@@ -369,11 +401,11 @@ public sealed class DiffSingerSinger : ISinger, IDisposable
         }
         if (acoustic.UseKeyShiftEmbed)
         {
-            inputs.Add(Row("gender", new float[totalFrames]));
+            inputs.Add(Row("gender", Enumerable.Repeat((float)sing.GetValueOrDefault("gender", 0), totalFrames).ToArray()));
         }
         if (acoustic.UseSpeedEmbed)
         {
-            inputs.Add(Row("velocity", Enumerable.Repeat(1f, totalFrames).ToArray()));
+            inputs.Add(Row("velocity", Enumerable.Repeat((float)sing.GetValueOrDefault("velocity", 1), totalFrames).ToArray()));
         }
         foreach (var (name, wanted) in new[] { ("energy", acoustic.UseEnergyEmbed), ("breathiness", acoustic.UseBreathinessEmbed), ("voicing", acoustic.UseVoicingEmbed), ("tension", acoustic.UseTensionEmbed) })
         {
@@ -385,7 +417,13 @@ public sealed class DiffSingerSinger : ISinger, IDisposable
             {
                 throw new SingerException($"the acoustic model wants {name} but the voice's variance model does not predict it");
             }
-            inputs.Add(Row(name, curve.Length == totalFrames ? curve : Resample(curve, totalFrames)));
+            var row = curve.Length == totalFrames ? curve : Resample(curve, totalFrames);
+            // A setting written for it moves what the voice predicted, and keeps its shape.
+            if (sing.TryGetValue(name, out double offset) && offset != 0)
+            {
+                row = row.Select(v => v + (float)offset).ToArray();
+            }
+            inputs.Add(Row(name, row));
         }
         var acousticOut = Run(voice.AcousticSession, inputs, "acoustic");
         var mel = acousticOut.First().AsTensor<float>().Clone();
