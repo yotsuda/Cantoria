@@ -191,7 +191,7 @@ public sealed class DiffSingerSinger : ISinger, IDisposable
             var phrase = words.GetRange(first, count).Select(w => Shifted(w, startSeconds)).ToList();
             double? breathRoom = first + count < words.Count ? EndBreathRoom(words[first + count - 1], words[first + count]) : null;
             var key = new PhraseKey(speaker, language,
-                phrase.Select(w => $"{string.Join(' ', w.Phonemes)}|{w.Notes.Count}").ToList(),
+                phrase.Select(w => $"{string.Join(' ', w.Phonemes)}|{w.Notes.Count}{Vibrato.KeyOf(w.Notes)}").ToList(),
                 phrase.SelectMany(w => w.Notes).Select(n => new PhraseNote(n.Start, n.Duration, n.Pitch, n.Breath)).ToList(),
                 breathRoom);
             var kept = _phrases.TryGet(key, out var found) ? found : null;
@@ -314,6 +314,13 @@ public sealed class DiffSingerSinger : ISinger, IDisposable
         float[] f0Midi = voice.Pitch is { } pitch
             ? PredictPitch(pitch, segments, phDur, totalFrames, notes, phones, renderStartMs, isVowel, log)
             : FlatPitch(segments, phDur, totalFrames, notes, phones);
+        // A vibrato written on a note (a trial: added to the curve; Vibrato.cs). Before the variance
+        // model, which reads the pitch: the breath and the energy follow the curve that is sung.
+        if (Vibrato.Of(notes) is { Count: > 0 } written)
+        {
+            Vibrato.Apply(f0Midi, frameMs, renderStartMs, written);
+            log.AppendLine($"vibrato: written on {written.Count} note{(written.Count == 1 ? "" : "s")}");
+        }
 
         // ---- variance ----
         var acoustic = voice.Acoustic;

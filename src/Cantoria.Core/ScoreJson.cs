@@ -32,7 +32,8 @@ public static class ScoreJson
         var dto = JsonSerializer.Deserialize<ScoreDto>(json, Options)
             ?? throw new JsonException("the score is null");
         var notes = (dto.Notes ?? []).Select(n => new SungNote(
-            n.Start, n.Duration, n.Pitch, n.Lyric, n.Melisma ?? false, n.Breath ?? false, n.Level, n.LevelEnd, n.Inhale ?? false, n.Hyphen ?? false)).ToList();
+            n.Start, n.Duration, n.Pitch, n.Lyric, n.Melisma ?? false, n.Breath ?? false, n.Level, n.LevelEnd, n.Inhale ?? false, n.Hyphen ?? false,
+            n.Vibrato, n.VibratoRate)).ToList();
         return new SungScore(notes, dto.Language ?? "ja", dto.SampleRate ?? 44100).Tidy();
     }
 
@@ -48,6 +49,7 @@ public static class ScoreJson
                 Start = n.Start, Duration = n.Duration, Pitch = n.Pitch, Lyric = n.Lyric,
                 Melisma = n.Melisma ? true : null, Breath = n.Breath ? true : null,
                 Level = n.Level, LevelEnd = n.LevelEnd, Inhale = n.Inhale ? true : null, Hyphen = n.Hyphen ? true : null,
+                Vibrato = n.Vibrato, VibratoRate = n.VibratoRate,
             }).ToList(),
         };
         return JsonSerializer.Serialize(dto, Options);
@@ -72,5 +74,7 @@ public static class ScoreJson
         public double? LevelEnd { get; set; }
         public bool? Inhale { get; set; }
         public bool? Hyphen { get; set; }
+        public double? Vibrato { get; set; }
+        public double? VibratoRate { get; set; }
     }
 }

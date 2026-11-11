@@ -20,6 +20,10 @@ namespace Cantoria;
 /// <param name="Inhale">True when the singer takes an audible breath between this note and the next,
 /// which follows closely (a breath mark), where a rest is only silence.</param>
 /// <param name="Hyphen">True when the next syllable is of the same word (<c>Twin- kle</c>).</param>
+/// <param name="Vibrato">A vibrato written on the note: how far the pitch swings each way, in cents;
+/// null for none written (the voice's own, if it has one, is its own). A trial, sung by DiffSinger
+/// voices only (<see cref="Cantoria.DiffSinger.Vibrato"/>); the other engines sing the note plain.</param>
+/// <param name="VibratoRate">Its swings a second; null is <see cref="Cantoria.DiffSinger.Vibrato.DefaultRate"/>.</param>
 public sealed record SungNote(
     double Start,
     double Duration,
@@ -30,7 +34,9 @@ public sealed record SungNote(
     double? Level = null,
     double? LevelEnd = null,
     bool Inhale = false,
-    bool Hyphen = false)
+    bool Hyphen = false,
+    double? Vibrato = null,
+    double? VibratoRate = null)
 {
     /// <summary>Seconds at which the note ends.</summary>
     public double End => Start + Duration;
