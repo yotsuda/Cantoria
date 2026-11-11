@@ -314,11 +314,13 @@ public sealed class DiffSingerSinger : ISinger, IDisposable
         float[] f0Midi = voice.Pitch is { } pitch
             ? PredictPitch(pitch, segments, phDur, totalFrames, notes, phones, renderStartMs, isVowel, log)
             : FlatPitch(segments, phDur, totalFrames, notes, phones);
-        // A vibrato written on a note (a trial: added to the curve; Vibrato.cs). Before the variance
-        // model, which reads the pitch: the breath and the energy follow the curve that is sung.
+        // A vibrato written on a note (a trial; Vibrato.cs): the curve's own wavering is evened out
+        // under it first - added to it, 25 cents written came out 46 one way and 32 the other on
+        // Nishiren/2P, and sounded put on. Before the variance model, which reads the pitch: the
+        // breath and the energy follow the curve that is sung.
         if (Vibrato.Of(notes) is { Count: > 0 } written)
         {
-            Vibrato.Apply(f0Midi, frameMs, renderStartMs, written);
+            Vibrato.Apply(f0Midi, frameMs, renderStartMs, written, steady: true);
             log.AppendLine($"vibrato: written on {written.Count} note{(written.Count == 1 ? "" : "s")}");
         }
 

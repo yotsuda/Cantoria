@@ -21,22 +21,50 @@ public class VibratoTests
         Vibrato.Apply(f0, FrameMs, 0, [new Vibrato.Written(0, 2000, 40, 5)]);
         // Straight for the first quarter of a second.
         Assert.All(f0.Take(25), v => Assert.Equal(60f, v));
-        // In the middle it swings 40 cents each way, and no further.
-        var middle = f0.Skip(60).Take(100).ToArray();
-        Assert.InRange(middle.Max(), 60.38f, 60.4001f);
-        Assert.InRange(middle.Min(), 59.5999f, 59.62f);
+        // It grows in: a third of a second after it begins it is not yet half its width.
+        Assert.All(f0.Skip(25).Take(30), v => Assert.InRange(v, 59.8f, 60.2f));
+        // Once full it swings about 40 cents each way - its width wanders an eighth - and no wider.
+        var full = f0.Skip(110).Take(70).ToArray();
+        Assert.InRange(full.Max(), 60.33f, 60.46f);
+        Assert.InRange(full.Min(), 59.54f, 59.67f);
         // It lets go before the note ends: the last frame, 10 ms from the end, is within 5 cents.
         Assert.InRange(f0[^1], 59.95f, 60.05f);
-        // Five swings a second: the curve crosses the pitch ten times a second (upwards five).
+        // About five swings a second, never quite even: in the second where it is full, 4 to 6.
         int up = 0;
-        for (int i = 61; i < 160; i++)
+        var crossings = new List<int>();
+        for (int i = 91; i < 190; i++)
         {
             if (f0[i - 1] < 60 && f0[i] >= 60)
             {
                 up++;
+                crossings.Add(i);
             }
         }
-        Assert.Equal(5, up);
+        Assert.InRange(up, 4, 6);
+        // The same note is the same curve every time: nothing in it is chance.
+        var again = Flat(2000);
+        Vibrato.Apply(again, FrameMs, 0, [new Vibrato.Written(0, 2000, 40, 5)]);
+        Assert.Equal(f0, again);
+    }
+
+    // Added to a curve that wavers by itself, the written swing came out half as wide again one
+    // way: under the vibrato the curve is evened out first, and stays the model's own at its edges.
+    [Fact]
+    public void Steady_TheCurvesOwnWavering_GivesWayUnderTheVibrato_NotAtTheNotesEdges()
+    {
+        // A slow drift of 20 cents, twice a second, about 60.
+        float[] Wavering() => Enumerable.Range(0, 200).Select(i => 60f + 0.2f * MathF.Sin(2 * MathF.PI * 2 * i * 0.01f)).ToArray();
+        var added = Wavering();
+        Vibrato.Apply(added, FrameMs, 0, [new Vibrato.Written(0, 2000, 25, 5)]);
+        var steady = Wavering();
+        Vibrato.Apply(steady, FrameMs, 0, [new Vibrato.Written(0, 2000, 25, 5)], steady: true);
+        // Where the vibrato is full: added, the two swings stack; steady, the swing is the one written.
+        float Widest(float[] f0) => f0.Skip(110).Take(70).Max(v => Math.Abs(v - 60f));
+        Assert.InRange(Widest(added), 0.38f, 0.5f);
+        Assert.InRange(Widest(steady), 0.2f, 0.33f);
+        // Before the vibrato begins the curve is untouched either way.
+        Assert.Equal(Wavering().Take(25), steady.Take(25));
+        Assert.Equal(Wavering().Take(25), added.Take(25));
     }
 
     [Fact]
