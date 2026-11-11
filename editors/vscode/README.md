@@ -100,6 +100,12 @@ const { wav, duration } = await api.sing({
   by `+`, each singing the score and their sounds laid together. Without it, the default voice
   sings. It throws with one sentence when it cannot sing: no program, no engine set up, an engine or
   a voice that is not there, words in a language the voice does not sing, a score the engine refused.
+- `sing`'s `options.onProgress` hears how far a render is, for a bar: `{ toSing, sung }` in seconds
+  of music — what has to be sung **anew** (a phrase kept from an earlier sing costs nothing and is
+  not counted) and how much of it is done. It is told once before the first phrase and once after
+  each, so the count begins at 0 and is full when the score is; a score with nothing new to sing
+  says `{ toSing: 0, sung: 0 }`. Voices joined by `+` are one count, its total growing as each
+  begins.
 - `resolveSinger(singer, { language, gender })` answers the voice a score's `singer` comes to on this
   machine: the voice it names when installed, else the default voice of the gender it says or of
   `gender`, with a `note` when that is not the one asked for.

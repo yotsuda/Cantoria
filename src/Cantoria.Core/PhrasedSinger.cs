@@ -58,10 +58,13 @@ public sealed class PhrasedSinger(ISinger inner, Action<SungScore>? check = null
         await _oneAtATime.WaitAsync(ct).ConfigureAwait(false);
         try
         {
-            var placed = new List<(double Seconds, SungPhrase Phrase)>();
+            // Every phrase is looked up first, so that what there is to sing ANEW is known before
+            // the first is sung (SingReport): the phrases kept from before are held here meanwhile.
+            // A phrase the score has twice is sung once: its second place waits for the first (Again).
+            var asked = new List<(double Start, double Seconds, List<SungNote> Notes, PhraseKey Key, SungPhrase? Kept, bool Again)>();
+            var fresh = new List<PhraseKey>();
             foreach (var (first, count) in cuts)
             {
-                ct.ThrowIfCancellationRequested();
                 int from = words[first].First, to = words[first + count - 1].Last;
                 double start = notes[from].Start;
                 var phrase = Enumerable.Range(from, to - from + 1).Select(i => notes[i] with { Start = notes[i].Start - start + Lead }).ToList();
@@ -69,12 +72,30 @@ public sealed class PhrasedSinger(ISinger inner, Action<SungScore>? check = null
                     phrase.Select(n => $"{n.Lyric}|{n.Melisma}|{n.Inhale}|{n.Hyphen}").ToList(),
                     phrase.Select(n => new PhraseNote(n.Start, n.Duration, n.Pitch, n.Breath)).ToList(),
                     null);
-                if (!_phrases.TryGet(key, out var sung))
+                var kept = _phrases.TryGet(key, out var found) ? found : null;
+                bool again = kept is null && fresh.Any(k => k.SameAs(key));
+                if (kept is null && !again)
+                {
+                    fresh.Add(key);
+                }
+                asked.Add((start, notes[to].End - start, phrase, key, kept, again));
+            }
+            double toSing = asked.Where(a => a.Kept is null && !a.Again).Sum(a => a.Seconds), done = 0;
+            SingReport.Tell(toSing, 0);
+
+            var placed = new List<(double Seconds, SungPhrase Phrase)>();
+            foreach (var (start, seconds, phrase, key, kept, again) in asked)
+            {
+                ct.ThrowIfCancellationRequested();
+                var sung = kept ?? (again && _phrases.TryGet(key, out var first) ? first : null);
+                if (sung is null)
                 {
                     // A phrase begun is finished and kept: asked to stop, the score stops at the next phrase.
                     var audio = await inner.SingAsync(score with { Notes = phrase }, CancellationToken.None).ConfigureAwait(false);
                     sung = new SungPhrase(audio.Samples, -Lead * 1000, audio.SampleRate);
                     _phrases.Add(key, sung);
+                    done = Math.Min(toSing, done + seconds);
+                    SingReport.Tell(toSing, done);
                 }
                 placed.Add((start, sung));
             }

@@ -308,7 +308,14 @@ export interface ServeAnswer {
     id?: string; wav?: string; duration?: number; sampleRate?: number; seconds?: number; error?: string;
     /** Where a DiffSinger voice's models ran: `DirectML` or `CPU` (0.4.0); absent for NEUTRINO. */
     provider?: string;
+    /** How far a request is, a line a phrase sung: not an answer — the request's id is inside it,
+     *  so a reader that knows only answers takes the line for none of its own. */
+    progress?: { id: string } & SingProgress;
 }
+
+/** How far a score is while it is sung: the seconds of music to sing ANEW (phrases kept from an
+ *  earlier sing are not in them) and how many are done. From 0 to `toSing`: full when the score is. */
+export interface SingProgress { toSing: number; sung: number }
 
 /** The answer a line holds, or null for a line that is not one. */
 export function parseLine(line: string): ServeAnswer | null {

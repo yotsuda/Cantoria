@@ -13,6 +13,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import {
+    SingProgress,
     CantoriaScore, DefaultVoices, ENGINES, EngineName, VOICEVOX_URL, VoiceEntry, VoiceGender, defaultVoiceFor, diffSingerEntriesIn, diffSingerVoicesIn, languageProblem, missingProgramNote, needsVoicevox, neutrinoFolderProblems, voicevoxRunIn, programCandidates,
     resolveSinger, scoreProblems, splitVoiceId, voiceEntriesIn, voiceId, voicePieces, voicesFolderProblems, voicesIn, 
 } from './core';
@@ -50,8 +51,11 @@ export interface CantoriaApi {
      *  the same voice is sung once. Throws with a sentence when it cannot: no program, no engine set
      *  up, a voice or an engine that is not there, a score the engine refused. `options.signal`
      *  lets go of a render no longer wanted: it rejects at once, and the engine stops at its next
-     *  phrase, keeping the phrases it sang. */
-    sing(score: CantoriaScore, options?: { voice?: string; signal?: AbortSignal }): Promise<RenderedVoice & { cached: boolean }>;
+     *  phrase, keeping the phrases it sang. `options.onProgress` hears how far the render is
+     *  (after 0.4.0): `{ toSing, sung }` in seconds of music — what has to be sung ANEW (the phrases
+     *  kept from an earlier sing are not counted) and how much of it is done; told once before
+     *  the first phrase and after each. A voice whose engine sings a score whole tells nothing. */
+    sing(score: CantoriaScore, options?: { voice?: string; signal?: AbortSignal; onProgress?: (progress: SingProgress) => void }): Promise<RenderedVoice & { cached: boolean }>;
     /** Lets the engine go (NEUTRINO's server and the DiffSinger sessions with it); the next `sing` starts it again. */
     release(): void;
     /** The voice a score's `singer` string comes to here: the voice it names when installed, else the
@@ -195,7 +199,7 @@ async function status(context: vscode.ExtensionContext): Promise<CantoriaStatus>
     return { ready: problems.length === 0, program: prog, backend, neutrinoFolder: neutrinoFolder(), voicesFolder: voicesFolder(), voice: voice.id, voices: voices().map(v => v.id), problems };
 }
 
-async function sing(context: vscode.ExtensionContext, score: CantoriaScore, options?: { voice?: string; signal?: AbortSignal }): Promise<RenderedVoice & { cached: boolean }> {
+async function sing(context: vscode.ExtensionContext, score: CantoriaScore, options?: { voice?: string; signal?: AbortSignal; onProgress?: (progress: SingProgress) => void }): Promise<RenderedVoice & { cached: boolean }> {
     const problems = scoreProblems(score);
     if (problems.length > 0) { throw new Error(problems.join('; ')); }
     const asked = (options?.voice ?? '').trim();
@@ -207,7 +211,7 @@ async function sing(context: vscode.ExtensionContext, score: CantoriaScore, opti
     if (language) { throw new Error(language); }
     const voice = { id: singers.map(s => s.id).join('+') };
     const singing = engineFor(context);
-    const { key, rendered, cached } = singing.sing(score, voice.id, voice.id, voicevox.answering);
+    const { key, rendered, cached } = singing.sing(score, voice.id, voice.id, voicevox.answering, options?.onProgress);
     if (options?.signal && !cached) {
         if (options.signal.aborted) { singing.cancel(key); } else { options.signal.addEventListener('abort', () => singing.cancel(key), { once: true }); }
     }

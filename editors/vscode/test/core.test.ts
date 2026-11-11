@@ -116,6 +116,17 @@ describe('the engine\'s wire', () => {
         assert.deepEqual(parseLine('{"ready":true,"backend":"neutrino","voices":["MERROW"],"outDir":"x"}'), { ready: true, backend: 'neutrino', voices: ['MERROW'], outDir: 'x' });
         assert.deepEqual(parseLine('{"id":"k","wav":"C:\\\\v\\\\k.wav","duration":8,"sampleRate":48000,"seconds":0.4}'), { id: 'k', wav: 'C:\\v\\k.wav', duration: 8, sampleRate: 48000, seconds: 0.4 });
         assert.deepEqual(parseLine('{"id":"k","error":"no lyric"}'), { id: 'k', error: 'no lyric' });
+        // How far a request is: not an answer - no id of its own, the request's inside it - so a
+        // reader that knows only answers (an older extension, another program) passes it by.
+        const far = parseLine('{"progress":{"id":"k.1","toSing":12.5,"sung":4}}');
+        assert.deepEqual(far, { progress: { id: 'k.1', toSing: 12.5, sung: 4 } });
+        assert.equal((far as { id?: string }).id, undefined);
+        const engine = fs.readFileSync(path.join(__dirname, '..', '..', 'src', 'engine.ts'), 'utf8');
+        // Heard before the answers are looked for, by whoever asked the render that request is.
+        assert.match(engine, /if \(answer\.progress\) \{[\s\S]{0,420}hear\(\{ toSing, sung \}\)[\s\S]{0,120}return;\s*\}\s*const waiting = answer\.id/);
+        assert.match(engine, /rendered\.then\(over, over\);/);
+        const program = fs.readFileSync(path.join(__dirname, '..', '..', '..', '..', 'src', 'Cantoria.Cli', 'Program.cs'), 'utf8');
+        assert.match(program, /new \{ progress = new \{ id = asked, toSing = Math\.Round\(p\.ToSing, 3\), sung = Math\.Round\(p\.Sung, 3\) \} \}/);
         assert.equal(parseLine('cantoria: serving neutrino from …'), null);
         assert.equal(parseLine('{broken'), null);
     });

@@ -380,7 +380,17 @@ static async Task<int> Serve(string[] rest)
                 var singer = SingerOf(request.Voice);
                 Console.Error.WriteLine($"cantoria: {DateTime.Now:HH:mm:ss} singing {FileNameOf(id)} in {singer.Name}, {score.Notes.Count} notes");
                 var watch = Stopwatch.StartNew();
-                var audio = SungLevels.Apply(await singer.SingAsync(score, ct), score);
+                // How far the score is, a line a phrase: the seconds of music to sing anew (what
+                // is kept from before is not in them) and how many are done. The request's id
+                // is INSIDE "progress", so a reader that knows only the answers - an id with a
+                // wav or an error - takes the line for none of its own.
+                string asked = id;
+                SungAudio audio;
+                using (SingReport.Listen(p => stdout.WriteLine(JsonSerializer.Serialize(
+                    new { progress = new { id = asked, toSing = Math.Round(p.ToSing, 3), sung = Math.Round(p.Sung, 3) } }, json))))
+                {
+                    audio = SungLevels.Apply(await singer.SingAsync(score, ct), score);
+                }
                 var output = request.Output ?? Path.Combine(outDir, FileNameOf(id) + ".wav");
                 var dirName = Path.GetDirectoryName(Path.GetFullPath(output));
                 if (!string.IsNullOrEmpty(dirName))

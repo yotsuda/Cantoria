@@ -180,11 +180,13 @@ public sealed class DiffSingerSinger : ISinger, IDisposable
         // ---- the phrases: each sung from its own time 0, once, and laid at its place in the score ----
         var cuts = PhraseCut.Split(words.Select(w => (w.StartMs / 1000, w.EndMs / 1000)).ToList(), RestBetweenPhrases, LongestPhrase);
         int rate = voice.Vocoder.SampleRate;
-        var placed = new List<(double Seconds, SungPhrase Phrase)>();
-        int fresh = 0;
+        // Every phrase is looked up first, so that what there is to sing ANEW is known before the
+        // first is sung (SingReport): the phrases kept from before are held here meanwhile.
+        // A phrase the score has twice is sung once: its second place waits for the first (Again).
+        var asked = new List<(double Start, double Seconds, List<Word> Words, double? BreathRoom, PhraseKey Key, SungPhrase? Kept, bool Again)>();
+        var freshKeys = new List<PhraseKey>();
         foreach (var (first, count) in cuts)
         {
-            ct.ThrowIfCancellationRequested();
             double startSeconds = words[first].Notes[0].Start;
             var phrase = words.GetRange(first, count).Select(w => Shifted(w, startSeconds)).ToList();
             double? breathRoom = first + count < words.Count ? EndBreathRoom(words[first + count - 1], words[first + count]) : null;
@@ -192,11 +194,30 @@ public sealed class DiffSingerSinger : ISinger, IDisposable
                 phrase.Select(w => $"{string.Join(' ', w.Phonemes)}|{w.Notes.Count}").ToList(),
                 phrase.SelectMany(w => w.Notes).Select(n => new PhraseNote(n.Start, n.Duration, n.Pitch, n.Breath)).ToList(),
                 breathRoom);
-            if (!_phrases.TryGet(key, out var sung))
+            var kept = _phrases.TryGet(key, out var found) ? found : null;
+            bool again = kept is null && freshKeys.Any(k => k.SameAs(key));
+            if (kept is null && !again)
+            {
+                freshKeys.Add(key);
+            }
+            asked.Add((startSeconds, words[first + count - 1].EndMs / 1000 - startSeconds, phrase, breathRoom, key, kept, again));
+        }
+        double toSing = asked.Where(a => a.Kept is null && !a.Again).Sum(a => a.Seconds), done = 0;
+        SingReport.Tell(toSing, 0);
+
+        var placed = new List<(double Seconds, SungPhrase Phrase)>();
+        int fresh = 0;
+        foreach (var (startSeconds, seconds, phrase, breathRoom, key, kept, again) in asked)
+        {
+            ct.ThrowIfCancellationRequested();
+            var sung = kept ?? (again && _phrases.TryGet(key, out var first) ? first : null);
+            if (sung is null)
             {
                 sung = SingPhrase(phrase, breathRoom, log);
                 _phrases.Add(key, sung);
                 fresh++;
+                done = Math.Min(toSing, done + seconds);
+                SingReport.Tell(toSing, done);
             }
             placed.Add((startSeconds, sung));
         }

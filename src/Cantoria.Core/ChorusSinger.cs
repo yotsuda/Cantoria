@@ -13,7 +13,10 @@ public sealed class ChorusSinger(IReadOnlyList<ISinger> singers) : ISinger, IDis
 
     public async Task<SungAudio> SingAsync(SungScore score, CancellationToken ct = default)
     {
+        // Each voice sings the whole score and counts from 0: the listener of the chorus hears one
+        // count of them all (SingReport.Together).
         var sung = new List<SungAudio>(singers.Count);
+        using var heard = SingReport.ListenTogether();
         foreach (var singer in singers)
         {
             sung.Add(await singer.SingAsync(score, ct).ConfigureAwait(false));

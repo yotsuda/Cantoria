@@ -9,7 +9,7 @@ import * as cp from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as readline from 'readline';
-import { CantoriaScore, SHUTDOWN_LINE, cancelLine, parseLine, requestLine, serveArgs, voiceKey } from './core';
+import { SingProgress, CantoriaScore, SHUTDOWN_LINE, cancelLine, parseLine, requestLine, serveArgs, voiceKey } from './core';
 
 /** A voice the engine rendered: the WAV's path, its length, its rate. */
 export interface RenderedVoice { wav: string; duration: number; sampleRate: number }
@@ -30,6 +30,8 @@ export class Engine {
     private readonly inFlight = new Map<string, Promise<RenderedVoice>>();
     /** The request a key's render went out as: a render let go of and asked again is another request. */
     private readonly requestOf = new Map<string, string>();
+    /** Who hears how far a key's render is, while it is in flight. */
+    private readonly hearing = new Map<string, Set<(p: SingProgress) => void>>();
     private requests = 0;
     /** What the engine said on its first line: its voices. */
     voices: string[] = [];
@@ -66,6 +68,15 @@ export class Engine {
         if (answer.ready) {
             this.voices = answer.voices ?? [];
             this.log(`engine ready (${answer.backend ?? '?'}): ${this.voices.join(', ') || 'no voice installed'}`);
+            return;
+        }
+        if (answer.progress) {
+            const { id, toSing, sung } = answer.progress;
+            for (const [key, request] of this.requestOf) {
+                if (request !== id) { continue; }
+                for (const hear of this.hearing.get(key) ?? []) { try { hear({ toSing, sung }); } catch { /* the listener's own */ } }
+                break;
+            }
             return;
         }
         const waiting = answer.id ? this.pending.get(answer.id) : undefined;
@@ -105,7 +116,7 @@ export class Engine {
     /** The voice for `score` in `voice` (the engine's own name for it; `id` its `engine/name`, what
      *  the render is keyed by): at once when it was sung before (the file still there), else when
      *  the engine has sung it; a second ask while it is in flight joins the first. */
-    sing(score: CantoriaScore, voice: string, id = voice, voicevoxUrl?: string): { key: string; rendered: Promise<RenderedVoice>; cached: boolean } {
+    sing(score: CantoriaScore, voice: string, id = voice, voicevoxUrl?: string, onProgress?: (p: SingProgress) => void): { key: string; rendered: Promise<RenderedVoice>; cached: boolean } {
         const key = voiceKey(score, id);
         const output = path.join(this.outDir, `${key}.wav`);
         const hit = this.done.get(key);
@@ -119,6 +130,15 @@ export class Engine {
             rendered = asked;
             this.inFlight.set(key, asked);
             asked.finally(() => { if (this.inFlight.get(key) === asked) { this.inFlight.delete(key); } }).catch(() => undefined);
+        }
+        // `onProgress` hears how far the render is until it lands (a second asker of a render in
+        // flight hears it from where it is): what there is to sing anew, then each phrase sung.
+        if (onProgress) {
+            const heard = this.hearing.get(key) ?? new Set();
+            this.hearing.set(key, heard);
+            heard.add(onProgress);
+            const over = () => { heard.delete(onProgress); if (heard.size === 0 && this.hearing.get(key) === heard) { this.hearing.delete(key); } };
+            rendered.then(over, over);
         }
         return { key, rendered, cached: false };
     }

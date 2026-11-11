@@ -66,6 +66,59 @@ public class PhrasedSingerTests
         Assert.Equal(1.0, audio.Duration, 3);
     }
 
+    // The caller's bar: what there is to sing ANEW is told before the first phrase, and what is
+    // done after each - so it begins empty and is full when the score is, and a phrase kept from
+    // before is in neither number.
+    [Fact]
+    public async Task HowFarItIs_IsToldInTheSecondsToSingAnew()
+    {
+        var fake = new Fake();
+        using var singer = new PhrasedSinger(fake);
+        var score = new SungScore([.. Phrase(0, "か", "き"), .. Phrase(2, "さ", "し"), .. Phrase(4, "た", "ち")]);
+        var told = new List<SingProgress>();
+        using (SingReport.Listen(told.Add))
+        {
+            await singer.SingAsync(score);
+        }
+        Assert.Equal([new(3, 0), new(3, 1), new(3, 2), new(3, 3)], told);
+
+        // One phrase rewritten: one second to sing, counted from 0.
+        told.Clear();
+        using (SingReport.Listen(told.Add))
+        {
+            await singer.SingAsync(new SungScore([.. Phrase(0, "か", "き"), .. Phrase(2, "さ", "す"), .. Phrase(4, "た", "ち")]));
+        }
+        Assert.Equal([new(1, 0), new(1, 1)], told);
+
+        // Nothing changed: nothing to sing, said once.
+        told.Clear();
+        using (SingReport.Listen(told.Add))
+        {
+            await singer.SingAsync(score);
+        }
+        Assert.Equal([new(0, 0)], told);
+
+        // Nobody listening changes nothing, and a listener is heard only while it listens.
+        await singer.SingAsync(new SungScore(Phrase(9, "な", "に")));
+        Assert.Single(told);
+    }
+
+    // A chorus is its voices one after another, each counting from 0: one count of them all.
+    [Fact]
+    public async Task AChorus_IsOneCount_OfItsVoicesOneAfterAnother()
+    {
+        using var chorus = new ChorusSinger([new PhrasedSinger(new Fake()), new PhrasedSinger(new Fake())]);
+        var told = new List<SingProgress>();
+        using (SingReport.Listen(told.Add))
+        {
+            await chorus.SingAsync(new SungScore([.. Phrase(0, "か", "き"), .. Phrase(2, "さ", "し")]));
+        }
+        Assert.Equal([new(2, 0), new(2, 1), new(2, 2), new(4, 2), new(4, 3), new(4, 4)], told);
+        // The count never goes back, and ends full.
+        Assert.True(told.Zip(told.Skip(1)).All(p => p.Second.Sung >= p.First.Sung && p.Second.ToSing >= p.First.ToSing));
+        Assert.Equal(told[^1].ToSing, told[^1].Sung);
+    }
+
     [Fact]
     public async Task AnEdit_SingsOnlyItsPhrase()
     {
