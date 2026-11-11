@@ -46,6 +46,7 @@ public sealed class PhrasedSinger(ISinger inner, Action<SungScore>? check = null
         if (inner is not ISingParameters)
         {
             SingSettings.Numbers(score.Sing, [], Name);
+            SingCurves.Resolve(score, [], Name);
         }
 
         var notes = score.Notes;

@@ -74,6 +74,102 @@ public class SingSettingsTests
         Assert.NotEqual(a, SingSettings.KeyOf(new Dictionary<string, double> { ["breathiness"] = 4, ["velocity"] = 1.5 }));
     }
 
+    private static SungNote Note(double at, double length = 1) => new(at, length, 60, "ら");
+    private static Dictionary<string, SingValue> Set(string name, double value) => new() { [name] = SingValue.Of(value) };
+
+    // Written inside the music a setting holds, as a dynamic does, until the next one for its name.
+    [Fact]
+    public void AValueWrittenOnANote_HoldsUntilTheNextOne_AndDefaultGivesItBack()
+    {
+        var score = new SungScore(
+        [
+            Note(0), Note(1) with { Sing = Set("breathiness", 6) }, Note(2),
+            Note(3) with { Sing = new Dictionary<string, SingValue> { ["breathiness"] = SingValue.Of(SingValue.DefaultWord) } }, Note(4),
+        ], Sing: Set("breathiness", 2));
+        var notes = SingCurves.Resolve(score, Known, "v").Notes;
+        // The score's own value before it is written, the note's from its start, the score's again after "default".
+        Assert.Equal([(2, 2), (6, 6), (6, 6), (2, 2), (2, 2)], notes.Select(n => n.Curve!["breathiness"]));
+        // A score whose notes write nothing is the same score: nothing to tell its frames.
+        var plain = new SungScore([Note(0), Note(1)], Sing: Set("breathiness", 2));
+        Assert.Same(plain, SingCurves.Resolve(plain, Known, "v"));
+        // With no value of the score's, the voice's own: the one that changes nothing.
+        var bare = SingCurves.Resolve(new SungScore([Note(0), Note(1) with { Sing = Set("velocity", 1.5) }]), Known, "v").Notes;
+        Assert.Equal([(1, 1), (1.5, 1.5)], bare.Select(n => n.Curve!["velocity"]));
+    }
+
+    // An arrival is reached at its note's start, in a line from where the value before was written.
+    [Fact]
+    public void AnArrival_GlidesFromTheValueBefore_ToItsNotesStart_AcrossNotesAndRests()
+    {
+        var score = new SungScore(
+        [
+            Note(0) with { Sing = Set("breathiness", 2) }, Note(1), Note(3),      // a rest from 2 to 3
+            Note(4) with { SingTo = Set("breathiness", 10) }, Note(5),
+        ]);
+        var notes = SingCurves.Resolve(score, Known, "v").Notes;
+        var curve = notes.Select(n => n.Curve!["breathiness"]).ToList();
+        // From 2 at 0 s to 10 at 4 s: two a second.
+        Assert.Equal(2, curve[0].Start, 6);
+        Assert.Equal(4, curve[0].End, 4);
+        Assert.Equal(4, curve[1].Start, 6);
+        Assert.Equal(8, curve[2].Start, 6);
+        Assert.Equal((10, 10), (Math.Round(curve[3].Start, 6), Math.Round(curve[3].End, 6)));
+        Assert.Equal((10, 10), (Math.Round(curve[4].Start, 6), Math.Round(curve[4].End, 6)));
+
+        // The frames of a phrase follow the notes, and cross the rest in the same line.
+        var frames = SingCurves.Frames(notes, "breathiness", 50, 100, 0)!;
+        Assert.Equal(2f, frames[0], 3);
+        Assert.Equal(5f, frames[15], 3);        // 1.5 s, inside the second note
+        Assert.Equal(7f, frames[25], 3);        // 2.5 s, in the rest
+        Assert.Equal(10f, frames[45], 3);
+        Assert.Null(SingCurves.Frames(notes, "velocity", 50, 100, 0));
+        // An arrival with nothing written before it glides from the score's start, from the voice's own value.
+        var first = SingCurves.Resolve(new SungScore([Note(0), Note(1), Note(2) with { SingTo = Set("breathiness", 6) }]), Known, "v").Notes;
+        Assert.Equal(3, first[1].Curve!["breathiness"].Start, 6);
+    }
+
+    [Fact]
+    public void WhatTheVoiceCannotChangeInsideTheMusic_IsSaid_AndLeftOut()
+    {
+        SingParameter[] takes = [.. Known, new("transpose", SingScope.Phrase, "key", -12, 12, 0), new("support", SingScope.Voice, "model")];
+        var said = new List<string>();
+        SungScore resolved;
+        using (SingReport.ListenNotes(said.Add))
+        {
+            resolved = SingCurves.Resolve(new SungScore(
+            [
+                Note(0) with { Sing = new Dictionary<string, SingValue> { ["transpose"] = SingValue.Of(2), ["nosuch"] = SingValue.Of(1), ["breathiness"] = SingValue.Of(99) } },
+                Note(1) with { SingTo = Set("support", 1) },
+            ]), takes, "v");
+        }
+        Assert.Equal(["breathiness"], resolved.Notes[0].Curve!.Keys);
+        Assert.Equal((12, 12), resolved.Notes[0].Curve!["breathiness"]);
+        Assert.Contains(said, s => s.Contains("\"transpose\" is one value a phrase; it cannot change inside the music"));
+        Assert.Contains(said, s => s.Contains("\"support\" is one value for the voice"));
+        Assert.Contains(said, s => s.Contains("does not take the setting \"nosuch\""));
+        Assert.Contains(said, s => s.Contains("\"breathiness 99\" is outside -12 to 12; sung as 12"));
+    }
+
+    [Fact]
+    public void ANotesSettings_AreReadFromTheScore_AndAPhraseWithThemIsAnotherPhrase()
+    {
+        var score = ScoreJson.Read("""
+            { "notes": [
+              { "start": 0, "duration": 1, "pitch": 60, "lyric": "ら", "sing": { "breathiness": 6, "tension": "default" } },
+              { "start": 1, "duration": 1, "pitch": 62, "lyric": "ら", "singTo": { "breathiness": 9 } } ] }
+            """);
+        Assert.Equal(SingValue.Of(6), score.Notes[0].Sing!["breathiness"]);
+        Assert.True(score.Notes[0].Sing!["tension"].IsDefault);
+        Assert.Equal(SingValue.Of(9), score.Notes[1].SingTo!["breathiness"]);
+        var again = ScoreJson.Read(ScoreJson.Write(score));
+        Assert.Equal(SingValue.Of(9), again.Notes[1].SingTo!["breathiness"]);
+        // The key is of what the frames are told, not of how it was written.
+        var notes = SingCurves.Resolve(score, Known, "v").Notes;
+        Assert.NotEqual("", SingCurves.KeyOf(notes));
+        Assert.Equal("", SingCurves.KeyOf(score.Notes));
+        Assert.NotEqual(SingCurves.KeyOf(notes), SingCurves.KeyOf(SingCurves.Resolve(score with { Notes = [score.Notes[0], score.Notes[1] with { SingTo = Set("breathiness", 8) }] }, Known, "v").Notes));
+    }
+
     // An engine that sings a score whole takes no setting: it says so, and sings.
     [Fact]
     public async Task AnEngineThatTakesNone_SaysSo_AndSings()

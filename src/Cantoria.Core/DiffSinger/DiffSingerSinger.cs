@@ -123,6 +123,10 @@ public sealed class DiffSingerSinger : ISinger, ISingParameters, IDisposable
         var log = new System.Text.StringBuilder();
         var clock = System.Diagnostics.Stopwatch.StartNew();
         var voice = _voice;
+        // The settings written inside the music, each note given what its frames are to be told
+        // (SingCurves): done on the whole score, before it is cut - a value held from one phrase
+        // into the next is the next one's too.
+        score = SingCurves.Resolve(score, Parameters, Name);
         string language = score.Language.Split('-')[0];
         if (language is not ("ja" or "en" or "zh" or "ko"))
         {
@@ -223,7 +227,7 @@ public sealed class DiffSingerSinger : ISinger, ISingParameters, IDisposable
             var phrase = words.GetRange(first, count).Select(w => Shifted(w, startSeconds)).ToList();
             double? breathRoom = first + count < words.Count ? EndBreathRoom(words[first + count - 1], words[first + count]) : null;
             var key = new PhraseKey(speaker, language,
-                [.. phrase.Select(w => $"{string.Join(' ', w.Phonemes)}|{w.Notes.Count}{Vibrato.KeyOf(w.Notes)}"), .. singKey],
+                [.. phrase.Select(w => $"{string.Join(' ', w.Phonemes)}|{w.Notes.Count}{Vibrato.KeyOf(w.Notes)}{SingCurves.KeyOf(w.Notes)}"), .. singKey],
                 phrase.SelectMany(w => w.Notes).Select(n => new PhraseNote(n.Start, n.Duration, n.Pitch, n.Breath)).ToList(),
                 breathRoom);
             var kept = _phrases.TryGet(key, out var found) ? found : null;
@@ -401,11 +405,13 @@ public sealed class DiffSingerSinger : ISinger, ISingParameters, IDisposable
         }
         if (acoustic.UseKeyShiftEmbed)
         {
-            inputs.Add(Row("gender", Enumerable.Repeat((float)sing.GetValueOrDefault("gender", 0), totalFrames).ToArray()));
+            inputs.Add(Row("gender", SingCurves.Frames(notes, "gender", totalFrames, frameMs, renderStartMs)
+                ?? Enumerable.Repeat((float)sing.GetValueOrDefault("gender", 0), totalFrames).ToArray()));
         }
         if (acoustic.UseSpeedEmbed)
         {
-            inputs.Add(Row("velocity", Enumerable.Repeat((float)sing.GetValueOrDefault("velocity", 1), totalFrames).ToArray()));
+            inputs.Add(Row("velocity", SingCurves.Frames(notes, "velocity", totalFrames, frameMs, renderStartMs)
+                ?? Enumerable.Repeat((float)sing.GetValueOrDefault("velocity", 1), totalFrames).ToArray()));
         }
         foreach (var (name, wanted) in new[] { ("energy", acoustic.UseEnergyEmbed), ("breathiness", acoustic.UseBreathinessEmbed), ("voicing", acoustic.UseVoicingEmbed), ("tension", acoustic.UseTensionEmbed) })
         {
@@ -418,8 +424,13 @@ public sealed class DiffSingerSinger : ISinger, ISingParameters, IDisposable
                 throw new SingerException($"the acoustic model wants {name} but the voice's variance model does not predict it");
             }
             var row = curve.Length == totalFrames ? curve : Resample(curve, totalFrames);
-            // A setting written for it moves what the voice predicted, and keeps its shape.
-            if (sing.TryGetValue(name, out double offset) && offset != 0)
+            // A setting written for it moves what the voice predicted, and keeps its shape: a
+            // value a frame where the music changes it (SingCurves), else the score's one value.
+            if (SingCurves.Frames(notes, name, totalFrames, frameMs, renderStartMs) is { } offsets)
+            {
+                row = row.Select((v, i) => v + offsets[i]).ToArray();
+            }
+            else if (sing.TryGetValue(name, out double offset) && offset != 0)
             {
                 row = row.Select(v => v + (float)offset).ToArray();
             }

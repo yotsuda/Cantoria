@@ -33,7 +33,7 @@ public static class ScoreJson
             ?? throw new JsonException("the score is null");
         var notes = (dto.Notes ?? []).Select(n => new SungNote(
             n.Start, n.Duration, n.Pitch, n.Lyric, n.Melisma ?? false, n.Breath ?? false, n.Level, n.LevelEnd, n.Inhale ?? false, n.Hyphen ?? false,
-            n.Vibrato, n.VibratoRate)).ToList();
+            n.Vibrato, n.VibratoRate, SingOf(n.Sing), SingOf(n.SingTo))).ToList();
         return new SungScore(notes, dto.Language ?? "ja", dto.SampleRate ?? 44100, SingOf(dto.Sing)).Tidy();
     }
 
@@ -69,18 +69,22 @@ public static class ScoreJson
         {
             SampleRate = score.SampleRate,
             Language = score.Language,
-            Sing = score.Sing?.ToDictionary(p => p.Key, p => p.Value.Number is { } n
-                ? JsonSerializer.SerializeToElement(n) : JsonSerializer.SerializeToElement(p.Value.Word)),
+            Sing = SingElements(score.Sing),
             Notes = score.Notes.Select(n => new NoteDto
             {
                 Start = n.Start, Duration = n.Duration, Pitch = n.Pitch, Lyric = n.Lyric,
                 Melisma = n.Melisma ? true : null, Breath = n.Breath ? true : null,
                 Level = n.Level, LevelEnd = n.LevelEnd, Inhale = n.Inhale ? true : null, Hyphen = n.Hyphen ? true : null,
                 Vibrato = n.Vibrato, VibratoRate = n.VibratoRate,
+                Sing = SingElements(n.Sing), SingTo = SingElements(n.SingTo),
             }).ToList(),
         };
         return JsonSerializer.Serialize(dto, Options);
     }
+
+    private static Dictionary<string, JsonElement>? SingElements(IReadOnlyDictionary<string, SingValue>? sing)
+        => sing is null || sing.Count == 0 ? null : sing.ToDictionary(p => p.Key, p => p.Value.Number is { } n
+            ? JsonSerializer.SerializeToElement(n) : JsonSerializer.SerializeToElement(p.Value.Word));
 
     private sealed class ScoreDto
     {
@@ -104,5 +108,7 @@ public static class ScoreJson
         public bool? Hyphen { get; set; }
         public double? Vibrato { get; set; }
         public double? VibratoRate { get; set; }
+        public Dictionary<string, JsonElement>? Sing { get; set; }
+        public Dictionary<string, JsonElement>? SingTo { get; set; }
     }
 }

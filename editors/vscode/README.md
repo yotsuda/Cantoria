@@ -107,7 +107,10 @@ const { wav, duration } = await api.sing({
   voice that has none: a DiffSinger voice takes what its model was trained with (breathiness,
   tension, energy, voicing — each an offset on what the voice does by itself — gender, velocity),
   a NEUTRINO or VOICEVOX voice none yet. A name the voice does not take is not sung and is said in
-  the answer's `notes`, sentences for whoever wrote the score.
+  the answer's `notes`, sentences for whoever wrote the score. A NOTE's `sing` changes a setting
+  from that note on, until the next one written for the same name (`"default"` gives it back to
+  the score's value), and its `singTo` arrives at a value with the note, gliding from where the
+  value before was written — for a setting of scope `curve`.
 - `sing`'s `options.onProgress` hears how far a render is, for a bar: `{ toSing, sung }` in seconds
   of music — what has to be sung **anew** (a phrase kept from an earlier sing costs nothing and is
   not counted) and how much of it is done. It is told once before the first phrase and once after

@@ -23,6 +23,13 @@ namespace Cantoria;
 /// <param name="Vibrato">A vibrato written on the note: how far the pitch swings each way, in cents;
 /// null for none written (the voice's own, if it has one, is its own). A trial, sung by DiffSinger
 /// voices only (<see cref="Cantoria.DiffSinger.Vibrato"/>); the other engines sing the note plain.</param>
+/// <param name="Sing">Settings of how the voice sings that begin at this note and hold until the next
+/// written for the same name (as a dynamic does): by the names the voice takes, a number, or
+/// "default" to give the name back to the score's own value.</param>
+/// <param name="SingTo">Settings ARRIVED at with this note: reached at its start, gliding from where
+/// the value before was written.</param>
+/// <param name="Curve">What <see cref="SingCurves.Resolve"/> made of the two for this note: each
+/// name's value at the note's start and at its end. Not a caller's to write.</param>
 /// <param name="VibratoRate">Its swings a second; null is <see cref="Cantoria.DiffSinger.Vibrato.DefaultRate"/>.</param>
 public sealed record SungNote(
     double Start,
@@ -36,7 +43,10 @@ public sealed record SungNote(
     bool Inhale = false,
     bool Hyphen = false,
     double? Vibrato = null,
-    double? VibratoRate = null)
+    double? VibratoRate = null,
+    IReadOnlyDictionary<string, SingValue>? Sing = null,
+    IReadOnlyDictionary<string, SingValue>? SingTo = null,
+    IReadOnlyDictionary<string, (double Start, double End)>? Curve = null)
 {
     /// <summary>Seconds at which the note ends.</summary>
     public double End => Start + Duration;

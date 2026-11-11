@@ -25,6 +25,16 @@ export interface CantoriaNote {
     inhale?: boolean;
     /** The next syllable is of the same word (`Twin- kle`): an English voice looks up the whole word. */
     hyphen?: boolean;
+    /** A vibrato written on the note: its swing each way in cents, and its swings a second
+     *  (a trial; a DiffSinger voice sings it). */
+    vibrato?: number;
+    vibratoRate?: number;
+    /** Settings of how the voice sings that begin at this note and hold until the next written
+     *  for the same name, as a dynamic does: a number, or `"default"` for the score's own value. */
+    sing?: Record<string, number | string>;
+    /** Settings ARRIVED at with this note: reached at its start, gliding from where the value
+     *  before was written. For a setting whose scope is `curve`. */
+    singTo?: Record<string, number | string>;
 }
 
 /** The score a caller hands `sing`: notes in seconds; the sample rate and language optional. */
