@@ -42,12 +42,11 @@ public sealed class PhrasedSinger(ISinger inner, Action<SungScore>? check = null
             throw new SingerException("the score is not sound: " + string.Join("; ", problems));
         }
         check?.Invoke(score);
-        // What the score sets and this voice does not take is said, and the score is sung without it.
-        if (inner is not ISingParameters)
-        {
-            SingSettings.Numbers(score.Sing, [], Name);
-            SingCurves.Resolve(score, [], Name);
-        }
+        // What the score sets and this voice does not take is said, and the score is sung without
+        // it; what it does take goes to the engine with every phrase, and into every phrase's key.
+        // A setting written on a note is said too: this engine has one value a phrase at most.
+        string singKey = SingSettings.KeyOf(SingSettings.Taken(score.Sing, Parameters, Name));
+        SingCurves.Resolve(score, Parameters, Name);
 
         var notes = score.Notes;
         var words = new List<(int First, int Last)>();
@@ -77,7 +76,7 @@ public sealed class PhrasedSinger(ISinger inner, Action<SungScore>? check = null
                 int from = words[first].First, to = words[first + count - 1].Last;
                 double start = notes[from].Start;
                 var phrase = Enumerable.Range(from, to - from + 1).Select(i => notes[i] with { Start = notes[i].Start - start + Lead }).ToList();
-                var key = new PhraseKey(null, $"{score.Language}@{score.SampleRate}",
+                var key = new PhraseKey(null, $"{score.Language}@{score.SampleRate}{singKey}",
                     phrase.Select(n => $"{n.Lyric}|{n.Melisma}|{n.Inhale}|{n.Hyphen}").ToList(),
                     phrase.Select(n => new PhraseNote(n.Start, n.Duration, n.Pitch, n.Breath)).ToList(),
                     null);

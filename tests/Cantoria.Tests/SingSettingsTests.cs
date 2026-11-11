@@ -65,6 +65,29 @@ public class SingSettingsTests
         SingSettings.Numbers(new Dictionary<string, SingValue> { ["zzz"] = SingValue.Of(1) }, Known, "x");
     }
 
+    // A setting whose value is a NAME (NEUTRINO's support voice): one of the names it lists.
+    [Fact]
+    public void ASettingThatTakesAName_TakesOneOfItsNames_WhateverTheCase()
+    {
+        SingParameter[] takes = [new("transpose", SingScope.Phrase, "key", -12, 12, 0), new("support", SingScope.Voice, "model", Word: true, Values: ["KIRITAN", "SOMA"])];
+        var said = new List<string>();
+        using (SingReport.ListenNotes(said.Add))
+        {
+            var taken = SingSettings.Taken(new Dictionary<string, SingValue> { ["support"] = SingValue.Of("kiritan"), ["transpose"] = SingValue.Of(3) }, takes, "neutrino/M");
+            Assert.Equal(SingValue.Of("KIRITAN"), taken["support"]);
+            Assert.Equal(SingValue.Of(3), taken["transpose"]);
+            Assert.Equal("|sing support=KIRITAN transpose=3", SingSettings.KeyOf(taken));
+            Assert.Empty(said);
+            // Not one of its names, a number for a name: said, and left out. The numbers alone do not hold a name.
+            Assert.Empty(SingSettings.Taken(new Dictionary<string, SingValue> { ["support"] = SingValue.Of("NOBODY") }, takes, "neutrino/M"));
+            Assert.Empty(SingSettings.Taken(new Dictionary<string, SingValue> { ["support"] = SingValue.Of(2) }, takes, "neutrino/M"));
+            Assert.Equal(["transpose"], SingSettings.Numbers(new Dictionary<string, SingValue> { ["support"] = SingValue.Of("SOMA"), ["transpose"] = SingValue.Of(-2) }, takes, "neutrino/M").Keys);
+        }
+        Assert.Contains(said, s => s.Contains("\"support NOBODY\" is none of KIRITAN, SOMA"));
+        Assert.Contains(said, s => s.Contains("\"support\" takes a name, not 2"));
+        Assert.Equal("", SingSettings.KeyOf(new Dictionary<string, SingValue>()));
+    }
+
     [Fact]
     public void APhraseSungWithASetting_IsAnotherPhrase_AndOneWithNoneIsTheOneKeptBefore()
     {

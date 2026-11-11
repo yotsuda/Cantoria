@@ -38,8 +38,11 @@ public enum SingScope
 /// where it can change, what it does in a sentence, and — for a number — the range that means
 /// something, the value that changes nothing and the unit.
 /// </summary>
+/// <remarks><c>Word</c>: the value is a NAME and not a number (a support voice's); <c>Values</c>
+/// then lists the names that mean something here, where they are known.</remarks>
 public sealed record SingParameter(string Name, SingScope Scope, string What,
-    double? Min = null, double? Max = null, double? Default = null, string? Unit = null);
+    double? Min = null, double? Max = null, double? Default = null, string? Unit = null,
+    bool Word = false, IReadOnlyList<string>? Values = null);
 
 /// <summary>A singer that takes settings (<see cref="SungScore.Sing"/>): which.</summary>
 public interface ISingParameters
@@ -59,12 +62,53 @@ public static class SingSettings
     /// </summary>
     public static Dictionary<string, double> Numbers(IReadOnlyDictionary<string, SingValue>? sing,
         IReadOnlyList<SingParameter> known, string voice)
+        => Taken(sing, known, voice).Where(p => p.Value.Number is not null).ToDictionary(p => p.Key, p => p.Value.Number!.Value, StringComparer.Ordinal);
+
+    /// <summary>
+    /// What <paramref name="sing"/> sets among <paramref name="known"/>, numbers and names alike:
+    /// a number clamped to its range, a name that is one of the setting's
+    /// <see cref="SingParameter.Values"/> where it lists any. The rest is told
+    /// (<see cref="SingReport.Note"/>) and left out.
+    /// </summary>
+    public static Dictionary<string, SingValue> Taken(IReadOnlyDictionary<string, SingValue>? sing,
+        IReadOnlyList<SingParameter> known, string voice)
     {
-        var numbers = new Dictionary<string, double>(StringComparer.Ordinal);
+        var taken = new Dictionary<string, SingValue>(StringComparer.Ordinal);
         if (sing is null)
         {
-            return numbers;
+            return taken;
         }
+        foreach (var (name, value) in sing)
+        {
+            var parameter = known.FirstOrDefault(p => p.Name == name);
+            if (value.IsDefault || parameter is not { Word: true })
+            {
+                continue;       // the numbers, and the names the voice does not take: below
+            }
+            if (value.Word is not { Length: > 0 } word)
+            {
+                SingReport.Note($"{voice}: \"{name}\" takes a name, not {value}; it sings without it");
+            }
+            else if (parameter.Values is { } values && !values.Contains(word, StringComparer.OrdinalIgnoreCase))
+            {
+                SingReport.Note($"{voice}: \"{name} {word}\" is none of {string.Join(", ", values)}; it sings without it");
+            }
+            else
+            {
+                taken[name] = SingValue.Of(parameter.Values?.FirstOrDefault(v => string.Equals(v, word, StringComparison.OrdinalIgnoreCase)) ?? word);
+            }
+        }
+        foreach (var (name, number) in NumbersOf(sing, known, voice))
+        {
+            taken[name] = SingValue.Of(number);
+        }
+        return taken;
+    }
+
+    private static Dictionary<string, double> NumbersOf(IReadOnlyDictionary<string, SingValue> sing,
+        IReadOnlyList<SingParameter> known, string voice)
+    {
+        var numbers = new Dictionary<string, double>(StringComparer.Ordinal);
         foreach (var (name, value) in sing)
         {
             if (value.IsDefault)
@@ -77,6 +121,10 @@ public static class SingSettings
                 string there = known.Count == 0 ? "it takes none" : "it takes " + string.Join(", ", known.Select(p => p.Name));
                 SingReport.Note($"{voice} does not take the setting \"{name}\" ({there}); it sings without it");
                 continue;
+            }
+            if (parameter.Word)
+            {
+                continue;       // a name's: Taken
             }
             if (value.Number is not { } number)
             {
@@ -95,6 +143,10 @@ public static class SingSettings
 
     /// <summary>What tells a phrase sung with these settings from the same notes without (a phrase
     /// cache's key); empty with none, so the phrases kept before are still found.</summary>
+    public static string KeyOf(IReadOnlyDictionary<string, SingValue> taken)
+        => taken.Count == 0 ? "" : "|sing " + string.Join(' ', taken.OrderBy(p => p.Key, StringComparer.Ordinal).Select(p => $"{p.Key}={p.Value}"));
+
+    /// <summary>The same for numbers alone.</summary>
     public static string KeyOf(IReadOnlyDictionary<string, double> numbers)
         => numbers.Count == 0 ? "" : "|sing " + string.Join(' ', numbers.OrderBy(p => p.Key, StringComparer.Ordinal)
             .Select(p => $"{p.Key}={p.Value.ToString("0.####", System.Globalization.CultureInfo.InvariantCulture)}"));

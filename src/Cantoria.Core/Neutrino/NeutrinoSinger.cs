@@ -23,7 +23,7 @@ namespace Cantoria.Neutrino;
 /// </para>
 /// Nothing of NEUTRINO is copied or redistributed; see THIRD-PARTY-NOTICES.md.
 /// </summary>
-public sealed class NeutrinoSinger : ISinger, IDisposable
+public sealed class NeutrinoSinger : ISinger, ISingParameters, IDisposable
 {
     private readonly NeutrinoOptions _options;
     private readonly SemaphoreSlim _oneAtATime = new(1, 1);
@@ -43,6 +43,20 @@ public sealed class NeutrinoSinger : ISinger, IDisposable
     }
 
     public string Name => $"neutrino/{_options.Voice}";
+
+    /// <summary>
+    /// The settings NEUTRINO's own program takes, and nothing else (its v3 has no knob for breath
+    /// or tension; what else it can be made to do is in its timing, pitch and spectrum files):
+    /// <c>-f</c>, sung as if the key were so many semitones away, and <c>-S</c>, another of its
+    /// voices as a support model. One value a render: a phrase here, since a score is sung a
+    /// phrase at a time, so neither changes inside the music.
+    /// </summary>
+    public IReadOnlyList<SingParameter> Parameters =>
+    [
+        new("transpose", SingScope.Phrase, "Sung as if the key were this many semitones away (NEUTRINO's -f): the colour of the voice moves, the notes stay", -12, 12, 0, "semitones"),
+        new("support", SingScope.Voice, "Another NEUTRINO voice as a support model (NEUTRINO's -S)", Word: true,
+            Values: NeutrinoOptions.Voices(_options.Folder).Where(v => !string.Equals(v, _options.Voice, StringComparison.OrdinalIgnoreCase)).ToList()),
+    ];
 
     /// <summary>Lines NEUTRINO's programs printed during the last render, for a log.</summary>
     public string LastLog { get; private set; } = "";
@@ -94,6 +108,20 @@ public sealed class NeutrinoSinger : ISinger, IDisposable
                     args.Add("-m");
                 }
                 args.Add("-t");
+                // How the score asks to be sung, of what NEUTRINO takes (Parameters).
+                var taken = SingSettings.Taken(score.Sing, Parameters, Name);
+                if (taken.TryGetValue("transpose", out var transpose) && transpose.Number is { } key && key != 0)
+                {
+                    args.Add("-f");
+                    args.Add(key.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture));
+                }
+                if (taken.TryGetValue("support", out var support) && support.Word is { Length: > 0 } supportVoice)
+                {
+                    // A model's FOLDER, as the voice's own is given (measured on v3.2.6: a bare
+                    // name is looked for as a path and not found).
+                    args.Add("-S");
+                    args.Add($"model\\{supportVoice}\\");
+                }
                 var timeout = _rendered ? _options.RenderTimeout : _options.FirstRenderTimeout;
 
                 // A join of like phonemes (ん after ん): the timing alone first, corrected, and

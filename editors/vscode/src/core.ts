@@ -334,7 +334,11 @@ export interface ServeAnswer {
 /** A setting a voice takes in a score's `sing`: its name; where it can change (`curve`: at any
  *  note, and it can glide; `phrase`: where a phrase ends; `voice`: once a score); what it does;
  *  and for a number the range that means something, the value that changes nothing, the unit. */
-export interface SingParameter { name: string; scope: 'curve' | 'phrase' | 'voice'; what: string; min?: number; max?: number; default?: number; unit?: string }
+export interface SingParameter {
+    name: string; scope: 'curve' | 'phrase' | 'voice'; what: string; min?: number; max?: number; default?: number; unit?: string;
+    /** The value is a NAME, not a number (a support voice's); `values` lists the names that mean something. */
+    word?: boolean; values?: string[];
+}
 
 /** One request for the settings a voice takes. */
 export function parametersLine(id: string, voice: string): string {

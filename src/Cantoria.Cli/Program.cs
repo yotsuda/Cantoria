@@ -368,7 +368,7 @@ static async Task<int> Serve(string[] rest)
                     stdout.WriteLine(JsonSerializer.Serialize(new
                     {
                         id,
-                        parameters = taken.Select(p => new { name = p.Name, scope = p.Scope.ToString().ToLowerInvariant(), what = p.What, min = p.Min, max = p.Max, @default = p.Default, unit = p.Unit }),
+                        parameters = taken.Select(p => new { name = p.Name, scope = p.Scope.ToString().ToLowerInvariant(), what = p.What, min = p.Min, max = p.Max, @default = p.Default, unit = p.Unit, word = p.Word ? true : (bool?)null, values = p.Values }),
                     }, json));
                     continue;
                 }
