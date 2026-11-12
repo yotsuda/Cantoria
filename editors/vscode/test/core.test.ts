@@ -7,6 +7,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import {
     ENGINES, characterNameOf, diffSingerEntriesIn, diffSingerSpeakersOf, diffSingerVoicesIn, languageProblem, languageTag, missingProgramNote, neutrinoFolderProblems, parseLine, programCandidates,
+    planAsked, planLine, planOfNoOne,
     cancelLine, defaultVoiceFor, firstOfGender, genderOfWord, requestLine, resolveSinger, rid, scoreProblems, serveArgs, speakerOf, splitVoiceId, voiceEntriesIn, voiceId, voiceKey, voicePieces, voicesFolderProblems, voicesIn, voicevoxEntriesFrom, vsixTarget,
 } from '../src/core';
 import { DIFFSINGER_GENDERS, diffSingerGender } from '../src/diffSingerGenders';
@@ -165,6 +166,56 @@ describe('the engine\'s wire', () => {
         assert.ok(!('gender' in voicevoxEntriesFrom([{ name: 'だれか', styles }])[0]));
         assert.equal(voicevoxGender('constructor'), undefined, 'a name that is an Object member is not listed');
         assert.equal(firstOfGender(voicevoxEntriesFrom([{ name: '玄野武宏', styles }]), 'male', 'ja'), 'voicevox/玄野武宏-ノーマル');
+    });
+
+    it('asks the program who would sing, and reads its plan', () => {
+        const line = planLine('plan.1', [{ part: 'alto', gender: 'female', language: 'la' }], { female: ' neutrino/MERROW ', male: '' }, 'http://x:1');
+        assert.ok(line.endsWith('\n'));
+        assert.deepEqual(JSON.parse(line), { id: 'plan.1', command: 'plan', asked: [{ part: 'alto', gender: 'female', language: 'la' }], defaults: { female: 'neutrino/MERROW', male: '' }, voicevoxUrl: 'http://x:1' });
+        assert.ok(!('voicevoxUrl' in JSON.parse(planLine('p', [], { female: '', male: '' }))));
+        assert.equal(JSON.parse(planLine('p', [], { female: '', male: '' }, '')).voicevoxUrl, '', 'VOICEVOX was asked and does not answer');
+        assert.match(fs.readFileSync(path.join(__dirname, '..', '..', 'src', 'extension.ts'), 'utf8'), /\.plan\(asked, defaults, voicevox\.answering \?\? ''\)/);
+        // The answer's `ready` is inside `plan`: at the top it would be taken for the engine's first line.
+        const answer = parseLine('{"id":"plan.1","plan":{"ready":false,"singers":[{"part":"alto","asked":{"gender":"female","language":"la"},"voice":null,"reason":"no installed voice sings Latin (la); installed voices sing ja, en","languages":["ja","en"]}]}}')!;
+        assert.equal(answer.ready, undefined);
+        assert.deepEqual(answer.plan, { ready: false, singers: [{ part: 'alto', asked: { gender: 'female', language: 'la' }, voice: null, reason: 'no installed voice sings Latin (la); installed voices sing ja, en', languages: ['ja', 'en'] }] });
+        const engine = fs.readFileSync(path.join(__dirname, '..', '..', 'src', 'engine.ts'), 'utf8');
+        assert.match(engine, /child\.stdin!\.write\(planLine\(id, asked, defaults, voicevoxUrl\)/);
+        assert.match(engine, /if \(answer\.plan\) \{ resolve\(answer\.plan\); \}/);
+        const program = fs.readFileSync(path.join(__dirname, '..', '..', '..', '..', 'src', 'Cantoria.Cli', 'Program.cs'), 'utf8');
+        assert.match(program, /if \(request\.Command == "plan"\)/);
+        assert.match(program, /\["id"\] = id, \["plan"\] = plan\.ToJson\(\)/);
+        // The API: an additive method beside voices(), the version as it was.
+        const extension = fs.readFileSync(path.join(__dirname, '..', '..', 'src', 'extension.ts'), 'utf8');
+        assert.match(extension, /plan: \(score, options\) => plan\(context, score, options\),/);
+        assert.match(extension, /apiVersion: 1,/);
+    });
+
+    it('takes what a plan is asked from a list, or from a score and its voice or gender', () => {
+        const asked = [{ part: 'alto', key: 'a1', gender: 'female', language: 'la' }, { voice: 'neutrino/MERROW' }];
+        assert.deepEqual(planAsked({ asked }), asked);
+        assert.deepEqual(planAsked({ language: 'en', notes: [] }, { voice: 'diffsinger/TIGER' }), [{ voice: 'diffsinger/TIGER', language: 'en' }]);
+        assert.deepEqual(planAsked({ notes: [] }, { gender: 'male' }), [{ gender: 'male', language: 'ja' }], 'a score that says no language is sung as Japanese');
+        assert.deepEqual(planAsked({ notes: [] }), [{ language: 'ja' }]);
+    });
+
+    it('plans no one when the program cannot be asked, and says why', () => {
+        assert.deepEqual(planOfNoOne([{ part: 'alto', key: 'a1', gender: 'female', language: 'la' }, {}], 'no engine is set up'), {
+            ready: false,
+            singers: [
+                { part: 'alto', key: 'a1', asked: { gender: 'female', language: 'la' }, voice: null, reason: 'no engine is set up' },
+                { asked: {}, voice: null, reason: 'no engine is set up' },
+            ],
+        });
+        assert.equal(planOfNoOne([], 'x').ready, true);
+    });
+
+    it('holds the genders the program\'s own tables hold', () => {
+        // The program resolves a plan's voices by its own copy (src/Cantoria.Core/VoiceGenders.cs):
+        // a voice in one table and not the other would be planned for one singer and sung by another.
+        const tables = fs.readFileSync(path.join(__dirname, '..', '..', '..', '..', 'src', 'Cantoria.Core', 'VoiceGenders.cs'), 'utf8');
+        const written = Object.fromEntries([...tables.matchAll(/^\s*\["([^"]+)"\] = "(female|male)",/gm)].map(m => [m[1], m[2]]));
+        assert.deepEqual(written, { ...DIFFSINGER_GENDERS, ...VOICEVOX_GENDERS });
     });
 
     it('writes only female or male in the table', () => {

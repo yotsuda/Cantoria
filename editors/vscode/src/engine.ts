@@ -9,7 +9,7 @@ import * as cp from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as readline from 'readline';
-import { SingParameter, SingProgress, parametersLine, CantoriaScore, SHUTDOWN_LINE, cancelLine, parseLine, requestLine, serveArgs, voiceKey } from './core';
+import { DefaultVoices, PlanAsk, ServeAnswer, SingParameter, SingProgress, SingerPlan, parametersLine, planLine, CantoriaScore, SHUTDOWN_LINE, cancelLine, parseLine, requestLine, serveArgs, voiceKey } from './core';
 
 /** A voice the engine rendered: the WAV's path, its length, its rate. */
 export interface RenderedVoice { wav: string; duration: number; sampleRate: number; notes?: string[] }
@@ -30,8 +30,8 @@ export class Engine {
     private readonly inFlight = new Map<string, Promise<RenderedVoice>>();
     /** The request a key's render went out as: a render let go of and asked again is another request. */
     private readonly requestOf = new Map<string, string>();
-    /** The questions that are not renders (the settings a voice takes), by their request. */
-    private readonly asking = new Map<string, { resolve: (v: SingParameter[]) => void; reject: (e: Error) => void }>();
+    /** The questions that are not renders (the settings a voice takes, who would sing a score), by their request. */
+    private readonly asking = new Map<string, { resolve: (answer: ServeAnswer) => void; reject: (e: Error) => void }>();
     /** What each voice was found to take: it does not change while the engine runs. */
     private readonly taken = new Map<string, SingParameter[]>();
     /** Who hears how far a key's render is, while it is in flight. */
@@ -86,7 +86,7 @@ export class Engine {
         const asked = answer.id ? this.asking.get(answer.id) : undefined;
         if (asked && answer.id) {
             this.asking.delete(answer.id);
-            if (answer.error) { asked.reject(new Error(answer.error)); } else { asked.resolve(answer.parameters ?? []); }
+            if (answer.error) { asked.reject(new Error(answer.error)); } else { asked.resolve(answer); }
             return;
         }
         const waiting = answer.id ? this.pending.get(answer.id) : undefined;
@@ -176,8 +176,21 @@ export class Engine {
         const child = this.child ?? this.start();
         const id = `parameters.${++this.requests}`;
         return new Promise<SingParameter[]>((resolve, reject) => {
-            this.asking.set(id, { resolve: list => { this.taken.set(voice, list); resolve(list); }, reject });
+            this.asking.set(id, { resolve: answer => { const list = answer.parameters ?? []; this.taken.set(voice, list); resolve(list); }, reject });
             child.stdin!.write(parametersLine(id, voice), e => {
+                if (e) { this.asking.delete(id); reject(e); }
+            });
+        });
+    }
+
+    /** Who would sing what is asked, without singing: asked of the engine each time (a voice may
+     *  have been installed since), in its turn among the renders. It loads no model for it. */
+    plan(asked: readonly PlanAsk[], defaults: DefaultVoices, voicevoxUrl?: string): Promise<SingerPlan> {
+        const child = this.child ?? this.start();
+        const id = `plan.${++this.requests}`;
+        return new Promise<SingerPlan>((resolve, reject) => {
+            this.asking.set(id, { resolve: answer => { if (answer.plan) { resolve(answer.plan); } else { reject(new Error('the engine answered no plan')); } }, reject });
+            child.stdin!.write(planLine(id, asked, defaults, voicevoxUrl), e => {
                 if (e) { this.asking.delete(id); reject(e); }
             });
         });

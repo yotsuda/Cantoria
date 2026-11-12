@@ -326,6 +326,8 @@ export interface ServeAnswer {
     notes?: string[];
     /** The answer to `{"command":"parameters","voice":…}`. */
     parameters?: SingParameter[];
+    /** The answer to `{"command":"plan",…}`. Its `ready` is inside it: the first line's is the engine's own. */
+    plan?: SingerPlan;
     /** How far a request is, a line a phrase sung: not an answer — the request's id is inside it,
      *  so a reader that knows only answers takes the line for none of its own. */
     progress?: { id: string } & SingProgress;
@@ -338,6 +340,46 @@ export interface SingParameter {
     name: string; scope: 'curve' | 'phrase' | 'voice'; what: string; min?: number; max?: number; default?: number; unit?: string;
     /** The value is a NAME, not a number (a support voice's); `values` lists the names that mean something. */
     word?: boolean; values?: string[];
+}
+
+/** What a score asks a singer for (`plan`): a voice by name — an `engine/name`, several joined by
+ *  `+`, or a `singer` line's word — a gender alone, the words' language; each optional. `part` and
+ *  `key` are the caller's own names for the line, given back as they came. */
+export interface PlanAsk { part?: string; key?: string; voice?: string; gender?: string; language?: string }
+
+/** Who sings what was asked: the installed voice (`engine/name`), with a `note` when it is not the
+ *  one asked for; or `null`, and the `reason` in words a score's writer can act on. `languages`:
+ *  what that voice sings where it says; with no voice, what the installed voices sing between them. */
+export interface PlannedSinger {
+    part?: string; key?: string;
+    asked: { voice?: string; gender?: string; language?: string };
+    voice: string | null; note?: string; reason: string | null; languages?: string[];
+}
+
+/** The answer of `plan`: `ready` when everything asked for has a singer. */
+export interface SingerPlan { ready: boolean; singers: PlannedSinger[] }
+
+/** One request for who would sing what is asked: the program resolves it (its SingerResolver, the
+ *  rule's one home) over the voices it lists, with the default voices this extension holds.
+ *  `voicevoxUrl`: where VOICEVOX answers; '' when it was asked and does not (the program then
+ *  does not wait for it again); absent, the program asks where it always does. */
+export function planLine(id: string, asked: readonly PlanAsk[], defaults: DefaultVoices, voicevoxUrl?: string): string {
+    return JSON.stringify({ id, command: 'plan', asked, defaults: { female: defaults.female.trim(), male: defaults.male.trim() }, voicevoxUrl }) + '\n';
+}
+
+/** What `plan` is asked: the list a caller hands it, or a score — one voice, in its language
+ *  (Japanese when it says none, as it is sung), by `options.voice` or `options.gender`. */
+export function planAsked(score: CantoriaScore | { asked: readonly PlanAsk[] }, options?: { voice?: string; gender?: string }): PlanAsk[] {
+    if ('asked' in score && Array.isArray(score.asked)) { return [...score.asked]; }
+    return [{ ...(options?.voice ? { voice: options.voice } : {}), ...(options?.gender ? { gender: options.gender } : {}), language: (score as CantoriaScore).language ?? 'ja' }];
+}
+
+/** The plan when the program cannot be asked (it is not there, no engine is set up): no one sings, and why. */
+export function planOfNoOne(asked: readonly PlanAsk[], reason: string): SingerPlan {
+    return {
+        ready: asked.length === 0,
+        singers: asked.map(({ part, key, ...rest }) => ({ ...(part !== undefined ? { part } : {}), ...(key !== undefined ? { key } : {}), asked: rest, voice: null, reason })),
+    };
 }
 
 /** One request for the settings a voice takes. */

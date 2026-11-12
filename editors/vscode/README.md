@@ -130,6 +130,15 @@ const { wav, duration } = await api.sing({
 - `resolveSinger(singer, { language, gender })` answers the voice a score's `singer` comes to on this
   machine: the voice it names when installed, else the default voice of the gender it says or of
   `gender`, with a `note` when that is not the one asked for.
+- `plan({ asked: [{ part: 'alto', gender: 'female', language: 'la' }, …] })` answers who would sing
+  what a score asks for, **without singing** — `{ ready, singers: [{ part?, key?, asked, voice, note?,
+  reason, languages? }] }`: for each voice asked for (by `voice`, an id or what `resolveSinger`
+  takes; by `gender` alone; in a `language`; `part` and `key` are yours and come back), the
+  installed `voice` that would sing it, or `voice: null` and the `reason` in words for whoever wrote
+  the score — `no installed voice sings Latin (la); installed voices sing ja, en`. `ready` is true
+  when each has a singer. `plan(score, { voice?, gender? })` asks for a score's one voice. The
+  `cantoria` program answers (`cantoria plan`), by the rule `resolveSinger` goes by and what `sing`
+  would then refuse; it loads no model, so it can be asked as a score is written.
 - `release()` lets the engine go. `apiVersion` is `1`.
 - Everything is local: nothing leaves the machine.
 

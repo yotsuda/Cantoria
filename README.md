@@ -53,8 +53,28 @@ cantoria sing examples/yukiyakonko.json -o yuki.wav --voice neutrino/MERROW --ne
 cantoria sing examples/yukiyakonko.json -o yuki.wav --voice diffsinger/TIGER --voices-dir "C:\path\to\voices"
 cantoria sing examples/yukiyakonko.json -o yuki.wav --voice voicevox/ずんだもん-ノーマル
 cantoria sing examples/yukiyakonko.json -o yuki.wav --voice "neutrino/MERROW+diffsinger/TIGER" --neutrino-dir … --voices-dir …
-cantoria voices --neutrino-dir … --voices-dir …
+cantoria voices --neutrino-dir … --voices-dir …                    # each voice, its gender and languages; --language en for those that sing it
+cantoria plan score.json --gender female --neutrino-dir … --voices-dir …
 ```
+
+`cantoria plan` answers who would sing a score on this machine, **without singing it**: for each
+voice asked for — by name, by gender alone, in the score's language — the installed voice that
+would, or that none can and why. A line an asked voice, `--json` for a program; exit code 0 when
+each has a singer, 3 when one has none:
+
+```
+> cantoria plan asked.json          # {"asked":[{"part":"melody","voice":"neutrino/MERROW","language":"ja"},
+                                    #           {"part":"alto","gender":"female","language":"la"},
+                                    #           {"part":"tenor","gender":"male","language":"en"}]}
+melody: neutrino/MERROW, ja -> neutrino/MERROW
+alto: female, la -> no installed voice sings Latin (la); installed voices sing ja, en, zh, ko
+tenor: male, en -> diffsinger/TIGER
+```
+
+A voice asked for by name sings when it is installed. Otherwise, and for a gender alone, that
+gender's default voice does: the one set (`--default-female-voice`, `--default-male-voice`), else
+the first installed voice that says it is that gender and sings the language — and when there is
+none, the other gender's, which the line says. `sing --voice` takes the voice the plan answers.
 
 NEUTRINO writes the 8-second WAV in a few seconds (the first run loads its
 models); a DiffSinger voice takes a few seconds on the CPU, under a second on a
@@ -81,7 +101,8 @@ NEUTRINO render of a score takes under half a second). See
 - Times are **seconds**: tempo, meter and repeats are the caller's business,
   already resolved. Gaps between notes are rests.
 - `pitch` is a MIDI note number (60 = C4); fractional values are allowed.
-- `language` says the words' language (`ja`, `en`, `zh`, `ko`). `lyric` is the
+- `language` says the words' language (`ja`, `en`, `zh`, `ko`; a voice that says what it sings
+  refuses another's words, and `cantoria plan` says so beforehand). `lyric` is the
   syllable, in the language's own script: hiragana or katakana for `ja`, a
   syllable of the word for `en`, with `hyphen: true` on a note whose next
   syllable is of the same word, a Han character or pinyin for `zh`, a Hangul

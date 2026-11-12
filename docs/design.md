@@ -159,7 +159,9 @@ from its phrases in a tenth of a second, so the two need no limits of their own.
 cantoria sing score.json -o out.wav --voice neutrino/MERROW --neutrino-dir C:\NEUTRINO
 cantoria sing score.json -o out.wav --voice diffsinger/TIGER --voices-dir C:\voices
 cantoria sing score.json -o out.wav --voice C:\voices\TIGER        # a path holding dsconfig.yaml
-cantoria voices [--neutrino-dir …] [--voices-dir …]                 # what is installed, as engine/name
+cantoria voices [--neutrino-dir …] [--voices-dir …]                 # what is installed, as engine/name, with each voice's gender and languages
+cantoria voices --language en [--json]                              # those that sing it; as the API's entries
+cantoria plan score.json [--voice …] [--gender …] [--json]          # who would sing it here, without singing (§4.3)
 cantoria providers                                                  # where DiffSinger models can run here (CPU, DirectML, CoreML; what auto picks)
 cantoria serve [the same]                                           # a resident singer for an editor (below)
 cantoria --version
@@ -172,7 +174,8 @@ options, else the environment (`CANTORIA_NEUTRINO_DIR`, `CANTORIA_VOICES_DIR`,
 `diffsinger.voices`, `diffsinger.vocoder`). `--provider auto|cpu|directml|coreml` picks where
 a DiffSinger voice's models run (§3.2; `--cpu` is `cpu` for every engine). NEUTRINO runs on
 Windows only. Exit codes: 0 sung, 1 the backend failed (its message on stderr), 2 bad
-arguments, score or settings.
+arguments, score or settings, 3 (`plan` only) something asked for has no singer. `sing`
+refuses words in a language the voice says it does not sing (exit 1) with the reason `plan` gives.
 
 ### 4.1 `serve` — the resident singer
 
@@ -195,6 +198,12 @@ life of one process and talks **JSON lines** on stdin/stdout, UTF-8 both ways:
   default `%TEMP%\cantoria`) are optional; `score` or `scoreFile` is required.
   An `id` is echoed; a request without one gets its ordinal. The answer names
   the `voice` that sang. `{"command":"voices"}` answers `{"voices":[…]}`.
+- `{"command":"plan","asked":[{"part":"alto","gender":"female","language":"la"}],"defaults":{"female":"","male":""}}`
+  answers `{"id":…,"plan":{"ready":false,"singers":[…]}}` — §4.3's JSON, inside `plan` so that its
+  `ready` is not taken for the first line's. Instead of `asked`, a `score` or `scoreFile` with
+  `voice` and `gender` asks for that score's one voice. `defaults` are the editor's default voices
+  (absent: the program's own); `voicevoxUrl` is where VOICEVOX answers, and `""` says the editor
+  asked and nothing does, so that the program does not wait for it again.
 - Requests are answered **in order, one at a time**; the caller may pipeline
   them. A bad request is an `error` line, never a dead process. End of stdin,
   or `shutdown`, ends the process and the engines' servers and sessions with it.
@@ -220,8 +229,13 @@ developer's build — with pickers (**Choose NEUTRINO Folder…**, **Choose Defa
   voices(): Promise<{ id, engine, name, label, language?, licence? }[]>,    // id = 'engine/name' (0.2.0)
   sing(score, { voice?, signal? }): Promise<{ wav, duration, sampleRate, cached }>,   // the README's score; voice an id; signal lets go at the next phrase
   release(): void,                                                          // let the engine go
+  resolveSinger(singer, { language?, gender? }): Promise<{ voice, note? }>, // the voice a score's singer comes to here
+  plan(score | { asked }, { voice?, gender? }): Promise<{ ready, singers }>, // who would sing it, without singing (§4.3)
 }
 ```
+
+`apiVersion` is raised only when a call changes incompatibly; a method added beside the others
+(`parameters`, `resolveSinger`, `plan`) leaves it at 1, and a caller looks for the method.
 
 A voice is named **`engine/name`** everywhere — `neutrino/MERROW` — in the setting, the picker,
 `status().voice` and `sing`'s `voice` (a bare name is NEUTRINO's, the first engine's), so a
@@ -242,6 +256,56 @@ Windows-only: off Windows the program reads its folder as not set and the extens
 Setup says so; `.github/workflows/ci.yml` builds and tests on the three platforms and runs the
 published program (`--version`, `check`, `providers`) on each — no voice is installed there, so
 nothing is sung in CI.
+
+### 4.3 `plan` — who would sing it
+
+A score can ask for a singer by name, by gender alone, in a language; which installed voice that
+comes to is known only on the machine. A Latin piece played in silence because no installed
+voice sings Latin, and nothing said why (2026-11-13). The owner's decision: a caller's compiler
+stays ignorant of what is installed — its output is the same on every machine — and Cantoria,
+which knows, answers **who would sing this** without singing:
+
+```
+cantoria plan score.json [--voice neutrino/MERROW | --gender female] [--language la] [--json]
+cantoria plan asked.json        # {"asked":[{ "part"?, "key"?, "voice"?, "gender"?, "language"? }, …]}
+alto: female, la -> no installed voice sings Latin (la); installed voices sing ja, en, zh, ko
+
+{ "ready": false,
+  "singers": [ { "part": "alto", "asked": { "gender": "female", "language": "la" },
+                 "voice": null, "reason": "no installed voice sings Latin (la); installed voices sing ja, en, zh, ko",
+                 "languages": ["ja", "en", "zh", "ko"] } ] }
+```
+
+- A score asks for one voice in its `language` (absent: `ja`, as it is sung); `asked` lists
+  several, each field optional, `part` and `key` the caller's own and given back. `voice` is what
+  a `singer` line writes: an `engine/name`, several joined by `+`, or a gender's word.
+- `voice` is the `engine/name` that would sing — what to hand `sing` — with a `note` when it is
+  not the one asked for (`neutrino/NOPE is not installed; singing with neutrino/MERROW`); or
+  `null`, and `reason` says why in a score writer's words: no installed voice sings the language
+  and what they do sing, a default voice that does not sing the words, no voice installed and why
+  each engine has none (its folder is not set, VOICEVOX is not running), what the engine's own
+  check of the voice says (no vocoder). `languages`: what the voice sings; with none, what the
+  installed voices sing between them. `ready`: each has a singer. Exit code 0 then, else 3.
+- **The rule has one home**, `SingerResolver` (`src/Cantoria.Core/SingerPlan.cs`): a voice named
+  and installed sings; else the default voice of the gender the line says (or the caller's
+  `gender`, else female) — the one set (`--default-female-voice`, the extension's
+  `cantoria.defaultFemaleVoice`), else the first voice listed that says it is that gender and
+  sings the language; with none, the other gender's, else any voice, and the `note` says so. A
+  default that is set sings whatever the language, so it can be the `reason`. Then what `sing`
+  refuses: a voice that says what it sings and does not sing these words (one that does not say
+  is let try). The order of the list is part of the answer, so `VoiceEntries` reads the voices
+  as the extension lists them: NEUTRINO's (`info.toml`'s speaker), the DiffSinger folder's (the
+  languages of its `dsdict-*.yaml`, its speakers after it), the running VOICEVOX's; a DiffSinger
+  voice's and a VOICEVOX character's gender from `VoiceGenders`.
+- Nothing is loaded and nothing started: folders and small files are read, and VOICEVOX is asked
+  for its singers (two seconds when nothing answers).
+- The extension's `resolveSinger` (`editors/vscode/src/core.ts`: `resolveSinger`,
+  `defaultVoiceFor`, `firstOfGender`, `languageProblem`, and the readers `voiceEntriesIn`,
+  `diffSingerEntriesIn`, `voicevoxEntriesFrom` with `diffSingerGenders.ts` and
+  `voicevoxGenders.ts`) is the same rule in TypeScript, kept while its callers move to `plan`;
+  the tests hold the two gender tables to each other and run the same cases through both rules.
+- `sing` itself resolves nothing: it takes a voice (`--voice`, default `neutrino/MERROW`) and
+  fails when it is not there. A plan's `voice` is what to give it.
 
 ## 5. How a caller uses it (Lily#'s plan)
 

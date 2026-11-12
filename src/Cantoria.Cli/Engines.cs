@@ -45,7 +45,8 @@ sealed class Engines
     /// <c>%APPDATA%\cantoria</c> on Windows, <c>~/.config/cantoria</c> elsewhere). NEUTRINO runs on
     /// Windows only: elsewhere its folder is read as not set, whatever says it.
     /// </summary>
-    public static Engines Configure(string? neutrinoDir, string? voicesDir, string? vocoderDir, OnnxProvider provider, int threads, int steps, bool keep, string? voicevoxUrl = null)
+    public static Engines Configure(string? neutrinoDir, string? voicesDir, string? vocoderDir, OnnxProvider provider, int threads, int steps, bool keep, string? voicevoxUrl = null,
+        string? defaultFemale = null, string? defaultMale = null)
     {
         var settings = Settings();
         return new Engines
@@ -60,6 +61,9 @@ sealed class Engines
             Threads = threads,
             Steps = steps,
             KeepFiles = keep,
+            Defaults = new DefaultVoices(
+                First(defaultFemale, Environment.GetEnvironmentVariable("CANTORIA_DEFAULT_FEMALE_VOICE"), settings("default", "female")) ?? "",
+                First(defaultMale, Environment.GetEnvironmentVariable("CANTORIA_DEFAULT_MALE_VOICE"), settings("default", "male")) ?? ""),
         };
     }
 
@@ -285,6 +289,84 @@ sealed class Engines
         }
         return voices;
     }
+
+    /// <summary>
+    /// Every voice installed with what it says of itself — its languages, its gender — in the order
+    /// the extension lists them (<see cref="VoiceEntries"/>): what <c>plan</c> chooses among.
+    /// <paramref name="only"/>: the engines to look in, for a caller that needs no other (asking
+    /// VOICEVOX costs a wait when it is not running).
+    /// </summary>
+    public IReadOnlyList<VoiceEntry> Entries(IReadOnlyCollection<string>? only = null)
+    {
+        var voices = new List<VoiceEntry>();
+        if (NeutrinoFolder is not null && only?.Contains("neutrino") != false)
+        {
+            voices.AddRange(VoiceEntries.Neutrino(NeutrinoFolder));
+        }
+        if (VoicesFolder is not null && only?.Contains("diffsinger") != false)
+        {
+            voices.AddRange(VoiceEntries.DiffSinger(VoicesFolder));
+        }
+        if (only?.Contains("voicevox") != false && VoicevoxEngine.Singers(VoicevoxUrl) is { } singers)
+        {
+            voices.AddRange(VoiceEntries.Voicevox(singers));
+        }
+        return voices;
+    }
+
+    /// <summary>For each engine with no voice among <paramref name="voices"/>, why, in a score writer's words.</summary>
+    public IReadOnlyDictionary<string, string> Missing(IReadOnlyList<VoiceEntry> voices)
+    {
+        var why = new Dictionary<string, string>();
+        if (voices.All(v => v.Engine != "neutrino"))
+        {
+            why["neutrino"] = !OperatingSystem.IsWindows() ? "NEUTRINO runs on Windows only"
+                : NeutrinoFolder is null ? "NEUTRINO's folder is not set"
+                : $"NEUTRINO's folder holds no voice ({Path.Combine(NeutrinoFolder, "model")})";
+        }
+        if (voices.All(v => v.Engine != "diffsinger"))
+        {
+            why["diffsinger"] = VoicesFolder is null ? "the DiffSinger voices folder is not set" : $"the DiffSinger voices folder holds no voice ({VoicesFolder})";
+        }
+        if (voices.All(v => v.Engine != "voicevox"))
+        {
+            why["voicevox"] = $"VOICEVOX is not running or not installed: nothing answers at {VoicevoxUrl}";
+        }
+        return why;
+    }
+
+    /// <summary>Who would sing what is asked (<see cref="SingerPlan"/>): the installed voices are read and
+    /// their files looked for; no model is loaded and nothing is started.</summary>
+    /// <param name="asked">The voices asked for.</param>
+    /// <param name="defaults">Each gender's default voice; null for <see cref="Defaults"/>.</param>
+    /// <param name="voicevox">False from a caller that has just asked VOICEVOX and heard nothing: it is
+    /// not asked again (two seconds, when nothing is there).</param>
+    public SingerPlan Plan(IEnumerable<PlanAsk> asked, DefaultVoices? defaults = null, bool voicevox = true)
+    {
+        var voices = Entries(voicevox ? null : ["neutrino", "diffsinger"]);
+        return SingerPlan.For(asked, voices, defaults ?? Defaults, Problems, Missing(voices));
+    }
+
+    /// <summary>Why the voice cannot sing words in <paramref name="language"/> — the reason <c>plan</c> gives —
+    /// or null: a voice that says what it sings and does not sing this. One named by its folder says nothing.</summary>
+    public string? LanguageProblem(string? voice, string language)
+    {
+        var ids = Pieces(voice).Select(Split).Select(v => v.Engine + "/" + v.Name).ToList();
+        var engines = ids.Select(id => id[..id.IndexOf('/')]).ToHashSet();
+        var mine = Entries(engines);
+        if (!ids.Any(id => SingerResolver.LanguageProblem(mine.FirstOrDefault(v => v.Id == id), language) is not null))
+        {
+            return null;
+        }
+        // What every engine's voices sing is part of the sentence, as it is of plan's.
+        var all = Entries();
+        return ids.Select(id => SingerResolver.LanguageReason(all.FirstOrDefault(v => v.Id == id), language, all)).FirstOrDefault(r => r is not null);
+    }
+
+    /// <summary>The default voice of each gender, for a <c>plan</c> that is told none: the options, else the
+    /// environment (<c>CANTORIA_DEFAULT_FEMALE_VOICE</c>, <c>CANTORIA_DEFAULT_MALE_VOICE</c>), else
+    /// <c>cantoria.json</c> (<c>default.female</c>, <c>default.male</c>); empty is not set.</summary>
+    public DefaultVoices Defaults { get; init; } = new();
 
     /// <summary>What is configured, for the <c>ready</c> line and messages.</summary>
     public string Describe() =>

@@ -13,7 +13,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import {
-    SingParameter, SingProgress,
+    PlanAsk, SingParameter, SingProgress, SingerPlan, planAsked, planOfNoOne,
     CantoriaScore, DefaultVoices, ENGINES, EngineName, VOICEVOX_URL, VoiceEntry, VoiceGender, defaultVoiceFor, diffSingerEntriesIn, diffSingerVoicesIn, languageProblem, missingProgramNote, needsVoicevox, neutrinoFolderProblems, voicevoxRunIn, programCandidates,
     resolveSinger, scoreProblems, splitVoiceId, voiceEntriesIn, voiceId, voicePieces, voicesFolderProblems, voicesIn, 
 } from './core';
@@ -66,6 +66,14 @@ export interface CantoriaApi {
     /** The voice a score's `singer` string comes to here: the voice it names when installed, else the
      *  default voice of the gender it says or of `options.gender`; and a sentence when it is not the one asked for. */
     resolveSinger(singer: string, options?: { language?: string; gender?: string }): Promise<{ voice: string; note?: string }>;
+    /** Who would sing what a score asks for, without singing it (after 0.4.0): for each voice asked
+     *  for — `{ asked: [{ part?, key?, voice?, gender?, language? }, …] }`, or a score with
+     *  `options.voice` or `options.gender` — the installed voice (`engine/name`) that would, with a
+     *  `note` when it is not the one asked for, or `voice: null` and the `reason`: no installed voice
+     *  sings the language, a default voice that does not, an engine that is not set up. `ready` when
+     *  each has a singer. The `cantoria` program answers (its `plan`), by the rule `resolveSinger`
+     *  goes by and what `sing` would refuse; no model is loaded for it. */
+    plan(score: CantoriaScore | { asked: readonly PlanAsk[] }, options?: { voice?: string; gender?: string }): Promise<SingerPlan>;
 }
 
 let output: vscode.OutputChannel;
@@ -226,6 +234,18 @@ async function sing(context: vscode.ExtensionContext, score: CantoriaScore, opti
     return { ...v, cached };
 }
 
+/** Who would sing what is asked: the program's answer over the folders and the default voices set
+ *  here. VOICEVOX is started as a `sing` of the same would start it, so that the two agree. */
+async function plan(context: vscode.ExtensionContext, score: CantoriaScore | { asked: readonly PlanAsk[] }, options?: { voice?: string; gender?: string }): Promise<SingerPlan> {
+    const asked = planAsked(score, options);
+    const defaults = defaultVoices();
+    const others = voices().length - voicevox.voices.length;
+    if (asked.some(a => needsVoicevox(a.voice ?? '', defaults, others, a.language))) { await voicevox.ensure(); } else { await voicevox.ask(); }
+    const { setup, problems } = setupNow(context);
+    if (!setup) { return planOfNoOne(asked, problems.join('; ')); }
+    return engineFor(context).plan(asked, defaults, voicevox.answering ?? '');
+}
+
 async function chooseFolder(title: string, setting: string, check: (folder: string) => string[], said: (folder: string) => string): Promise<void> {
     const picked = await vscode.window.showOpenDialog({ canSelectFiles: false, canSelectFolders: true, canSelectMany: false, title, openLabel: 'Use this folder' });
     if (!picked || picked.length === 0) { return; }
@@ -357,6 +377,7 @@ export function activate(context: vscode.ExtensionContext): CantoriaApi {
             if (needsVoicevox(singer, defaultVoices(), voices().length - voicevox.voices.length, options?.language)) { await voicevox.ensure(); } else { await voicevox.ask(); }
             return resolveSinger(singer, voices(), defaultVoices(), options);
         },
+        plan: (score, options) => plan(context, score, options),
     });
 }
 
