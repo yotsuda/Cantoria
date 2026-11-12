@@ -327,8 +327,8 @@ describe('the manifest', () => {
         assert.match(props['cantoria.vocoderFolder'].markdownDescription, /command:cantoria\.chooseVocoderFolder/);
     });
 
-    it('contributes the eight commands and starts on nothing but them and the API', () => {
-        assert.deepEqual(commands.sort(), ['cantoria.checkSetup', 'cantoria.chooseFemaleVoice', 'cantoria.chooseMaleVoice', 'cantoria.chooseNeutrinoFolder', 'cantoria.chooseVocoderFolder', 'cantoria.chooseVoicesFolder', 'cantoria.chooseVoicevoxFolder', 'cantoria.forgetVoices']);
+    it('contributes the nine commands and starts on nothing but them and the API', () => {
+        assert.deepEqual(commands.sort(), ['cantoria.checkSetup', 'cantoria.chooseFemaleVoice', 'cantoria.chooseMaleVoice', 'cantoria.chooseNeutrinoFolder', 'cantoria.chooseVocoderFolder', 'cantoria.chooseVoicesFolder', 'cantoria.chooseVoicevoxFolder', 'cantoria.forgetVoices', 'cantoria.installGuide']);
         assert.deepEqual(manifest.activationEvents, []);
         assert.equal(manifest.main, './out/extension.js');
         assert.equal(manifest.license, 'Apache-2.0');

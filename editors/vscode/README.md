@@ -15,13 +15,21 @@ their own.
 
 ## Setup
 
-Three engines; set up any of them. A voice is named `engine/name`.
+Three engines; set up any of them. A voice is named `engine/name`. **Cantoria: How to Install a
+Voice** opens this section, and so does the button of that name where Cantoria says it has no voice.
 
 **DiffSinger** (voices in the OpenUtau format, each a folder with a `dsconfig.yaml`):
-1. Put the voices you have installed, under their authors' terms, side by side in one folder
-   (OpenUtau's `Singers` folder is one).
-2. **Cantoria: Choose Voices Folder… (DiffSinger)**: that folder. A voice without a bundled
-   vocoder needs `cantoria.vocoderFolder`.
+1. Download a voice from its author, under the author's terms, and unpack it so that it is a
+   folder of its own holding a `dsconfig.yaml`. Put your voices side by side in one folder,
+   `C:\voices\TIGER\dsconfig.yaml` for one (OpenUtau's `Singers` folder is such a folder).
+2. **Cantoria: Choose Voices Folder… (DiffSinger)**: that folder (`C:\voices`).
+3. A voice with no `dsvocoder` folder of its own needs a vocoder, the part that turns what the
+   voice computes into sound. Download the `.oudep` file of the one the voice's readme names (for
+   `nsf_hifigan`, the usual one, `nsf_hifigan_44.1k_hop512_128bin_2024.02.oudep`) from the
+   [DiffSinger community vocoders](https://github.com/openvpi/vocoders/releases), rename it to
+   `.zip`, unpack it into a folder, and choose that folder with **Cantoria: Choose Vocoder
+   Folder…**. The vocoders have terms of their own, in the `NOTICE.txt` they come with.
+4. Name the voice by its folder: `diffsinger/TIGER`.
 
 A voice sings Japanese through its dictionary, and English where it has a `dsdict-en.yaml`. An
 English word the dictionary lacks is sung from its spelling; the guess can be wrong, and the

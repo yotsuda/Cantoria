@@ -173,6 +173,11 @@
         "title": "Check Setup"
       },
       {
+        "command": "cantoria.installGuide",
+        "category": "Cantoria",
+        "title": "How to Install a Voice"
+      },
+      {
         "command": "cantoria.forgetVoices",
         "category": "Cantoria",
         "title": "Forget Rendered Voices"

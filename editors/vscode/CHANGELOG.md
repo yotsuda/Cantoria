@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **How to Install a Voice**: where Cantoria says it cannot sing yet or has no voice to list, the first button opens the steps for each engine (this README's Setup: what to download, where to unpack it, which command to run), and **Cantoria: How to Install a Voice** does from the command palette. It took the place of "Get NEUTRINO", which led to one engine's site. The DiffSinger steps now say how to get a vocoder for a voice that bundles none.
 - **A DiffSinger voice sings a phrase at a time**: the score is cut at its rests, and each phrase is sung once and kept while the engine runs, so changing a note or a word sings only that phrase again. A score longer than about two minutes no longer stops the engine on DirectML, and a model's failure is now reported as that voice's error instead of ending the engine.
 - **VOICEVOX and NEUTRINO voices sing a phrase at a time too**, kept the same way.
 - **An English word whose dictionary entry the voice cannot say is read from its letters**, and named in the log, where it was sung as silence: TIGER's dictionary spells `hear` with a phoneme the voice does not have.
