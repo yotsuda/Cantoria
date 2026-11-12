@@ -47,13 +47,16 @@ public sealed class NeutrinoSinger : ISinger, ISingParameters, IDisposable
     /// <summary>
     /// The settings NEUTRINO's own program takes, and nothing else (its v3 has no knob for breath
     /// or tension; what else it can be made to do is in its timing, pitch and spectrum files):
-    /// <c>-f</c>, sung as if the key were so many semitones away, and <c>-S</c>, another of its
+    /// <c>-f</c>, which its help calls "transpose (key)" and which moves what is sung by that many
+    /// semitones (MEASURED 2026-11-12, v3.2.6, an A4 held two seconds: 440.4 Hz with none, 527.5
+    /// with 3, 369.2 with -3 — until then this said the notes stayed and only the colour moved,
+    /// which nobody had measured), and <c>-S</c>, another of its
     /// voices as a support model. One value a render: a phrase here, since a score is sung a
     /// phrase at a time, so neither changes inside the music.
     /// </summary>
     public IReadOnlyList<SingParameter> Parameters =>
     [
-        new("transpose", SingScope.Phrase, "Sung as if the key were this many semitones away (NEUTRINO's -f): the colour of the voice moves, the notes stay", -12, 12, 0, "semitones"),
+        new("transpose", SingScope.Phrase, "The voice sings this many semitones above what is written, or below (NEUTRINO's -f, transpose): its notes move, the other parts do not", -12, 12, 0, "semitones"),
         new("support", SingScope.Voice, "Another NEUTRINO voice as a support model (NEUTRINO's -S)", Word: true,
             Values: NeutrinoOptions.Voices(_options.Folder).Where(v => !string.Equals(v, _options.Voice, StringComparison.OrdinalIgnoreCase)).ToList()),
     ];
