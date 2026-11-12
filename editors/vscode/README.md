@@ -106,7 +106,7 @@ const { wav, duration } = await api.sing({
   phrase ends, `voice` once a score). They are the engine's own inputs and nothing is made up for a
   voice that has none: a DiffSinger voice takes what its model was trained with (breathiness,
   tension, energy, voicing — each an offset on what the voice does by itself — gender, velocity),
-  a NEUTRINO voice its program's two (`transpose`, one value a phrase; `support`, another of its
+  a NEUTRINO voice one (`support`, another of its
   voices by name — `word: true`, with the names in `values`), a VOICEVOX voice none. A name the voice does not take is not sung and is said in
   the answer's `notes`, sentences for whoever wrote the score. A NOTE's `sing` changes a setting
   from that note on, until the next one written for the same name (`"default"` gives it back to

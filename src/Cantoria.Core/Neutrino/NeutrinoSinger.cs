@@ -45,18 +45,20 @@ public sealed class NeutrinoSinger : ISinger, ISingParameters, IDisposable
     public string Name => $"neutrino/{_options.Voice}";
 
     /// <summary>
-    /// The settings NEUTRINO's own program takes, and nothing else (its v3 has no knob for breath
-    /// or tension; what else it can be made to do is in its timing, pitch and spectrum files):
-    /// <c>-f</c>, which its help calls "transpose (key)" and which moves what is sung by that many
-    /// semitones (MEASURED 2026-11-12, v3.2.6, an A4 held two seconds: 440.4 Hz with none, 527.5
-    /// with 3, 369.2 with -3 — until then this said the notes stayed and only the colour moved,
-    /// which nobody had measured), and <c>-S</c>, another of its
-    /// voices as a support model. One value a render: a phrase here, since a score is sung a
-    /// phrase at a time, so neither changes inside the music.
+    /// The setting NEUTRINO's own program takes that a score is offered (its v3 has no knob for
+    /// breath or tension; what else it can be made to do is in its timing, pitch and spectrum
+    /// files): <c>-S</c>, another of its voices as a support model, one value a render.
     /// </summary>
+    /// <remarks>
+    /// NOT OFFERED: <c>-f</c>, which its help calls "transpose (key)". It moves what is sung by
+    /// that many semitones (MEASURED 2026-11-12, v3.2.6, an A4 held two seconds: 440.4 Hz with
+    /// none, 527.5 with 3, 369.2 with -3), every note alike whatever the key — which a score has
+    /// little use for, and which the caller does better itself, for every engine: Lily#'s singer
+    /// line moves the notes along the key (up 3) or by octaves before any voice sees them
+    /// (owner's decision 2026-11-12). It was offered as "transpose" for a day.
+    /// </remarks>
     public IReadOnlyList<SingParameter> Parameters =>
     [
-        new("transpose", SingScope.Phrase, "The voice sings this many semitones above what is written, or below (NEUTRINO's -f, transpose): its notes move, the other parts do not", -12, 12, 0, "semitones"),
         new("support", SingScope.Voice, "Another NEUTRINO voice as a support model (NEUTRINO's -S)", Word: true,
             Values: NeutrinoOptions.Voices(_options.Folder).Where(v => !string.Equals(v, _options.Voice, StringComparison.OrdinalIgnoreCase)).ToList()),
     ];
@@ -113,11 +115,6 @@ public sealed class NeutrinoSinger : ISinger, ISingParameters, IDisposable
                 args.Add("-t");
                 // How the score asks to be sung, of what NEUTRINO takes (Parameters).
                 var taken = SingSettings.Taken(score.Sing, Parameters, Name);
-                if (taken.TryGetValue("transpose", out var transpose) && transpose.Number is { } key && key != 0)
-                {
-                    args.Add("-f");
-                    args.Add(key.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture));
-                }
                 if (taken.TryGetValue("support", out var support) && support.Word is { Length: > 0 } supportVoice)
                 {
                     // A model's FOLDER, as the voice's own is given (measured on v3.2.6: a bare
