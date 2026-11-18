@@ -246,14 +246,20 @@ async function plan(context: vscode.ExtensionContext, score: CantoriaScore | { a
 }
 
 async function chooseFolder(title: string, setting: string, check: (folder: string) => string[], said: (folder: string) => string): Promise<void> {
-    const picked = await vscode.window.showOpenDialog({ canSelectFiles: false, canSelectFolders: true, canSelectMany: false, title, openLabel: 'Use this folder' });
-    if (!picked || picked.length === 0) { return; }
-    const folder = picked[0].fsPath;
-    const problems = check(folder);
-    if (problems.length > 0) {
-        const anyway = 'Use it anyway';
-        const choice = await vscode.window.showWarningMessage(`Cantoria: ${problems[0]}`, anyway);
-        if (choice !== anyway) { return; }
+    // A folder that fails the check is never set: nothing sings from it (setupNow refuses the same
+    // folder), so the way on is to choose again, starting where the last choice was, or to leave
+    // the setting as it stood. (Until 2026-11-18 the one button was "Use it anyway".)
+    let folder: string;
+    for (let from: vscode.Uri | undefined; ;) {
+        const picked = await vscode.window.showOpenDialog({ canSelectFiles: false, canSelectFolders: true, canSelectMany: false, title, openLabel: 'Use this folder', defaultUri: from });
+        if (!picked || picked.length === 0) { return; }
+        folder = picked[0].fsPath;
+        const problems = check(folder);
+        if (problems.length === 0) { break; }
+        const again = 'Choose Another Folder…';
+        const choice = await vscode.window.showWarningMessage('Cantoria: this folder cannot be used', { modal: true, detail: `${problems[0]}\n\nThe setting is left as it was.` }, again);
+        if (choice !== again) { return; }   // Cancel (the modal's own button) or Esc
+        from = picked[0];
     }
     await settings().update(setting, folder, vscode.ConfigurationTarget.Global);
     vscode.window.setStatusBarMessage(said(folder), 5000);
