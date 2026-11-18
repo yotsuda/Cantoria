@@ -82,6 +82,9 @@ it by hand (Lily# session 1124, 2026-11-08):
   5070 Ti, MERROW, 43.2 s of song): plain v3.2.2 6.8 s every time, one 4.8 s
   phrase 3.6 s; the v3.2.6 server 6.6 s the first time, 2.2 s after. A plain
   package's voices (v3.2.3 models) sing under the v3.2.6 server as well.
+  The package with the tuning tool has a `neutrino.exe` too, a 5 KB stand-in
+  that prints its version and refuses to sing: a folder with half a server is
+  told which half is missing, and is not sung with that.
   Not done: singing the phrases that are new in ONE run of `neutrino.exe`
   (a score of 8 new phrases pays 8 loads).
 - Nothing of NEUTRINO is redistributed. Cantoria only needs the folder.

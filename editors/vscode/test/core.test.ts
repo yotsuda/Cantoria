@@ -332,9 +332,10 @@ describe('where the program and the voices are', () => {
         assert.deepEqual(neutrinoFolderProblems('', () => true, join), []);
         assert.deepEqual(neutrinoFolderProblems('N', () => false, join), ['the NEUTRINO folder does not exist: N']);
         const neither = 'not a NEUTRINO (Tau v3.2+) folder: neither bin\\neutrino_server.exe with bin\\neutrino_client.exe nor bin\\neutrino.exe is under N';
-        // Half a server is none.
-        const has = new Set(['N', 'N\\bin\\neutrino_server.exe', 'N\\bin\\musicXMLtoLabel.exe', 'N\\settings\\dic']);
-        assert.deepEqual(neutrinoFolderProblems('N', p => has.has(p), join), [neither]);
+        // Half a server is the package with the tuning tool with a program gone, even with its neutrino.exe (a stand-in).
+        const has = new Set(['N', 'N\\bin\\neutrino_client.exe', 'N\\bin\\neutrino.exe', 'N\\bin\\musicXMLtoLabel.exe', 'N\\settings\\dic']);
+        assert.deepEqual(neutrinoFolderProblems('N', p => has.has(p), join),
+            ['not a whole NEUTRINO folder: bin\\neutrino_server.exe is missing beside bin\\neutrino_client.exe under N (the package with the tuning tool sings through the two; its neutrino.exe does not sing)']);
         assert.deepEqual(neutrinoFolderProblems('N', p => p === 'N', join), [neither]);
         const all = new Set(['N', 'N\\bin\\neutrino_server.exe', 'N\\bin\\neutrino_client.exe', 'N\\bin\\musicXMLtoLabel.exe', 'N\\settings\\dic']);
         assert.deepEqual(neutrinoFolderProblems('N', p => all.has(p), join), []);
