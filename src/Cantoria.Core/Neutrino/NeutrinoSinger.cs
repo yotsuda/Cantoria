@@ -12,7 +12,9 @@ namespace Cantoria.Neutrino;
 /// processes: <c>musicXMLtoLabel.exe</c> turns the score into labels, <c>neutrino_server.exe</c>
 /// is started once and kept for this object's life (the models load on the first render, about
 /// 45 s on a GPU; after that a phrase renders in well under a second), and
-/// <c>neutrino_client.exe</c> hands it one render at a time.
+/// <c>neutrino_client.exe</c> hands it one render at a time. The plain package has no server:
+/// there <c>neutrino.exe</c> takes the same arguments and is run once a render, loading the
+/// models each time (<see cref="NeutrinoOptions.HasServer"/> has the measured price).
 /// <para>
 /// NEUTRINO's client finds its server through the <em>parent process</em>: the server is bound
 /// to the process that started it and the client must be a direct child of that same process.
@@ -27,6 +29,10 @@ public sealed class NeutrinoSinger : ISinger, ISingParameters, IDisposable
 {
     private readonly NeutrinoOptions _options;
     private readonly SemaphoreSlim _oneAtATime = new(1, 1);
+    // The program a render goes to, and whether a server stands behind it: what the folder held
+    // when this singer was made (NeutrinoOptions.HasServer).
+    private readonly bool _served;
+    private readonly string _program;
     private Process? _server;
     private bool _rendered;
     private bool _disposed;
@@ -40,6 +46,8 @@ public sealed class NeutrinoSinger : ISinger, ISingParameters, IDisposable
             throw new ArgumentException(string.Join("; ", problems), nameof(options));
         }
         _options = options;
+        _served = options.HasServer;
+        _program = options.RenderProgram;
     }
 
     public string Name => $"neutrino/{_options.Voice}";
@@ -129,22 +137,22 @@ public sealed class NeutrinoSinger : ISinger, ISingParameters, IDisposable
                 string full = await File.ReadAllTextAsync(Abs(".full.lab"), ct).ConfigureAwait(false);
                 if (NeutrinoTiming.HasRepeats(full))
                 {
-                    var timing = await Run("neutrino_client.exe", [.. args, "--skip-f0", "--skip-melspec", "--skip-wav"], timeout, ct).ConfigureAwait(false);
+                    var timing = await Run(_program, [.. args, "--skip-f0", "--skip-melspec", "--skip-wav"], timeout, ct).ConfigureAwait(false);
                     log.Append(timing.Output);
                     if (timing.ExitCode != 0 || !File.Exists(Abs(".timing.lab")))
                     {
-                        throw new SingerException($"NEUTRINO did not time the score (neutrino_client exit {timing.ExitCode}):\n{timing.Output.Trim()}");
+                        throw new SingerException($"NEUTRINO did not time the score ({_program} exit {timing.ExitCode}):\n{timing.Output.Trim()}");
                     }
                     string predicted = await File.ReadAllTextAsync(Abs(".timing.lab"), ct).ConfigureAwait(false);
                     await File.WriteAllTextAsync(Abs(".timing.lab"), NeutrinoTiming.AlignRepeats(full, predicted), new UTF8Encoding(false), ct).ConfigureAwait(false);
                     args.Add("--skip-timing");
                 }
 
-                var render = await Run("neutrino_client.exe", args, timeout, ct).ConfigureAwait(false);
+                var render = await Run(_program, args, timeout, ct).ConfigureAwait(false);
                 log.Append(render.Output);
                 if (render.ExitCode != 0 || !File.Exists(Abs(".wav")))
                 {
-                    throw new SingerException($"NEUTRINO did not sing (neutrino_client exit {render.ExitCode}):\n{render.Output.Trim()}");
+                    throw new SingerException($"NEUTRINO did not sing ({_program} exit {render.ExitCode}):\n{render.Output.Trim()}");
                 }
                 _rendered = true;
 
@@ -171,10 +179,11 @@ public sealed class NeutrinoSinger : ISinger, ISingParameters, IDisposable
         }
     }
 
-    /// <summary>Starts the server if it is not running, and waits until it answers "READY".</summary>
+    /// <summary>Starts the server if it is not running, and waits until it answers "READY".
+    /// Nothing to start for a NEUTRINO without one: each render is its own run of neutrino.exe.</summary>
     private void EnsureServer()
     {
-        if (_server is { HasExited: false })
+        if (!_served || _server is { HasExited: false })
         {
             return;
         }

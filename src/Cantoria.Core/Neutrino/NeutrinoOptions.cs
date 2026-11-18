@@ -28,6 +28,24 @@ public sealed record NeutrinoOptions(string Folder, string Voice = "MERROW")
     /// <summary>The executables' folder.</summary>
     public string BinDir => Path.Combine(Folder, "bin");
 
+    private const string Standalone = "neutrino.exe";
+
+    /// <summary>
+    /// Whether this NEUTRINO has the server and its client (the package that comes with the
+    /// tuning tool, "調声支援ツール同梱版"). The plain package has <c>neutrino.exe</c> alone, which
+    /// takes the client's arguments and loads the models on every run.
+    /// </summary>
+    /// <remarks>
+    /// MEASURED 2026-11-18 (RTX 5070 Ti, MERROW, 43.2 s of song; Lily# Lab sessions/p1304/neutrino):
+    /// the plain v3.2.2 sings it in 6.8 s every time and one 4.8 s phrase in 3.6 s; the server of
+    /// v3.2.6 in 6.6 s the first time and 2.2 s after.
+    /// </remarks>
+    public bool HasServer => File.Exists(Path.Combine(BinDir, "neutrino_server.exe"))
+        && File.Exists(Path.Combine(BinDir, "neutrino_client.exe"));
+
+    /// <summary>The program a render is handed to: the server's client, or NEUTRINO itself without a server.</summary>
+    public string RenderProgram => HasServer ? "neutrino_client.exe" : Standalone;
+
     /// <summary>The voice's folder, as NEUTRINO wants it: relative to <see cref="Folder"/>, trailing separator.</summary>
     public string VoiceDirArgument => $"model\\{Voice}\\";
 
@@ -40,12 +58,13 @@ public sealed record NeutrinoOptions(string Folder, string Voice = "MERROW")
             problems.Add($"NEUTRINO folder not found: {Folder}");
             return problems;
         }
-        foreach (var exe in new[] { "neutrino_server.exe", "neutrino_client.exe", "musicXMLtoLabel.exe" })
+        if (!File.Exists(Path.Combine(BinDir, "musicXMLtoLabel.exe")))
         {
-            if (!File.Exists(Path.Combine(BinDir, exe)))
-            {
-                problems.Add($"{exe} not found under {BinDir} (NEUTRINO Tau v3.2.x's bin folder is expected)");
-            }
+            problems.Add($"musicXMLtoLabel.exe not found under {BinDir} (NEUTRINO Tau v3.2.x's bin folder is expected)");
+        }
+        if (!HasServer && !File.Exists(Path.Combine(BinDir, Standalone)))
+        {
+            problems.Add($"neither neutrino_server.exe with neutrino_client.exe nor {Standalone} found under {BinDir} (NEUTRINO Tau v3.2.x's bin folder is expected)");
         }
         if (!Directory.Exists(Path.Combine(Folder, "settings", "dic")))
         {

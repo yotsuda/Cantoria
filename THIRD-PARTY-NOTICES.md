@@ -102,7 +102,8 @@ https://studio-neutrino.com/
 
 Closed-source freeware under its own license agreement. Cantoria's NEUTRINO
 backend runs the user's own installation as a separate process
-(`musicXMLtoLabel.exe`, `neutrino_client.exe`) and never redistributes it.
+(`musicXMLtoLabel.exe`, and `neutrino_server.exe` with `neutrino_client.exe`
+or `neutrino.exe`) and never redistributes it.
 The sound produced is subject to the terms of the voice library used. The
 agreement forbids using NEUTRINO in machine-learning voice-conversion tools;
 Cantoria does nothing of the kind.

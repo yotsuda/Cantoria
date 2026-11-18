@@ -39,8 +39,13 @@ as a voice of its own, such as `diffsinger/TIGER/tiger_disco`.
 **NEUTRINO** (Japanese voices; Windows):
 1. Install **NEUTRINO** (Tau, v3.2 or later) from [studio-neutrino.com](https://studio-neutrino.com/).
    It is free software of STUDIO NEUTRINO under its own terms, not part of this extension.
-   Its bundled voice is MERROW; other voices are their authors' work, installed under its `model\` folder.
-2. **Cantoria: Choose NEUTRINO Folder…**: the folder holding `bin\`, `model\` and `settings\`.
+   Either Windows package sings. The one with the tuning tool (調声支援ツール同梱版) is the faster: it
+   has a server that keeps the voice loaded, so a phrase changed is sung again in well under a
+   second, where the plain package loads the voice for every phrase (about 3.5 s each on a fast GPU).
+   The package with the tuning tool comes with the voice MERROW, the plain one with five; other
+   voices are their authors' work, installed under its `model\` folder.
+2. **Cantoria: Choose NEUTRINO Folder…**: the folder holding `bin\`, `model\` and `settings\`
+   (in the package with the tuning tool, the inner folder `NEUTRINO 調声支援ツール`).
 
 **VOICEVOX** (Japanese voices, named `voicevox/name-style`):
 1. Install **VOICEVOX** from [voicevox.hiroshiba.jp](https://voicevox.hiroshiba.jp/). It is not part

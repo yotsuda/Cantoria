@@ -75,6 +75,15 @@ it by hand (Lily# session 1124, 2026-11-08):
 - The command lines are **configuration**, with these as defaults: NEUTRINO
   has changed its layout between versions (`Run.bat` → server/client) and
   will again.
+- The **plain package** (no tuning tool; `Run.bat`, five voices) has no server: its
+  `bin\neutrino.exe` takes the client's arguments and loads the models on every
+  run. Cantoria uses the server where the folder has it and `neutrino.exe`
+  otherwise (`NeutrinoOptions.HasServer`, 2026-11-18). Measured that day (RTX
+  5070 Ti, MERROW, 43.2 s of song): plain v3.2.2 6.8 s every time, one 4.8 s
+  phrase 3.6 s; the v3.2.6 server 6.6 s the first time, 2.2 s after. A plain
+  package's voices (v3.2.3 models) sing under the v3.2.6 server as well.
+  Not done: singing the phrases that are new in ONE run of `neutrino.exe`
+  (a score of 8 new phrases pays 8 loads).
 - Nothing of NEUTRINO is redistributed. Cantoria only needs the folder.
 
 ### 3.2 `diffsinger` backend (second; sings since 2026-11-08)

@@ -483,7 +483,13 @@ export function neutrinoFolderProblems(folder: string, exists: (p: string) => bo
     if (platform !== 'win32') { return ['NEUTRINO runs on Windows only: leave the NEUTRINO folder empty here and set up a DiffSinger voices folder']; }
     const problems: string[] = [];
     if (!exists(f)) { return [`the NEUTRINO folder does not exist: ${f}`]; }
-    for (const file of [['bin', 'neutrino_server.exe'], ['bin', 'neutrino_client.exe'], ['bin', 'musicXMLtoLabel.exe'], ['settings', 'dic']]) {
+    // Either package (the engine's NeutrinoOptions.Validate): the one with the tuning tool has the
+    // server and its client, the plain one neutrino.exe alone, which sings without a server.
+    const has = (name: string) => exists(join(f, 'bin', name));
+    if (!(has('neutrino_server.exe') && has('neutrino_client.exe')) && !has('neutrino.exe')) {
+        return [`not a NEUTRINO (Tau v3.2+) folder: neither bin\\neutrino_server.exe with bin\\neutrino_client.exe nor bin\\neutrino.exe is under ${f}`];
+    }
+    for (const file of [['bin', 'musicXMLtoLabel.exe'], ['settings', 'dic']]) {
         if (!exists(join(f, ...file))) { problems.push(`not a NEUTRINO (Tau v3.2+) folder: ${file.join('\\')} is missing under ${f}`); break; }
     }
     return problems;

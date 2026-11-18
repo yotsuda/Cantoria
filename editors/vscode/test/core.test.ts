@@ -331,10 +331,18 @@ describe('where the program and the voices are', () => {
     it('says what a NEUTRINO folder lacks (an empty setting is no problem of its own)', () => {
         assert.deepEqual(neutrinoFolderProblems('', () => true, join), []);
         assert.deepEqual(neutrinoFolderProblems('N', () => false, join), ['the NEUTRINO folder does not exist: N']);
-        const has = new Set(['N', 'N\\bin\\neutrino_server.exe']);
-        assert.deepEqual(neutrinoFolderProblems('N', p => has.has(p), join), ['not a NEUTRINO (Tau v3.2+) folder: bin\\neutrino_client.exe is missing under N']);
+        const neither = 'not a NEUTRINO (Tau v3.2+) folder: neither bin\\neutrino_server.exe with bin\\neutrino_client.exe nor bin\\neutrino.exe is under N';
+        // Half a server is none.
+        const has = new Set(['N', 'N\\bin\\neutrino_server.exe', 'N\\bin\\musicXMLtoLabel.exe', 'N\\settings\\dic']);
+        assert.deepEqual(neutrinoFolderProblems('N', p => has.has(p), join), [neither]);
+        assert.deepEqual(neutrinoFolderProblems('N', p => p === 'N', join), [neither]);
         const all = new Set(['N', 'N\\bin\\neutrino_server.exe', 'N\\bin\\neutrino_client.exe', 'N\\bin\\musicXMLtoLabel.exe', 'N\\settings\\dic']);
         assert.deepEqual(neutrinoFolderProblems('N', p => all.has(p), join), []);
+        // The plain package: neutrino.exe alone, no server.
+        const plain = new Set(['N', 'N\\bin\\neutrino.exe', 'N\\bin\\musicXMLtoLabel.exe', 'N\\settings\\dic']);
+        assert.deepEqual(neutrinoFolderProblems('N', p => plain.has(p), join), []);
+        plain.delete('N\\bin\\musicXMLtoLabel.exe');
+        assert.deepEqual(neutrinoFolderProblems('N', p => plain.has(p), join), ['not a NEUTRINO (Tau v3.2+) folder: bin\\musicXMLtoLabel.exe is missing under N']);
         // Off Windows a NEUTRINO folder is not searched: it cannot run there.
         assert.deepEqual(neutrinoFolderProblems('N', p => all.has(p), join, 'linux'),
             ['NEUTRINO runs on Windows only: leave the NEUTRINO folder empty here and set up a DiffSinger voices folder']);

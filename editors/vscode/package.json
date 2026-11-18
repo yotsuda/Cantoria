@@ -93,7 +93,7 @@
               "type": "string",
               "default": "",
               "scope": "machine-overridable",
-              "markdownDescription": "The folder of your NEUTRINO installation (Tau, v3.2 or later): the one holding `bin\\`, `model\\` and `settings\\`. NEUTRINO is not bundled — it is free software of STUDIO NEUTRINO under its own terms, from [studio-neutrino.com](https://studio-neutrino.com/). Empty: no NEUTRINO voice can be sung (a DiffSinger voices folder is the other engine).\n\n**[Choose the folder…](command:cantoria.chooseNeutrinoFolder)**"
+              "markdownDescription": "The folder of your NEUTRINO installation (Tau, v3.2 or later): the one holding `bin\\`, `model\\` and `settings\\`. Either package sings; the one with the tuning tool (調声支援ツール同梱版) has a server and is the faster. NEUTRINO is not bundled — it is free software of STUDIO NEUTRINO under its own terms, from [studio-neutrino.com](https://studio-neutrino.com/). Empty: no NEUTRINO voice can be sung (a DiffSinger voices folder is the other engine).\n\n**[Choose the folder…](command:cantoria.chooseNeutrinoFolder)**"
             },
             "cantoria.threads": {
               "type": "number",
