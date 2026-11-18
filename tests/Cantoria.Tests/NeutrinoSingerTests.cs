@@ -45,6 +45,9 @@ public class NeutrinoSingerTests
     [InlineData(true, "neutrino_client.exe", "neutrino_server.exe", "neutrino_client.exe", "neutrino.exe", "musicXMLtoLabel.exe")]
     [InlineData(true, "neutrino_client.exe", "neutrino_server.exe", "neutrino_client.exe", "musicXMLtoLabel.exe")]
     [InlineData(false, "neutrino.exe", "neutrino.exe", "musicXMLtoLabel.exe")]
+    // Half a server is none.
+    [InlineData(false, "neutrino.exe", "neutrino_server.exe", "neutrino.exe", "musicXMLtoLabel.exe")]
+    [InlineData(false, "neutrino.exe", "neutrino_client.exe", "neutrino.exe", "musicXMLtoLabel.exe")]
     public void Options_TakeEitherPackage_AndPreferTheServer(bool server, string program, params string[] programs)
     {
         string root = Shaped(programs);
@@ -63,12 +66,7 @@ public class NeutrinoSingerTests
 
     [Theory]
     [InlineData("neither neutrino_server.exe with neutrino_client.exe nor neutrino.exe", "musicXMLtoLabel.exe")]
-    // Half a server is the package with the tuning tool with a program gone: its neutrino.exe is
-    // a stand-in that does not sing (v3.2.6), so the missing half is named and nothing is sung.
-    [InlineData("neutrino_client.exe not found", "neutrino_server.exe", "neutrino.exe", "musicXMLtoLabel.exe")]
-    [InlineData("neutrino_server.exe not found", "neutrino_client.exe", "neutrino.exe", "musicXMLtoLabel.exe")]
-    [InlineData("its neutrino.exe does not sing", "neutrino_client.exe", "neutrino.exe", "musicXMLtoLabel.exe")]
-    [InlineData("neutrino_client.exe not found", "neutrino_server.exe", "musicXMLtoLabel.exe")]
+    [InlineData("neither neutrino_server.exe with neutrino_client.exe nor neutrino.exe", "neutrino_server.exe", "musicXMLtoLabel.exe")]
     [InlineData("musicXMLtoLabel.exe not found", "neutrino.exe")]
     [InlineData("musicXMLtoLabel.exe not found", "neutrino_server.exe", "neutrino_client.exe")]
     public void Options_NameTheProgramThatIsMissing(string said, params string[] programs)

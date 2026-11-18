@@ -485,14 +485,8 @@ export function neutrinoFolderProblems(folder: string, exists: (p: string) => bo
     if (!exists(f)) { return [`the NEUTRINO folder does not exist: ${f}`]; }
     // Either package (the engine's NeutrinoOptions.Validate): the one with the tuning tool has the
     // server and its client, the plain one neutrino.exe alone, which sings without a server.
-    // Half a server is the package with the tuning tool with a program gone: that package's
-    // neutrino.exe is a stand-in that does not sing, so the missing half is named.
     const has = (name: string) => exists(join(f, 'bin', name));
-    const server = has('neutrino_server.exe'), client = has('neutrino_client.exe');
-    if (server !== client) {
-        return [`not a whole NEUTRINO folder: bin\\${server ? 'neutrino_client.exe' : 'neutrino_server.exe'} is missing beside bin\\${server ? 'neutrino_server.exe' : 'neutrino_client.exe'} under ${f} (the package with the tuning tool sings through the two; its neutrino.exe does not sing)`];
-    }
-    if (!server && !has('neutrino.exe')) {
+    if (!(has('neutrino_server.exe') && has('neutrino_client.exe')) && !has('neutrino.exe')) {
         return [`not a NEUTRINO (Tau v3.2+) folder: neither bin\\neutrino_server.exe with bin\\neutrino_client.exe nor bin\\neutrino.exe is under ${f}`];
     }
     for (const file of [['bin', 'musicXMLtoLabel.exe'], ['settings', 'dic']]) {

@@ -62,18 +62,7 @@ public sealed record NeutrinoOptions(string Folder, string Voice = "MERROW")
         {
             problems.Add($"musicXMLtoLabel.exe not found under {BinDir} (NEUTRINO Tau v3.2.x's bin folder is expected)");
         }
-        // Half a server is the package with the tuning tool with a program gone, not the plain
-        // package: that package's neutrino.exe is a 5 KB stand-in that prints its version and
-        // refuses to sing ("this dummy executable only displays version information", v3.2.6),
-        // so it is not fallen back to.
-        bool server = File.Exists(Path.Combine(BinDir, "neutrino_server.exe"));
-        bool client = File.Exists(Path.Combine(BinDir, "neutrino_client.exe"));
-        if (server != client)
-        {
-            problems.Add($"{(server ? "neutrino_client.exe" : "neutrino_server.exe")} not found under {BinDir}, beside {(server ? "neutrino_server.exe" : "neutrino_client.exe")}"
-                + $" (the NEUTRINO package with the tuning tool sings through the two; its {Standalone} does not sing)");
-        }
-        else if (!HasServer && !File.Exists(Path.Combine(BinDir, Standalone)))
+        if (!HasServer && !File.Exists(Path.Combine(BinDir, Standalone)))
         {
             problems.Add($"neither neutrino_server.exe with neutrino_client.exe nor {Standalone} found under {BinDir} (NEUTRINO Tau v3.2.x's bin folder is expected)");
         }
