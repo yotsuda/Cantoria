@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- **Find Engines on This Computer**: a new command that looks where the engines' own programs put them and offers what stands there for the settings: VOICEVOX as its installer leaves it — the engine in its folder, or, with the installer that downloads the engine at first launch, under its user data's `vvpp-engines`, where *Choose VOICEVOX Folder…* had to be pointed by hand — and OpenUtau's `Singers` folder with a vocoder among its dependencies. Nothing is set unasked. *Check Setup* offers it when nothing can sing.
+- **How to Install a Voice opens the steps inside VS Code**: this extension's own README, as a page beside the editor, where it opened the same text on GitHub.
+
 - **One voice a sing: `+` no longer joins voices.** `sing`, `parameters` and `plan` took voices joined by `+` (`neutrino/MERROW+diffsinger/TIGER`) and sang each in turn, mixing the sounds. It was no faster than asking for each, and a caller that asks for each keeps what it sang of one when the other changes, and sets their levels itself. A name with a `+` is now a voice's whole name.
 
 - **The plain NEUTRINO package sings too**: its folder was refused ("neutrino_server.exe is missing") because only the package with the tuning tool (調声支援ツール同梱版) has the server. Without a server each phrase is its own run of `neutrino.exe`, which loads the voice every time: about 3.5 s a phrase on a fast GPU, where the server sings one in well under a second. Where the folder has the server, the server is used as before.

@@ -10,11 +10,12 @@
 
 import * as cp from 'child_process';
 import * as fs from 'fs';
+import * as os from 'os';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import {
     PlanAsk, SingParameter, SingProgress, SingerPlan, planAsked, planOfNoOne,
-    CantoriaScore, DefaultVoices, ENGINES, EngineName, VOICEVOX_URL, VoiceEntry, VoiceGender, defaultVoiceFor, diffSingerEntriesIn, diffSingerVoicesIn, languageProblem, missingProgramNote, needsVoicevox, neutrinoFolderProblems, voicevoxRunIn, programCandidates,
+    CantoriaScore, DefaultVoices, ENGINES, EngineName, VOICEVOX_URL, VoiceEntry, VoiceGender, defaultVoiceFor, diffSingerEntriesIn, diffSingerVoicesIn, findEngines, languageProblem, missingProgramNote, needsVoicevox, neutrinoFolderProblems, voicevoxRunIn, programCandidates,
     resolveSinger, scoreProblems, splitVoiceId, voiceEntriesIn, voiceId, voicesFolderProblems, voicesIn, 
 } from './core';
 import { Engine, EngineSetup, RenderedVoice } from './engine';
@@ -283,9 +284,11 @@ function chooseVocoderFolder(): Promise<void> {
 
 /** The steps to install each engine (the owner asked for a way to be led to them, 2026-11-12):
  *  this extension's README, its Setup section. It took the place of "Get NEUTRINO", one engine's site. */
-const INSTALL_GUIDE = 'https://github.com/yotsuda/Cantoria/blob/main/editors/vscode/README.md#setup';
+let readme: vscode.Uri | undefined;
 const HOW_TO_INSTALL = 'How to Install a Voice';
-function openInstallGuide(): void { void vscode.env.openExternal(vscode.Uri.parse(INSTALL_GUIDE)); }
+/** …shown inside VS Code since 2026-11-18, from the copy this extension carries: the steps do not
+ *  hang on an address (the owner asked). Its links are the engines' own sites. */
+function openInstallGuide(): void { if (readme) { void vscode.commands.executeCommand('markdown.showPreview', readme); } }
 
 /** A default voice from a list: every voice but those that say they are the other gender. */
 async function chooseDefaultVoice(context: vscode.ExtensionContext, gender: VoiceGender): Promise<void> {
@@ -312,6 +315,35 @@ async function chooseDefaultVoice(context: vscode.ExtensionContext, gender: Voic
     vscode.window.setStatusBarMessage(`Cantoria: the default ${gender} voice is ${pick.label}`, 4000);
 }
 
+const FIND_ENGINES = 'Find Engines on This Computer';
+
+/**
+ * Looks where the engines' own programs put them (core's findEngines) and offers what stands
+ * there for the settings that are empty or name something else: VOICEVOX as its installer left
+ * it, OpenUtau's DiffSinger voices and a vocoder among its dependencies. Nothing is set unasked.
+ */
+async function findEnginesHere(): Promise<void> {
+    const found = findEngines(process.platform, os.homedir(), process.env, listDirs, fs.existsSync, path.join);
+    const names: Record<keyof typeof found, string> = { voicevoxFolder: 'VOICEVOX', voicesFolder: 'DiffSinger voices (OpenUtau\'s Singers)', vocoderFolder: 'DiffSinger vocoder (among OpenUtau\'s Dependencies)' };
+    const fresh = (Object.keys(found) as (keyof typeof found)[]).filter(key => settings().get<string>(key, '').trim() !== found[key]);
+    output.appendLine(`find engines: ${(Object.keys(found) as (keyof typeof found)[]).map(key => `${key} ${found[key]}`).join('; ') || 'none where their programs put them'}`);
+    if (fresh.length === 0) {
+        const all = Object.keys(found).length;
+        const choice = await vscode.window.showInformationMessage(all > 0
+            ? 'Cantoria: the engines found on this computer are the ones already set.'
+            : 'Cantoria: no engine stands where its own program puts it. VOICEVOX is looked for as its installer leaves it, DiffSinger voices in OpenUtau\'s Singers folder; NEUTRINO, and anything unpacked elsewhere, is chosen by its folder.', HOW_TO_INSTALL);
+        if (choice === HOW_TO_INSTALL) { openInstallGuide(); }
+        return;
+    }
+    const picks = await vscode.window.showQuickPick(
+        fresh.map(key => ({ label: names[key], description: found[key], picked: true, key })),
+        { canPickMany: true, title: 'Cantoria: Engines Found on This Computer', placeHolder: 'The ones to sing with' });
+    for (const pick of picks ?? []) {
+        await settings().update(pick.key, found[pick.key], vscode.ConfigurationTarget.Global);
+    }
+    if (picks?.length) { vscode.window.setStatusBarMessage(`Cantoria: ${picks.map(p => p.label).join(', ')} set`, 5000); }
+}
+
 async function checkSetup(context: vscode.ExtensionContext): Promise<void> {
     const s = await status(context);
     output.appendLine(`setup: program ${s.program ?? 'none'}; NEUTRINO ${s.neutrinoFolder || 'not set'}; DiffSinger voices ${s.voicesFolder || 'not set'}; voice ${s.voice}; installed ${s.voices.join(', ') || 'none'}; ${s.ready ? 'ready' : s.problems.join('; ')}`);
@@ -321,8 +353,9 @@ async function checkSetup(context: vscode.ExtensionContext): Promise<void> {
         return;
     }
     const neutrino = 'Choose NEUTRINO Folder…', ds = 'Choose Voices Folder…', log = 'Show Output';
-    const choice = await vscode.window.showWarningMessage(`Cantoria cannot sing yet: ${s.problems[0]}`, HOW_TO_INSTALL, neutrino, ds, log);
-    if (choice === neutrino) { await chooseNeutrinoFolder(); }
+    const choice = await vscode.window.showWarningMessage(`Cantoria cannot sing yet: ${s.problems[0]}`, HOW_TO_INSTALL, FIND_ENGINES, neutrino, ds, log);
+    if (choice === FIND_ENGINES) { await findEnginesHere(); }
+    else if (choice === neutrino) { await chooseNeutrinoFolder(); }
     else if (choice === ds) { await chooseVoicesFolder(); }
     else if (choice === HOW_TO_INSTALL) { openInstallGuide(); }
     else if (choice === log) { output.show(); }
@@ -331,6 +364,7 @@ async function checkSetup(context: vscode.ExtensionContext): Promise<void> {
 export function activate(context: vscode.ExtensionContext): CantoriaApi {
     output = vscode.window.createOutputChannel('Cantoria');
     storage = context.globalStorageUri.fsPath;
+    readme = vscode.Uri.joinPath(context.extensionUri, 'README.md');
     context.subscriptions.push(
         output,
         vscode.commands.registerCommand('cantoria.chooseNeutrinoFolder', () => chooseNeutrinoFolder()),
@@ -341,6 +375,7 @@ export function activate(context: vscode.ExtensionContext): CantoriaApi {
         vscode.commands.registerCommand('cantoria.chooseMaleVoice', () => chooseDefaultVoice(context, 'male')),
         vscode.commands.registerCommand('cantoria.checkSetup', () => checkSetup(context)),
         vscode.commands.registerCommand('cantoria.installGuide', () => openInstallGuide()),
+        vscode.commands.registerCommand('cantoria.findEngines', () => findEnginesHere()),
         vscode.commands.registerCommand('cantoria.forgetVoices', () => {
             release();      // the engine holds phrases in memory too
             const n = new Engine({ program: '', neutrinoFolder: '', voicesFolder: '', vocoderFolder: '', gpu: true, threads: 1, cacheSizeMB: 0 }, path.join(storage, 'voices'), () => undefined).forget();

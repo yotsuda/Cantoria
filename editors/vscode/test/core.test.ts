@@ -9,6 +9,7 @@ import {
     ENGINES, characterNameOf, diffSingerEntriesIn, diffSingerSpeakersOf, diffSingerVoicesIn, languageProblem, languageTag, missingProgramNote, neutrinoFolderProblems, parseLine, programCandidates,
     planAsked, planLine, planOfNoOne,
     cancelLine, defaultVoiceFor, firstOfGender, genderOfWord, requestLine, resolveSinger, rid, scoreProblems, serveArgs, speakerOf, splitVoiceId, voiceEntriesIn, voiceId, voiceKey, voicesFolderProblems, voicesIn, voicevoxEntriesFrom, vsixTarget,
+    findEngines,
 } from '../src/core';
 import { DIFFSINGER_GENDERS, diffSingerGender } from '../src/diffSingerGenders';
 import { VOICEVOX_GENDERS, voicevoxGender } from '../src/voicevoxGenders';
@@ -383,10 +384,58 @@ describe('the manifest', () => {
         assert.match(props['cantoria.vocoderFolder'].markdownDescription, /command:cantoria\.chooseVocoderFolder/);
     });
 
-    it('contributes the nine commands and starts on nothing but them and the API', () => {
-        assert.deepEqual(commands.sort(), ['cantoria.checkSetup', 'cantoria.chooseFemaleVoice', 'cantoria.chooseMaleVoice', 'cantoria.chooseNeutrinoFolder', 'cantoria.chooseVocoderFolder', 'cantoria.chooseVoicesFolder', 'cantoria.chooseVoicevoxFolder', 'cantoria.forgetVoices', 'cantoria.installGuide']);
+    it('contributes the ten commands and starts on nothing but them and the API', () => {
+        assert.deepEqual(commands.sort(), ['cantoria.checkSetup', 'cantoria.chooseFemaleVoice', 'cantoria.chooseMaleVoice', 'cantoria.chooseNeutrinoFolder', 'cantoria.chooseVocoderFolder', 'cantoria.chooseVoicesFolder', 'cantoria.chooseVoicevoxFolder', 'cantoria.findEngines', 'cantoria.forgetVoices', 'cantoria.installGuide']);
         assert.deepEqual(manifest.activationEvents, []);
         assert.equal(manifest.main, './out/extension.js');
         assert.equal(manifest.license, 'Apache-2.0');
+    });
+});
+
+// "Find Engines on This Computer" (the owner asked, 2026-11-18): the places are the engines' own
+// programs' - VOICEVOX's README and main.ts, OpenUtau's PathManager - and nothing else is looked in.
+describe('finding the engines where their programs put them', () => {
+    const H = 'C:\\Users\\u';
+    const env = { LOCALAPPDATA: `${H}\\AppData\\Local`, APPDATA: `${H}\\AppData\\Roaming` };
+    const world = (files: string[], sep: string) => {
+        const set = new Set(files);
+        const exists = (p: string) => set.has(p) || files.some(f => f.startsWith(p + sep));
+        const listDirs = (dir: string) => [...new Set(files.filter(f => f.startsWith(dir + sep)).map(f => f.slice(dir.length + 1).split(sep)).filter(parts => parts.length > 1).map(parts => parts[0]))];
+        return { exists, listDirs };
+    };
+    const find = (files: string[], platform = 'win32', home = H, e: Record<string, string | undefined> = env) => {
+        const sep = platform === 'win32' ? '\\' : '/';
+        const w = world(files, sep);
+        return findEngines(platform, home, e, w.listDirs, w.exists, (...p: string[]) => p.join(sep));
+    };
+
+    it('finds nothing on a computer with none, and never NEUTRINO', () => {
+        assert.deepEqual(find([]), {});
+        assert.deepEqual(find(['C:\\NEUTRINO\\bin\\neutrino.exe', `${H}\\Documents\\OpenUtau\\Singers\\utau\\oto.ini`]), {});
+    });
+
+    it('finds VOICEVOX as its installer leaves it: the engine in the folder, or downloaded into its user data', () => {
+        assert.deepEqual(find([`${env.LOCALAPPDATA}\\Programs\\VOICEVOX\\vv-engine\\run.exe`]), { voicevoxFolder: `${env.LOCALAPPDATA}\\Programs\\VOICEVOX` });
+        const downloaded = `${env.APPDATA}\\voicevox\\vvpp-engines\\VOICEVOX_Engine+074f`;
+        assert.deepEqual(find([`${downloaded}\\run.exe`]), { voicevoxFolder: downloaded });
+        // The folder's own engine first; a folder of the downloads that holds no engine is passed over.
+        assert.equal(find([`${env.LOCALAPPDATA}\\Programs\\VOICEVOX\\vv-engine\\run.exe`, `${downloaded}\\run.exe`]).voicevoxFolder, `${env.LOCALAPPDATA}\\Programs\\VOICEVOX`);
+        assert.deepEqual(find([`${env.APPDATA}\\voicevox\\vvpp-engines\\half\\engine_manifest.json`]), {});
+    });
+
+    it('finds OpenUtau\'s DiffSinger voices and a vocoder among its dependencies', () => {
+        const data = `${H}\\Documents\\OpenUtau`;
+        assert.deepEqual(find([`${data}\\Singers\\TIGER\\dsconfig.yaml`, `${data}\\Dependencies\\nsf_hifigan\\vocoder.yaml`, `${data}\\Dependencies\\other\\readme.txt`]),
+            { voicesFolder: `${data}\\Singers`, vocoderFolder: `${data}\\Dependencies\\nsf_hifigan` });
+        // Documents kept in OneDrive.
+        assert.deepEqual(find([`${H}\\OneDrive\\Documents\\OpenUtau\\Singers\\TIGER\\dsconfig.yaml`]), { voicesFolder: `${H}\\OneDrive\\Documents\\OpenUtau\\Singers` });
+    });
+
+    it('looks in each system\'s own places', () => {
+        assert.deepEqual(find(['/Applications/VOICEVOX.app/Contents/Resources/vv-engine/run', '/Users/u/Library/OpenUtau/Singers/T/dsconfig.yaml'], 'darwin', '/Users/u', {}),
+            { voicevoxFolder: '/Applications/VOICEVOX.app/Contents/Resources', voicesFolder: '/Users/u/Library/OpenUtau/Singers' });
+        assert.deepEqual(find(['/home/u/.config/voicevox/vvpp-engines/e/run', '/home/u/.local/share/OpenUtau/Singers/T/dsconfig.yaml'], 'linux', '/home/u', {}),
+            { voicevoxFolder: '/home/u/.config/voicevox/vvpp-engines/e', voicesFolder: '/home/u/.local/share/OpenUtau/Singers' });
+        assert.deepEqual(find(['/data/OpenUtau/Singers/T/dsconfig.yaml'], 'linux', '/home/u', { XDG_DATA_HOME: '/data' }), { voicesFolder: '/data/OpenUtau/Singers' });
     });
 });

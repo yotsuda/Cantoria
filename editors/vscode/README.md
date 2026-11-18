@@ -16,7 +16,14 @@ their own.
 ## Setup
 
 Three engines; set up any of them. A voice is named `engine/name`. **Cantoria: How to Install a
-Voice** opens this section, and so does the button of that name where Cantoria says it has no voice.
+Voice** opens this page inside VS Code, and so does the button of that name where Cantoria says it
+has no voice.
+
+**Cantoria: Find Engines on This Computer** looks where the engines' own programs put them and
+offers what it finds, so that no folder has to be looked for: VOICEVOX as its installer leaves it
+(the engine in its folder, or the one it downloads into its user data), and OpenUtau's `Singers`
+folder with a vocoder among its dependencies. NEUTRINO, and anything you unpacked somewhere of your
+own, is chosen by its folder as below.
 
 **DiffSinger** (voices in the OpenUtau format, each a folder with a `dsconfig.yaml`):
 1. Download a voice from its author, under the author's terms, and unpack it so that it is a
@@ -26,7 +33,7 @@ Voice** opens this section, and so does the button of that name where Cantoria s
 3. A voice with no `dsvocoder` folder of its own needs a vocoder, the part that turns what the
    voice computes into sound. Download the `.oudep` file of the one the voice's readme names (for
    `nsf_hifigan`, the usual one, `nsf_hifigan_44.1k_hop512_128bin_2024.02.oudep`) from the
-   [DiffSinger community vocoders](https://github.com/openvpi/vocoders/releases), rename it to
+   [DiffSinger community vocoders](https://github.com/openvpi/vocoders) (their releases), rename it to
    `.zip`, unpack it into a folder, and choose that folder with **Cantoria: Choose Vocoder
    Folder…**. The vocoders have terms of their own, in the `NOTICE.txt` they come with.
 4. Name the voice by its folder: `diffsinger/TIGER`.
@@ -51,7 +58,10 @@ as a voice of its own, such as `diffsinger/TIGER/tiger_disco`.
 1. Install **VOICEVOX** from [voicevox.hiroshiba.jp](https://voicevox.hiroshiba.jp/). It is not part
    of this extension. You use it under [its terms](https://voicevox.hiroshiba.jp/term/), each
    character has its own, and a published work credits `VOICEVOX:name`.
-2. **Cantoria: Choose VOICEVOX Folder…**: the folder holding `vv-engine`. Cantoria then starts the
+2. **Cantoria: Find Engines on This Computer** finds an installed VOICEVOX; or **Cantoria: Choose
+   VOICEVOX Folder…**: the folder holding `vv-engine` (a zip, or an installer that brings the
+   engine), or the engine's own folder, the one holding `run.exe` (the installer that downloads
+   the engine keeps it in its user data, under `vvpp-engines`). Cantoria then starts the
    engine when one of its voices is needed, on a port of its own, and stops it when VS Code closes.
    A VOICEVOX you opened yourself is used and left alone. Without the folder, only a VOICEVOX you
    have opened sings (`cantoria.voicevoxUrl` says where it answers).

@@ -249,6 +249,48 @@ export function voicevoxRunIn(folder: string, exists: (p: string) => boolean, jo
     return [join(folder, 'vv-engine', 'run.exe'), join(folder, 'run.exe'), join(folder, 'vv-engine', 'run'), join(folder, 'run')].find(exists);
 }
 
+/** What "Find Engines on This Computer" found: a folder for each setting it could fill. */
+export interface FoundEngines { voicevoxFolder?: string; voicesFolder?: string; vocoderFolder?: string }
+
+/**
+ * The engines that stand where their own programs put them (owner's request 2026-11-18: one step
+ * less on the way to a first voice), so that no folder has to be looked for:
+ * - VOICEVOX: the installer's folder, whose engine is `vv-engine` (its README: "Windows でインストール先を
+ *   変更していない場合は %LOCALAPPDATA%/Programs/VOICEVOX/vv-engine/run.exe"; a Mac's is under the app's
+ *   `Contents/Resources`), and — the installer that downloads the engine at first launch, 0.26 —
+ *   a folder of its user data's `vvpp-engines` (its main.ts: `path.join(app.getPath("userData"),
+ *   "vvpp-engines")`; user data is the platform's application data, `voicevox`).
+ * - DiffSinger: OpenUtau's `Singers` (its PathManager: Documents\OpenUtau on Windows once installed,
+ *   ~/Library/OpenUtau on a Mac, $XDG_DATA_HOME or ~/.local/share/OpenUtau on Linux), where it
+ *   holds a DiffSinger voice; and a vocoder among its `Dependencies`.
+ * NEUTRINO is unpacked wherever its user likes: it has no place to look in.
+ * `home` is the user's folder; `env` the environment's variables that name the others.
+ */
+export function findEngines(platform: string, home: string, env: Record<string, string | undefined>,
+    listDirs: (dir: string) => string[], exists: (p: string) => boolean, join: (...parts: string[]) => string): FoundEngines {
+    const found: FoundEngines = {};
+    const local = env.LOCALAPPDATA ?? join(home, 'AppData', 'Local'), roaming = env.APPDATA ?? join(home, 'AppData', 'Roaming');
+    const installs = platform === 'win32' ? [join(local, 'Programs', 'VOICEVOX')]
+        : platform === 'darwin' ? ['/Applications/VOICEVOX.app/Contents/Resources', join(home, 'Applications', 'VOICEVOX.app', 'Contents', 'Resources')]
+        : [];
+    const userData = platform === 'win32' ? join(roaming, 'voicevox')
+        : platform === 'darwin' ? join(home, 'Library', 'Application Support', 'voicevox')
+        : join(env.XDG_CONFIG_HOME ?? join(home, '.config'), 'voicevox');
+    const downloaded = join(userData, 'vvpp-engines');
+    found.voicevoxFolder = [...installs, ...listDirs(downloaded).sort().map(name => join(downloaded, name))]
+        .find(folder => voicevoxRunIn(folder, exists, join) !== undefined);
+
+    const openUtau = platform === 'win32' ? [join(home, 'Documents', 'OpenUtau'), join(home, 'OneDrive', 'Documents', 'OpenUtau')]
+        : platform === 'darwin' ? [join(home, 'Library', 'OpenUtau')]
+        : [join(env.XDG_DATA_HOME ?? join(home, '.local', 'share'), 'OpenUtau')];
+    found.voicesFolder = openUtau.map(data => join(data, 'Singers'))
+        .find(singers => diffSingerVoicesIn(singers, listDirs, exists, join).length > 0);
+    found.vocoderFolder = openUtau.flatMap(data => listDirs(join(data, 'Dependencies')).sort().map(name => join(data, 'Dependencies', name)))
+        .find(folder => exists(join(folder, 'vocoder.yaml')));
+    for (const key of Object.keys(found) as (keyof FoundEngines)[]) { if (found[key] === undefined) { delete found[key]; } }
+    return found;
+}
+
 /** Whether a score's `singer` calls for a VOICEVOX voice: it names one, or it names none and the
  *  default voice is one, or nothing else is installed. No `language`: no words are being sung. */
 export function needsVoicevox(written: string, defaults: DefaultVoices, otherVoices: number, language: string | undefined): boolean {

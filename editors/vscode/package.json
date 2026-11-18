@@ -173,6 +173,11 @@
         "title": "Check Setup"
       },
       {
+        "command": "cantoria.findEngines",
+        "category": "Cantoria",
+        "title": "Find Engines on This Computer"
+      },
+      {
         "command": "cantoria.installGuide",
         "category": "Cantoria",
         "title": "How to Install a Voice"
