@@ -83,7 +83,7 @@
               "type": "string",
               "default": "",
               "scope": "machine-overridable",
-              "markdownDescription": "A vocoder folder (holding `vocoder.yaml` and its model) for DiffSinger voices that bundle none. Most voices bundle their own; leave this empty then.\n\n**[Choose the folder…](command:cantoria.chooseVocoderFolder)**"
+              "markdownDescription": "**Optional.** A vocoder folder (holding `vocoder.yaml` and its model) for DiffSinger voices that bundle none. Most voices bundle their own; leave this empty then.\n\n**[Choose the folder…](command:cantoria.chooseVocoderFolder)**"
             }
         }
       },
