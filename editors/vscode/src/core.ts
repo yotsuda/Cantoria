@@ -263,6 +263,10 @@ export interface FoundEngines { voicevoxFolder?: string; voicesFolder?: string; 
  * - DiffSinger: OpenUtau's `Singers` (its PathManager: Documents\OpenUtau on Windows once installed,
  *   ~/Library/OpenUtau on a Mac, $XDG_DATA_HOME or ~/.local/share/OpenUtau on Linux), where it
  *   holds a DiffSinger voice; and a vocoder among its `Dependencies`.
+ *   SEEN 2026-11-18 with VOICEVOX.Web.Setup.0.26.3.exe: installed to %LOCALAPPDATA%\Programs\VOICEVOX
+ *   with no vv-engine in it, and at its first start the engine came down to
+ *   %APPDATA%\voicevox\vvpp-engines\VOICEVOX_Engine+<uuid>\run.exe (its manifest's command is
+ *   run.exe); this function found that folder, and the engine started from it answered /singers.
  * NEUTRINO is unpacked wherever its user likes: it has no place to look in.
  * `home` is the user's folder; `env` the environment's variables that name the others.
  */
