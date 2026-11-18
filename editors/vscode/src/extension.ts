@@ -155,7 +155,7 @@ function setupNow(context: vscode.ExtensionContext): { setup?: EngineSetup; prob
     const n = neutrinoFolder(), d = voicesFolder();
     const problems: string[] = [];
     if (!prog) { problems.push(missingProgramNote(process.platform, process.arch, bundledBuilds(context))); }
-    if (!n && !d && voicevox.voices.length === 0 && !voicevoxFolder()) { problems.push('no engine is set up: choose a NEUTRINO folder (Cantoria: Choose NEUTRINO Folder…) or a DiffSinger voices folder (Cantoria: Choose Voices Folder…), or start VOICEVOX'); }
+    if (!n && !d && voicevox.voices.length === 0 && !voicevoxFolder()) { problems.push('no engine is set up: choose a DiffSinger voices folder (Cantoria: Choose Voices Folder…) or a NEUTRINO folder (Cantoria: Choose NEUTRINO Folder…), or start VOICEVOX'); }
     problems.push(...neutrinoFolderProblems(n, fs.existsSync, path.join, process.platform));
     problems.push(...voicesFolderProblems(d, fs.existsSync));
     if (problems.length > 0) { return { problems, program: prog }; }
