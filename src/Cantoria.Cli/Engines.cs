@@ -216,7 +216,11 @@ sealed class Engines
     }
 
     private PhrasedSinger Phrased(ISinger inner, Action<SungScore> check, string revision = "")
-        => new(inner, check, PhraseFolder is { } folder ? new PhraseDisk(folder, inner.Name + revision) : null);
+        => new(inner, check, PhraseFolder is { } folder ? new PhraseDisk(folder, inner.Name + revision) : null, Left);
+
+    /// <summary>The phrase let go of mid-song, one for all the voices these engines sing: the next
+    /// score in any voice settles it (LeftPhrase).</summary>
+    public LeftPhrase Left { get; } = new();
 
     private static void RefuseWhatIsNotKana(SungScore score)
     {

@@ -14,8 +14,12 @@ namespace Cantoria;
 /// <param name="check">Throws <see cref="SingerException"/> for what is wrong with the whole score,
 /// before any phrase is sung, so that the message speaks of the score and not of one phrase.</param>
 /// <param name="disk">Where phrases are kept beyond this engine's life; null keeps them in memory only.</param>
-public sealed class PhrasedSinger(ISinger inner, Action<SungScore>? check = null, PhraseDisk? disk = null) : ISinger, ISingParameters, IDisposable
+/// <param name="left">Where a phrase let go of mid-song waits for the next score's word (<see cref="LeftPhrase"/>):
+/// one shared by the singers of an engine process; null, this singer's own.</param>
+public sealed class PhrasedSinger(ISinger inner, Action<SungScore>? check = null, PhraseDisk? disk = null, LeftPhrase? left = null) : ISinger, ISingParameters, IDisposable
 {
+    private readonly LeftPhrase _left = left ?? new LeftPhrase();
+
     /// <summary>The settings the engine behind takes: none, unless it says some.</summary>
     public IReadOnlyList<SingParameter> Parameters => (inner as ISingParameters)?.Parameters ?? [];
 
@@ -68,11 +72,7 @@ public sealed class PhrasedSinger(ISinger inner, Action<SungScore>? check = null
         await _oneAtATime.WaitAsync(ct).ConfigureAwait(false);
         try
         {
-            // Every phrase is looked up first, so that what there is to sing ANEW is known before
-            // the first is sung (SingReport): the phrases kept from before are held here meanwhile.
-            // A phrase the score has twice is sung once: its second place waits for the first (Again).
-            var asked = new List<(double Start, double Seconds, List<SungNote> Notes, PhraseKey Key, SungPhrase? Kept, bool Again, Dictionary<string, SingValue> Sing)>();
-            var fresh = new List<PhraseKey>();
+            var phrases = new List<(double Start, double Seconds, List<SungNote> Notes, PhraseKey Key, Dictionary<string, SingValue> Sing)>();
             foreach (var (first, count) in cuts)
             {
                 int from = words[first].First, to = words[first + count - 1].Last;
@@ -87,13 +87,27 @@ public sealed class PhrasedSinger(ISinger inner, Action<SungScore>? check = null
                     phrase.Select(n => $"{n.Lyric}|{n.Melisma}|{n.Inhale}|{n.Hyphen}").ToList(),
                     phrase.Select(n => new PhraseNote(n.Start, n.Duration, n.Pitch, n.Breath)).ToList(),
                     null);
-                var kept = _phrases.TryGet(key, out var found) ? found : null;
+                phrases.Add((start, notes[to].End - start, phrase, key, sing));
+            }
+
+            // A phrase an earlier score was let go of in the middle of: finished and kept if this
+            // score sings it, stopped if not (LeftPhrase).
+            await _left.Settle(this, held => phrases.Any(p => p.Key.SameAs(held))).ConfigureAwait(false);
+
+            // Every phrase is looked up first, so that what there is to sing ANEW is known before
+            // the first is sung (SingReport): the phrases kept from before are held here meanwhile.
+            // A phrase the score has twice is sung once: its second place waits for the first (Again).
+            var asked = new List<(double Start, double Seconds, List<SungNote> Notes, PhraseKey Key, SungPhrase? Kept, bool Again, Dictionary<string, SingValue> Sing)>();
+            var fresh = new List<PhraseKey>();
+            foreach (var (start, seconds, phrase, key, sing) in phrases)
+            {
+                var kept = Kept(key);
                 bool again = kept is null && fresh.Any(k => k.SameAs(key));
                 if (kept is null && !again)
                 {
                     fresh.Add(key);
                 }
-                asked.Add((start, notes[to].End - start, phrase, key, kept, again, sing));
+                asked.Add((start, seconds, phrase, key, kept, again, sing));
             }
             double toSing = asked.Where(a => a.Kept is null && !a.Again).Sum(a => a.Seconds), done = 0;
             SingReport.Tell(toSing, 0);
@@ -102,13 +116,34 @@ public sealed class PhrasedSinger(ISinger inner, Action<SungScore>? check = null
             foreach (var (start, seconds, phrase, key, kept, again, sing) in asked)
             {
                 ct.ThrowIfCancellationRequested();
-                var sung = kept ?? (again && _phrases.TryGet(key, out var first) ? first : null);
+                var sung = kept ?? (again ? Kept(key) : null);
                 if (sung is null)
                 {
-                    // A phrase begun is finished and kept: asked to stop, the score stops at the next phrase.
-                    var audio = await inner.SingAsync(score with { Notes = phrase, Sing = sing.Count > 0 ? sing : null }, CancellationToken.None).ConfigureAwait(false);
-                    sung = new SungPhrase(audio.Samples, -Lead * 1000, audio.SampleRate);
-                    _phrases.Add(key, sung);
+                    // Asked to stop mid-phrase, the score stops now and the phrase goes on being
+                    // sung, for the next score to take or stop (LeftPhrase): an edit elsewhere
+                    // still finds it kept, and an engine minutes over a phrase is not kept on it
+                    // for a text nobody asks for (owner's decision 2026-11-18; until then a phrase
+                    // begun was always finished).
+                    var stop = new CancellationTokenSource();
+                    var singing = SingPhrase(key, score with { Notes = phrase, Sing = sing.Count > 0 ? sing : null }, stop.Token);
+                    bool held = false;
+                    try
+                    {
+                        sung = await singing.WaitAsync(ct).ConfigureAwait(false);
+                    }
+                    catch (OperationCanceledException) when (ct.IsCancellationRequested)
+                    {
+                        _left.Hold(this, key, singing, stop);
+                        held = true;
+                        throw;
+                    }
+                    finally
+                    {
+                        if (!held)
+                        {
+                            stop.Dispose();
+                        }
+                    }
                     done = Math.Min(toSing, done + seconds);
                     SingReport.Tell(toSing, done);
                 }
@@ -123,6 +158,28 @@ public sealed class PhrasedSinger(ISinger inner, Action<SungScore>? check = null
         }
     }
 
+    /// <summary>The phrase kept for <paramref name="key"/>, or null. (A phrase let go of is added
+    /// from its own thread: the cache is taken a caller at a time.)</summary>
+    private SungPhrase? Kept(PhraseKey key)
+    {
+        lock (_phrases)
+        {
+            return _phrases.TryGet(key, out var found) ? found : null;
+        }
+    }
+
+    /// <summary>Sings one phrase and keeps it; <paramref name="stop"/> stops it unkept.</summary>
+    private async Task<SungPhrase> SingPhrase(PhraseKey key, SungScore phrase, CancellationToken stop)
+    {
+        var audio = await inner.SingAsync(phrase, stop).ConfigureAwait(false);
+        var sung = new SungPhrase(audio.Samples, -Lead * 1000, audio.SampleRate);
+        lock (_phrases)
+        {
+            _phrases.Add(key, sung);
+        }
+        return sung;
+    }
+
     /// <summary>True when <paramref name="next"/> cannot begin a phrase: it goes on with the vowel or
     /// the word of the note before, or the note before takes a breath into it.</summary>
     private static bool CarriesOn(SungNote before, SungNote next)
@@ -130,6 +187,8 @@ public sealed class PhrasedSinger(ISinger inner, Action<SungScore>? check = null
 
     public void Dispose()
     {
+        // A phrase of this singer's still being sung is stopped before its engine goes.
+        _left.Settle(this, _ => false, onlyMine: true).GetAwaiter().GetResult();
         (inner as IDisposable)?.Dispose();
         _oneAtATime.Dispose();
     }

@@ -230,6 +230,123 @@ public class PhrasedSingerTests
         Assert.Equal(2, stopped.Sung);      // the first phrase was kept: only the second is sung
     }
 
+    /// <summary>Sings a phrase only when let (<see cref="Let"/>); stopped meanwhile, it throws as an engine killed would.</summary>
+    private sealed class Slow : ISinger
+    {
+        private readonly TaskCompletionSource _let = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public List<string?> Begun { get; } = [];
+        public List<string?> Stopped { get; } = [];
+        public string Name => "fake/slow";
+
+        public void Let() => _let.TrySetResult();
+
+        public async Task<SungAudio> SingAsync(SungScore score, CancellationToken ct = default)
+        {
+            lock (Begun) { Begun.Add(score.Notes[0].Lyric); }
+            try
+            {
+                await _let.Task.WaitAsync(ct);
+            }
+            catch (OperationCanceledException)
+            {
+                lock (Stopped) { Stopped.Add(score.Notes[0].Lyric); }
+                throw;
+            }
+            return new SungAudio(new float[(int)(score.End * Rate)], Rate);
+        }
+    }
+
+    private static async Task Until(Func<bool> done)
+    {
+        for (int i = 0; i < 500 && !done(); i++)
+        {
+            await Task.Delay(10);
+        }
+        Assert.True(done());
+    }
+
+    // Owner's report 2026-11-18: NEUTRINO on a CPU took minutes over a phrase, and every edit
+    // meanwhile waited for it. Let go of mid-phrase, the score ends at once; the phrase is the
+    // next score's to take, if it sings it.
+    [Fact]
+    public async Task LetGoMidPhrase_TheNextScoreThatSingsIt_TakesIt()
+    {
+        var slow = new Slow();
+        using var singer = new PhrasedSinger(slow);
+        using var stop = new CancellationTokenSource();
+        var first = singer.SingAsync(new SungScore([.. Phrase(0, "か", "き"), .. Phrase(2, "さ", "し")]), stop.Token);
+        await Until(() => slow.Begun.Count == 1);
+        stop.Cancel();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => first);
+
+        // The same first phrase, another second one: the first is finished, not sung again.
+        var second = singer.SingAsync(new SungScore([.. Phrase(0, "か", "き"), .. Phrase(2, "た", "ち")]));
+        slow.Let();
+        await second;
+        Assert.Equal(["か", "た"], slow.Begun);
+        Assert.Empty(slow.Stopped);
+    }
+
+    [Fact]
+    public async Task LetGoMidPhrase_TheNextScoreThatDoesNotSingIt_StopsIt()
+    {
+        var slow = new Slow();
+        using var singer = new PhrasedSinger(slow);
+        using var stop = new CancellationTokenSource();
+        var first = singer.SingAsync(new SungScore(Phrase(0, "か", "き")), stop.Token);
+        await Until(() => slow.Begun.Count == 1);
+        stop.Cancel();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => first);
+
+        var second = singer.SingAsync(new SungScore(Phrase(0, "な", "に")));
+        await Until(() => slow.Begun.Count == 2);
+        Assert.Equal(["か"], slow.Stopped);
+        slow.Let();
+        await second;
+
+        // Stopped, it was not kept: a score that sings it again sings it.
+        await singer.SingAsync(new SungScore(Phrase(0, "か", "き")));
+        Assert.Equal(["か", "な", "か"], slow.Begun);
+    }
+
+    // The engine sings one score at a time: a score in another voice stops the phrase too, rather
+    // than be sung beside it.
+    [Fact]
+    public async Task LetGoMidPhrase_AScoreInAnotherVoice_StopsIt()
+    {
+        var left = new LeftPhrase();
+        var slow = new Slow();
+        using var one = new PhrasedSinger(slow, left: left);
+        using var other = new PhrasedSinger(new Fake(), left: left);
+        using var stop = new CancellationTokenSource();
+        var first = one.SingAsync(new SungScore(Phrase(0, "か", "き")), stop.Token);
+        await Until(() => slow.Begun.Count == 1);
+        stop.Cancel();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => first);
+
+        await other.SingAsync(new SungScore(Phrase(0, "か", "き")));
+        Assert.Equal(["か"], slow.Stopped);
+    }
+
+    // Nobody asking after it, the phrase is finished and kept.
+    [Fact]
+    public async Task LetGoMidPhrase_AndLeftAlone_IsFinishedAndKept()
+    {
+        var slow = new Slow();
+        using var singer = new PhrasedSinger(slow);
+        using var stop = new CancellationTokenSource();
+        var first = singer.SingAsync(new SungScore(Phrase(0, "か", "き")), stop.Token);
+        await Until(() => slow.Begun.Count == 1);
+        stop.Cancel();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => first);
+        slow.Let();
+        await Task.Delay(50);
+
+        await singer.SingAsync(new SungScore([.. Phrase(0, "か", "き"), .. Phrase(2, "さ", "し")]));
+        Assert.Equal(["か", "さ"], slow.Begun);
+        Assert.Empty(slow.Stopped);
+    }
+
     [Fact]
     public async Task AnUnsoundScore_IsRefused()
     {

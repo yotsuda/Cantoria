@@ -16,11 +16,26 @@ public sealed record NeutrinoOptions(string Folder, string Voice = "MERROW")
     /// <summary>Ask for the GPU (<c>-m</c>); NEUTRINO falls back to the CPU without one.</summary>
     public bool UseGpu { get; init; } = true;
 
-    /// <summary>The first render loads the models (about 45 s on a GPU, longer on a CPU).</summary>
-    public TimeSpan FirstRenderTimeout { get; init; } = TimeSpan.FromMinutes(5);
+    /// <summary>
+    /// How long a render of <paramref name="seconds"/> of song may take before it is taken for
+    /// hung and stopped: room for the models to load, and the song at <paramref name="pace"/> (the
+    /// seconds a second of song took when last timed) three times over; a NEUTRINO not yet timed
+    /// is given a CPU's pace. A fixed time failed every render on a machine with no GPU: five
+    /// minutes, where 37 s of song took 5 min 40 s (MEASURED 2026-11-18, Intel Iris Xe, plain
+    /// v3.2.2, MERROW, -n 4: NEUTRINO's -m falls back to the CPU; a GPU sings it in seconds).
+    /// </summary>
+    public static TimeSpan RenderAllowance(double seconds, double? pace)
+        => TimeSpan.FromSeconds(LoadAllowanceSeconds + Math.Max(0, seconds) * (pace ?? UntimedPace) * 3);
 
-    /// <summary>Renders after the first (about 0.1× real time on a GPU; slower on a CPU).</summary>
-    public TimeSpan RenderTimeout { get; init; } = TimeSpan.FromMinutes(3);
+    /// <summary>What a render is allowed (<see cref="RenderAllowance"/>, the seconds of song and
+    /// the pace as last timed): another for a test of what a render out of time leaves behind.</summary>
+    public Func<double, double?, TimeSpan> Allowance { get; init; } = RenderAllowance;
+
+    /// <summary>The models loading: about 45 s on a GPU, the first time.</summary>
+    private const double LoadAllowanceSeconds = 120;
+
+    /// <summary>A CPU's pace, as measured above (341 s for 37 s, the models' loading in it), rounded up.</summary>
+    private const double UntimedPace = 12;
 
     /// <summary>Leave the MusicXML, labels and WAV in the work folder, for a look.</summary>
     public bool KeepFiles { get; init; }

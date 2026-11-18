@@ -97,7 +97,8 @@ static int Help(int code)
           {"command":"plan","asked":[{"gender":"female","language":"la"}],"defaults":{"female":"","male":""}}
                                             → {"id":"3","plan":{"ready":false,"singers":[…]}}   (as plan --json;
                                             or "score"/"scoreFile" with "voice", "gender"; "defaults" optional)
-          {"command":"cancel","id":"1"}     lets go of request 1 at its next phrase → {"id":"1","cancelled":true}
+          {"command":"cancel","id":"1"}     lets go of request 1 at once → {"id":"1","cancelled":true}; the phrase
+                                            it was on is finished if the next request sings it, else stopped
           {"command":"shutdown"}
         One answer per line on stdout, in order: first {"ready":true,"voices":[…],"outDir":"…"},
         then {"id":"1","wav":"…","duration":8.0,"sampleRate":48000,"seconds":0.5} or {"id":"1","error":"…"}.
@@ -369,7 +370,9 @@ static async Task<int> Serve(string[] rest)
     // The wire is UTF-8 both ways whatever the console's code page: paths and lyrics are not ASCII.
     var utf8 = new System.Text.UTF8Encoding(false);
     using var stdin = new StreamReader(Console.OpenStandardInput(), utf8);
-    using var stdout = new StreamWriter(Console.OpenStandardOutput(), utf8) { AutoFlush = true, NewLine = "\n" };
+    using var stdoutStream = new StreamWriter(Console.OpenStandardOutput(), utf8) { AutoFlush = true, NewLine = "\n" };
+    // Two lanes answer (below): a line at a time, whole.
+    var stdout = TextWriter.Synchronized(stdoutStream);
     var json = new JsonSerializerOptions(JsonSerializerDefaults.Web)
     {
         Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
@@ -386,11 +389,14 @@ static async Task<int> Serve(string[] rest)
             return engine + "/" + voice;
         }));
         var key = id.Contains("voicevox/", StringComparison.Ordinal) ? id + "@" + engines.VoicevoxUrl : id;
-        if (!singers.TryGetValue(key, out var singer))
+        lock (singers)
         {
-            singers[key] = singer = engines.Create(id);
+            if (!singers.TryGetValue(key, out var singer))
+            {
+                singers[key] = singer = engines.Create(id);
+            }
+            return singer;
         }
-        return singer;
     }
 
     Console.Error.WriteLine($"cantoria: serving ({engines.Describe()}), WAVs under {outDir}");
@@ -398,9 +404,13 @@ static async Task<int> Serve(string[] rest)
     stdout.WriteLine(JsonSerializer.Serialize(new { ready = true, backend, voices = engines.List(), outDir }, json));
     try
     {
-        // Lines are read while a score is being sung, so that a cancel can reach it; everything else
-        // is done in order, one at a time.
+        // Lines are read while a score is being sung, so that a cancel can reach it. A score is sung
+        // in order, one at a time; a question that sings nothing (voices, plan, parameters) is
+        // answered in a lane of its own, at once. In the one lane it was, an editor's question
+        // waited for minutes behind a score NEUTRINO sang on a CPU - and so did the editor's
+        // cancel of that score, which it sends only after the question (owner's report 2026-11-18).
         var work = System.Threading.Channels.Channel.CreateUnbounded<(string Line, CancellationTokenSource Cancel)>();
+        var questions = System.Threading.Channels.Channel.CreateUnbounded<(string Line, CancellationTokenSource Cancel)>();
         var cancels = new Dictionary<string, CancellationTokenSource>();
         _ = Task.Run(async () =>
         {
@@ -412,9 +422,14 @@ static async Task<int> Serve(string[] rest)
                     continue;
                 }
                 var cancel = new CancellationTokenSource();
+                var lane = work;
                 try
                 {
                     var asked = JsonSerializer.Deserialize<ServeRequest>(read, json);
+                    if (asked?.Command is "voices" or "plan" or "parameters")
+                    {
+                        lane = questions;
+                    }
                     if (asked?.Command == "cancel")
                     {
                         lock (cancels)
@@ -438,143 +453,156 @@ static async Task<int> Serve(string[] rest)
                 {
                     // Told when its turn comes.
                 }
-                work.Writer.TryWrite((read, cancel));
+                lane.Writer.TryWrite((read, cancel));
             }
             work.Writer.Complete();
+            questions.Writer.Complete();
         });
 
         int count = 0;
-        await foreach (var (line, cancelled) in work.Reader.ReadAllAsync())
+        var answering = Lane(questions.Reader);
+        await Lane(work.Reader);
+
+        async Task Lane(System.Threading.Channels.ChannelReader<(string Line, CancellationTokenSource Cancel)> lane)
         {
-            string id = (++count).ToString();
-            var ct = cancelled.Token;
-            try
+            await foreach (var (line, cancelled) in lane.ReadAllAsync())
             {
-                var request = JsonSerializer.Deserialize<ServeRequest>(line, json) ?? throw new JsonException("an empty request");
-                id = request.Id ?? id;
-                if (request.Command == "shutdown")
+                string id = Interlocked.Increment(ref count).ToString();
+                var ct = cancelled.Token;
+                try
                 {
-                    break;
-                }
-                if (request.Command == "voices")
-                {
-                    stdout.WriteLine(JsonSerializer.Serialize(new { id, voices = engines.List() }, json));
-                    continue;
-                }
-                if (request.Command == "parameters")
-                {
-                    // The settings a voice takes ("sing" in a score), for an editor's list: each
-                    // with where it can change, what it does and its range.
-                    var taken = (SingerOf(request.Voice) as ISingParameters)?.Parameters ?? [];
+                    var request = JsonSerializer.Deserialize<ServeRequest>(line, json) ?? throw new JsonException("an empty request");
+                    id = request.Id ?? id;
+                    if (request.Command == "shutdown")
+                    {
+                        break;
+                    }
+                    if (request.Command == "voices")
+                    {
+                        stdout.WriteLine(JsonSerializer.Serialize(new { id, voices = engines.List() }, json));
+                        continue;
+                    }
+                    if (request.Command == "parameters")
+                    {
+                        // The settings a voice takes ("sing" in a score), for an editor's list: each
+                        // with where it can change, what it does and its range.
+                        var taken = (SingerOf(request.Voice) as ISingParameters)?.Parameters ?? [];
+                        stdout.WriteLine(JsonSerializer.Serialize(new
+                        {
+                            id,
+                            parameters = taken.Select(p => new { name = p.Name, scope = p.Scope.ToString().ToLowerInvariant(), what = p.What, min = p.Min, max = p.Max, @default = p.Default, unit = p.Unit, word = p.Word ? true : (bool?)null, values = p.Values }),
+                        }, json));
+                        continue;
+                    }
+                    if (request.Command == "plan")
+                    {
+                        // Who would sing what is asked, without singing: the asked voices themselves, or a
+                        // score with its voice and gender; the defaults the editor holds come with the request.
+                        if (request.VoicevoxUrl is { Length: > 0 } answering)
+                        {
+                            engines.VoicevoxUrl = answering;
+                        }
+                        using JsonDocument? planFile = request.Asked is null && request.Score is null && request.ScoreFile is { } planPath
+                            ? JsonDocument.Parse(await File.ReadAllTextAsync(planPath), new JsonDocumentOptions { CommentHandling = JsonCommentHandling.Skip, AllowTrailingCommas = true }) : null;
+                        var asking = SingerPlan.AskedOf(request.Asked is { } lines ? JsonSerializer.SerializeToElement(new { asked = lines }) : request.Score ?? planFile?.RootElement,
+                            request.Voice, request.Gender, request.Language);
+                        // "voicevoxUrl":"" — the editor asked VOICEVOX and none answers: it is not asked again.
+                        var plan = engines.Plan(asking, request.Defaults is { } d ? new DefaultVoices(d.Female ?? "", d.Male ?? "") : null, voicevox: request.VoicevoxUrl != "");
+                        stdout.WriteLine(new System.Text.Json.Nodes.JsonObject { ["id"] = id, ["plan"] = plan.ToJson() }.ToJsonString(json));
+                        continue;
+                    }
+                    if (request.Command is not null)
+                    {
+                        throw new SingerException($"no command named {request.Command} (there is: voices, plan, parameters, cancel, shutdown)");
+                    }
+                    var score = request.Score is { } element ? ScoreJson.Read(element.GetRawText())
+                        : request.ScoreFile is { } file ? ScoreJson.Read(await File.ReadAllTextAsync(file))
+                        : throw new SingerException("a request needs \"score\" or \"scoreFile\"");
+                    var bad = score.Validate();
+                    if (bad.Count > 0)
+                    {
+                        throw new SingerException(string.Join("; ", bad));
+                    }
+                    if (request.VoicevoxUrl is { Length: > 0 } voicevoxUrl)
+                    {
+                        engines.VoicevoxUrl = voicevoxUrl;
+                    }
+                    ct.ThrowIfCancellationRequested();
+                    if (engines.LanguageProblem(request.Voice ?? defaultVoice, score.Language) is { } cannot)
+                    {
+                        throw new SingerException(cannot);
+                    }
+                    var singer = SingerOf(request.Voice);
+                    // A voice not sung a phrase at a time (DiffSinger) does not settle a phrase let go
+                    // of in another: it is stopped, not sung beside this score.
+                    if (singer is not (PhrasedSinger or ChorusSinger))
+                    {
+                        await engines.Left.Settle(null, _ => false);
+                    }
+                    Console.Error.WriteLine($"cantoria: {DateTime.Now:HH:mm:ss} singing {FileNameOf(id)} in {singer.Name}, {score.Notes.Count} notes");
+                    var watch = Stopwatch.StartNew();
+                    // How far the score is, a line a phrase: the seconds of music to sing anew (what
+                    // is kept from before is not in them) and how many are done. The request's id
+                    // is INSIDE "progress", so a reader that knows only the answers - an id with a
+                    // wav or an error - takes the line for none of its own.
+                    string asked = id;
+                    SungAudio audio;
+                    // What the singer has to say of the score (a setting the voice does not take):
+                    // sentences for whoever wrote it, sent back with the answer.
+                    var said = new List<string>();
+                    using (SingReport.ListenNotes(text => { lock (said) { said.Add(text); } }))
+                    using (SingReport.Listen(p => stdout.WriteLine(JsonSerializer.Serialize(
+                        new { progress = new { id = asked, toSing = Math.Round(p.ToSing, 3), sung = Math.Round(p.Sung, 3) } }, json))))
+                    {
+                        audio = SungLevels.Apply(await singer.SingAsync(score, ct), score);
+                    }
+                    foreach (string text in said)
+                    {
+                        Console.Error.WriteLine($"cantoria: {text}");
+                    }
+                    var output = request.Output ?? Path.Combine(outDir, FileNameOf(id) + ".wav");
+                    var dirName = Path.GetDirectoryName(Path.GetFullPath(output));
+                    if (!string.IsNullOrEmpty(dirName))
+                    {
+                        Directory.CreateDirectory(dirName);
+                    }
+                    await File.WriteAllBytesAsync(output, Wav.Write(audio));
+                    if (a.CacheMb > 0)
+                    {
+                        Cantoria.DiffSinger.PhraseDisk.Trim(outDir, a.CacheMb * 1024L * 1024);
+                    }
                     stdout.WriteLine(JsonSerializer.Serialize(new
                     {
                         id,
-                        parameters = taken.Select(p => new { name = p.Name, scope = p.Scope.ToString().ToLowerInvariant(), what = p.What, min = p.Min, max = p.Max, @default = p.Default, unit = p.Unit, word = p.Word ? true : (bool?)null, values = p.Values }),
+                        wav = Path.GetFullPath(output),
+                        duration = Math.Round(audio.Duration, 4),
+                        sampleRate = audio.SampleRate,
+                        seconds = Math.Round(watch.Elapsed.TotalSeconds, 2),
+                        voice = singer.Name,
+                        provider = DiffSingerOf(singer)?.Provider,
+                        notes = said.Count > 0 ? said : null,
                     }, json));
-                    continue;
                 }
-                if (request.Command == "plan")
+                catch (OperationCanceledException)
                 {
-                    // Who would sing what is asked, without singing: the asked voices themselves, or a
-                    // score with its voice and gender; the defaults the editor holds come with the request.
-                    if (request.VoicevoxUrl is { Length: > 0 } answering)
+                    Console.Error.WriteLine($"cantoria: {DateTime.Now:HH:mm:ss} let go of {FileNameOf(id)}");
+                    stdout.WriteLine(JsonSerializer.Serialize(new { id, cancelled = true }, json));
+                }
+                catch (Exception e) when (e is SingerException or JsonException or IOException or UnauthorizedAccessException or InvalidDataException or ArgumentException)
+                {
+                    stdout.WriteLine(JsonSerializer.Serialize(new { id, error = e.Message }, json));
+                }
+                finally
+                {
+                    lock (cancels)
                     {
-                        engines.VoicevoxUrl = answering;
+                        if (cancels.TryGetValue(id, out var mine) && ReferenceEquals(mine, cancelled))
+                        {
+                            cancels.Remove(id);
+                        }
                     }
-                    using JsonDocument? planFile = request.Asked is null && request.Score is null && request.ScoreFile is { } planPath
-                        ? JsonDocument.Parse(await File.ReadAllTextAsync(planPath), new JsonDocumentOptions { CommentHandling = JsonCommentHandling.Skip, AllowTrailingCommas = true }) : null;
-                    var asking = SingerPlan.AskedOf(request.Asked is { } lines ? JsonSerializer.SerializeToElement(new { asked = lines }) : request.Score ?? planFile?.RootElement,
-                        request.Voice, request.Gender, request.Language);
-                    // "voicevoxUrl":"" — the editor asked VOICEVOX and none answers: it is not asked again.
-                    var plan = engines.Plan(asking, request.Defaults is { } d ? new DefaultVoices(d.Female ?? "", d.Male ?? "") : null, voicevox: request.VoicevoxUrl != "");
-                    stdout.WriteLine(new System.Text.Json.Nodes.JsonObject { ["id"] = id, ["plan"] = plan.ToJson() }.ToJsonString(json));
-                    continue;
+                    cancelled.Dispose();
                 }
-                if (request.Command is not null)
-                {
-                    throw new SingerException($"no command named {request.Command} (there is: voices, plan, parameters, cancel, shutdown)");
-                }
-                var score = request.Score is { } element ? ScoreJson.Read(element.GetRawText())
-                    : request.ScoreFile is { } file ? ScoreJson.Read(await File.ReadAllTextAsync(file))
-                    : throw new SingerException("a request needs \"score\" or \"scoreFile\"");
-                var bad = score.Validate();
-                if (bad.Count > 0)
-                {
-                    throw new SingerException(string.Join("; ", bad));
-                }
-                if (request.VoicevoxUrl is { Length: > 0 } voicevoxUrl)
-                {
-                    engines.VoicevoxUrl = voicevoxUrl;
-                }
-                ct.ThrowIfCancellationRequested();
-                if (engines.LanguageProblem(request.Voice ?? defaultVoice, score.Language) is { } cannot)
-                {
-                    throw new SingerException(cannot);
-                }
-                var singer = SingerOf(request.Voice);
-                Console.Error.WriteLine($"cantoria: {DateTime.Now:HH:mm:ss} singing {FileNameOf(id)} in {singer.Name}, {score.Notes.Count} notes");
-                var watch = Stopwatch.StartNew();
-                // How far the score is, a line a phrase: the seconds of music to sing anew (what
-                // is kept from before is not in them) and how many are done. The request's id
-                // is INSIDE "progress", so a reader that knows only the answers - an id with a
-                // wav or an error - takes the line for none of its own.
-                string asked = id;
-                SungAudio audio;
-                // What the singer has to say of the score (a setting the voice does not take):
-                // sentences for whoever wrote it, sent back with the answer.
-                var said = new List<string>();
-                using (SingReport.ListenNotes(text => { lock (said) { said.Add(text); } }))
-                using (SingReport.Listen(p => stdout.WriteLine(JsonSerializer.Serialize(
-                    new { progress = new { id = asked, toSing = Math.Round(p.ToSing, 3), sung = Math.Round(p.Sung, 3) } }, json))))
-                {
-                    audio = SungLevels.Apply(await singer.SingAsync(score, ct), score);
-                }
-                foreach (string text in said)
-                {
-                    Console.Error.WriteLine($"cantoria: {text}");
-                }
-                var output = request.Output ?? Path.Combine(outDir, FileNameOf(id) + ".wav");
-                var dirName = Path.GetDirectoryName(Path.GetFullPath(output));
-                if (!string.IsNullOrEmpty(dirName))
-                {
-                    Directory.CreateDirectory(dirName);
-                }
-                await File.WriteAllBytesAsync(output, Wav.Write(audio));
-                if (a.CacheMb > 0)
-                {
-                    Cantoria.DiffSinger.PhraseDisk.Trim(outDir, a.CacheMb * 1024L * 1024);
-                }
-                stdout.WriteLine(JsonSerializer.Serialize(new
-                {
-                    id,
-                    wav = Path.GetFullPath(output),
-                    duration = Math.Round(audio.Duration, 4),
-                    sampleRate = audio.SampleRate,
-                    seconds = Math.Round(watch.Elapsed.TotalSeconds, 2),
-                    voice = singer.Name,
-                    provider = DiffSingerOf(singer)?.Provider,
-                    notes = said.Count > 0 ? said : null,
-                }, json));
-            }
-            catch (OperationCanceledException)
-            {
-                Console.Error.WriteLine($"cantoria: {DateTime.Now:HH:mm:ss} let go of {FileNameOf(id)}");
-                stdout.WriteLine(JsonSerializer.Serialize(new { id, cancelled = true }, json));
-            }
-            catch (Exception e) when (e is SingerException or JsonException or IOException or UnauthorizedAccessException or InvalidDataException or ArgumentException)
-            {
-                stdout.WriteLine(JsonSerializer.Serialize(new { id, error = e.Message }, json));
-            }
-            finally
-            {
-                lock (cancels)
-                {
-                    if (cancels.TryGetValue(id, out var mine) && ReferenceEquals(mine, cancelled))
-                    {
-                        cancels.Remove(id);
-                    }
-                }
-                cancelled.Dispose();
             }
         }
     }

@@ -34,7 +34,9 @@ public sealed class NeutrinoSinger : ISinger, ISingParameters, IDisposable
     private readonly bool _served;
     private readonly string _program;
     private Process? _server;
-    private bool _rendered;
+    // The seconds a second of song took when last timed (NeutrinoOptions.RenderAllowance); null
+    // until a render is.
+    private double? _pace;
     private bool _disposed;
 
     /// <exception cref="ArgumentException">The options name no usable NEUTRINO (the message lists the problems).</exception>
@@ -130,14 +132,15 @@ public sealed class NeutrinoSinger : ISinger, ISingParameters, IDisposable
                     args.Add("-S");
                     args.Add($"model\\{supportVoice}\\");
                 }
-                var timeout = _rendered ? _options.RenderTimeout : _options.FirstRenderTimeout;
+                var timeout = _options.Allowance(score.End, _pace);
+                var watch = Stopwatch.StartNew();
 
                 // A join of like phonemes (ん after ん): the timing alone first, corrected, and
                 // the rest from it (NeutrinoTiming).
                 string full = await File.ReadAllTextAsync(Abs(".full.lab"), ct).ConfigureAwait(false);
                 if (NeutrinoTiming.HasRepeats(full))
                 {
-                    var timing = await Run(_program, [.. args, "--skip-f0", "--skip-melspec", "--skip-wav"], timeout, ct).ConfigureAwait(false);
+                    var timing = await Run(_program, [.. args, "--skip-f0", "--skip-melspec", "--skip-wav"], timeout, ct, render: true).ConfigureAwait(false);
                     log.Append(timing.Output);
                     if (timing.ExitCode != 0 || !File.Exists(Abs(".timing.lab")))
                     {
@@ -148,13 +151,19 @@ public sealed class NeutrinoSinger : ISinger, ISingParameters, IDisposable
                     args.Add("--skip-timing");
                 }
 
-                var render = await Run(_program, args, timeout, ct).ConfigureAwait(false);
+                var render = await Run(_program, args, timeout, ct, render: true).ConfigureAwait(false);
                 log.Append(render.Output);
                 if (render.ExitCode != 0 || !File.Exists(Abs(".wav")))
                 {
                     throw new SingerException($"NEUTRINO did not sing ({_program} exit {render.ExitCode}):\n{render.Output.Trim()}");
                 }
-                _rendered = true;
+                if (score.End > 0)
+                {
+                    // Half the pace before, half this render's: one slow render (the models
+                    // loading) does not stand for every one after.
+                    double pace = watch.Elapsed.TotalSeconds / score.End;
+                    _pace = _pace is { } before ? (before + pace) / 2 : pace;
+                }
 
                 var audio = Wav.Read(await File.ReadAllBytesAsync(Abs(".wav"), ct).ConfigureAwait(false));
                 int leadIn = (int)Math.Round(NeutrinoMusicXml.LeadInSeconds * audio.SampleRate);
@@ -220,10 +229,34 @@ public sealed class NeutrinoSinger : ISinger, ISingParameters, IDisposable
         throw new SingerException("neutrino_server.exe did not become ready within 60 s");
     }
 
+    /// <summary>Stops the server at once, whatever it is doing; the next render starts another (EnsureServer).</summary>
+    private void StopServer()
+    {
+        if (_server is null)
+        {
+            return;
+        }
+        try
+        {
+            if (!_server.HasExited)
+            {
+                _server.Kill(entireProcessTree: true);
+                _server.WaitForExit(5000);
+            }
+        }
+        catch (Exception e) when (e is InvalidOperationException or System.ComponentModel.Win32Exception)
+        {
+            // Gone already.
+        }
+        _server.Dispose();
+        _server = null;
+    }
+
     private readonly record struct Result(int ExitCode, string Output);
 
-    /// <summary>Runs one of NEUTRINO's programs from the NEUTRINO folder and collects what it printed.</summary>
-    private async Task<Result> Run(string exe, IReadOnlyList<string> args, TimeSpan timeout, CancellationToken ct)
+    /// <summary>Runs one of NEUTRINO's programs from the NEUTRINO folder and collects what it printed.
+    /// A <paramref name="render"/> stopped (asked to, or out of time) stops the server with it.</summary>
+    private async Task<Result> Run(string exe, IReadOnlyList<string> args, TimeSpan timeout, CancellationToken ct, bool render = false)
     {
         var psi = new ProcessStartInfo(Path.Combine(_options.BinDir, exe))
         {
@@ -251,6 +284,15 @@ public sealed class NeutrinoSinger : ISinger, ISingParameters, IDisposable
         catch (OperationCanceledException)
         {
             try { p.Kill(); } catch (InvalidOperationException) { /* already gone */ }
+            if (render && _served)
+            {
+                // The client stopped, the server sings on: it has no word for stopping a render,
+                // and refuses the next while it does ("BUSY: inference is running. Please retry
+                // after it finishes.", MEASURED 2026-11-18, v3.2.6). It is stopped too, and the
+                // next render starts another: the models load again (seconds), where the rest of
+                // the phrase can take minutes on a CPU.
+                StopServer();
+            }
             if (ct.IsCancellationRequested)
             {
                 throw;
