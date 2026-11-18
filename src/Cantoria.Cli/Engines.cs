@@ -112,27 +112,10 @@ sealed class Engines
         return Names.Contains(engine) ? (engine, t[(slash + 1)..]) : (engine, t[(slash + 1)..]);
     }
 
-    /// <summary>The voices a <c>+</c> joins, each to sing the score (<c>neutrino/MERROW+diffsinger/TIGER</c>); one voice
-    /// when there is no <c>+</c>, or when the whole is a voice's folder.</summary>
-    public static IReadOnlyList<string?> Pieces(string? voice)
-    {
-        var t = (voice ?? "").Trim();
-        if (!t.Contains('+') || File.Exists(Path.Combine(t, "dsconfig.yaml")))
-        {
-            return [voice];
-        }
-        return t.Split('+', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-    }
-
     /// <summary>Why a voice cannot be sung with: an engine this build has not, a folder not set, a voice not installed.</summary>
     public IReadOnlyList<string> Problems(string? voice)
     {
-        var pieces = Pieces(voice);
-        if (pieces.Count > 1)
-        {
-            return pieces.SelectMany(Problems).ToList();
-        }
-        var (engine, name) = Split(pieces.Count == 1 ? pieces[0] : voice);
+        var (engine, name) = Split(voice);
         switch (engine)
         {
             case "neutrino":
@@ -199,12 +182,7 @@ sealed class Engines
         {
             throw new SingerException(string.Join("; ", problems));
         }
-        var pieces = Pieces(voice);
-        if (pieces.Count > 1)
-        {
-            return new ChorusSinger(pieces.Select(Create).ToList());
-        }
-        var (engine, name) = Split(pieces.Count == 1 ? pieces[0] : voice);
+        var (engine, name) = Split(voice);
         return engine switch
         {
             "neutrino" => Phrased(new NeutrinoSinger(new NeutrinoOptions(NeutrinoFolder!, name) { UseGpu = UseGpu, Threads = Threads, KeepFiles = KeepFiles }), RefuseWhatIsNotKana),
@@ -355,16 +333,15 @@ sealed class Engines
     /// or null: a voice that says what it sings and does not sing this. One named by its folder says nothing.</summary>
     public string? LanguageProblem(string? voice, string language)
     {
-        var ids = Pieces(voice).Select(Split).Select(v => v.Engine + "/" + v.Name).ToList();
-        var engines = ids.Select(id => id[..id.IndexOf('/')]).ToHashSet();
-        var mine = Entries(engines);
-        if (!ids.Any(id => SingerResolver.LanguageProblem(mine.FirstOrDefault(v => v.Id == id), language) is not null))
+        var (engine, name) = Split(voice);
+        string id = engine + "/" + name;
+        if (SingerResolver.LanguageProblem(Entries([engine]).FirstOrDefault(v => v.Id == id), language) is null)
         {
             return null;
         }
         // What every engine's voices sing is part of the sentence, as it is of plan's.
         var all = Entries();
-        return ids.Select(id => SingerResolver.LanguageReason(all.FirstOrDefault(v => v.Id == id), language, all)).FirstOrDefault(r => r is not null);
+        return SingerResolver.LanguageReason(all.FirstOrDefault(v => v.Id == id), language, all);
     }
 
     /// <summary>The default voice of each gender, for a <c>plan</c> that is told none: the options, else the

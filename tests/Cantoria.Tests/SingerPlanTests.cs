@@ -86,14 +86,16 @@ public class SingerPlanTests
         Assert.Equal("the singer \"lead\" names no voice; singing with n/A", SingerResolver.Resolve("lead", List, Unset, "ja").Note);
     }
 
+    /// <summary>One voice a singer: a <c>+</c> joins nothing (it did until 2026-11-18; two voices
+    /// on one line are two asks, and the caller lays the sounds together), so a string with one
+    /// is a voice of that whole name, which is not installed.</summary>
     [Fact]
-    public void VoicesJoined_EachSing_OnceEach()
+    public void APlusJoinsNothing()
     {
-        VoiceEntry[] chorus = [V("n/A", null, null), V("d/B", null, null)];
-        Assert.Equal(["a/b", "c/d"], SingerResolver.Pieces(" a/b + c/d+"));
-        Assert.Equal(new ResolvedSinger("n/A+d/B"), SingerResolver.Resolve("n/A + d/B", chorus, Unset));
-        Assert.Equal("n/A", SingerResolver.Resolve("n/A + n/A", chorus, Unset).Voice);
-        Assert.Contains("x/Y is not installed", SingerResolver.Resolve("n/A + x/Y", chorus, Unset).Note);
+        VoiceEntry[] two = [V("n/A", null, null), V("d/B", null, null)];
+        var resolved = SingerResolver.Resolve("n/A+d/B", two, Unset);
+        Assert.Equal("n/A", resolved.Voice);
+        Assert.Contains("n/A+d/B is not installed", resolved.Note);
     }
 
     [Fact]
@@ -204,16 +206,6 @@ public class SingerPlanTests
         Assert.Null(plan.Singers[1].Voice);
         Assert.Equal("neutrino/MERROW", plan.Singers[2].Voice);
         Assert.Equal(2, asked);     // a voice is looked at once a plan
-    }
-
-    [Fact]
-    public void ThePlan_ForVoicesJoined_NeedsEachToSing()
-    {
-        Assert.Equal("neutrino/MERROW+diffsinger/TIGER", One(new PlanAsk(Voice: "neutrino/MERROW + diffsinger/TIGER", Language: "ja")).Voice);
-        Assert.Equal(["ja", "en", "zh"], One(new PlanAsk(Voice: "neutrino/MERROW + diffsinger/TIGER", Language: "ja")).Languages);
-        var s = One(new PlanAsk(Voice: "neutrino/MERROW+diffsinger/TIGER", Language: "en"));
-        Assert.Null(s.Voice);
-        Assert.StartsWith("neutrino/MERROW sings ja, and these words are en", s.Reason);
     }
 
     [Fact]

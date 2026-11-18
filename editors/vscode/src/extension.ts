@@ -15,7 +15,7 @@ import * as vscode from 'vscode';
 import {
     PlanAsk, SingParameter, SingProgress, SingerPlan, planAsked, planOfNoOne,
     CantoriaScore, DefaultVoices, ENGINES, EngineName, VOICEVOX_URL, VoiceEntry, VoiceGender, defaultVoiceFor, diffSingerEntriesIn, diffSingerVoicesIn, languageProblem, missingProgramNote, needsVoicevox, neutrinoFolderProblems, voicevoxRunIn, programCandidates,
-    resolveSinger, scoreProblems, splitVoiceId, voiceEntriesIn, voiceId, voicePieces, voicesFolderProblems, voicesIn, 
+    resolveSinger, scoreProblems, splitVoiceId, voiceEntriesIn, voiceId, voicesFolderProblems, voicesIn, 
 } from './core';
 import { Engine, EngineSetup, RenderedVoice } from './engine';
 import { VoicevoxServer } from './voicevox';
@@ -57,8 +57,7 @@ export interface CantoriaApi {
      *  the first phrase and after each. A voice whose engine sings a score whole tells nothing. */
     sing(score: CantoriaScore, options?: { voice?: string; signal?: AbortSignal; onProgress?: (progress: SingProgress) => void }): Promise<RenderedVoice & { cached: boolean }>;
     /** The settings a voice takes in a score's `sing` (after 0.4.0): each with its name, where it
-     *  can change, what it does and its range. `voice` as for `sing`; several joined by `+` take
-     *  what any of them does. None for a voice whose engine has no such setting. What a score
+     *  can change, what it does and its range. `voice` as for `sing`. None for a voice whose engine has no such setting. What a score
      *  sets and the voice does not take is not sung, and said in `sing`'s `notes`. */
     parameters(voice?: string): Promise<SingParameter[]>;
     /** Lets the engine go (NEUTRINO's server and the DiffSinger sessions with it); the next `sing` starts it again. */
@@ -217,12 +216,11 @@ async function sing(context: vscode.ExtensionContext, score: CantoriaScore, opti
     if (problems.length > 0) { throw new Error(problems.join('; ')); }
     const asked = (options?.voice ?? '').trim();
     if (needsVoicevox(asked, defaultVoices(), voices().length - voicevox.voices.length, score.language ?? 'ja')) { await voicevox.ensure(); } else { await voicevox.ask(); }
-    const singers = asked && voicePieces(asked).length > 0 ? voicePieces(asked).map(voiceOf) : [voiceSetting()];
-    const wrong = singers.flatMap(voiceProblems);
+    const voice = asked ? voiceOf(asked) : voiceSetting();
+    const wrong = voiceProblems(voice);
     if (wrong.length > 0) { throw new Error(wrong.join('; ')); }
-    const language = singers.map(s => languageProblem(voices().find(v => v.id === s.id), score.language)).find(Boolean);
+    const language = languageProblem(voices().find(v => v.id === voice.id), score.language);
     if (language) { throw new Error(language); }
-    const voice = { id: singers.map(s => s.id).join('+') };
     const singing = engineFor(context);
     const { key, rendered, cached } = singing.sing(score, voice.id, voice.id, voicevox.answering, options?.onProgress);
     if (options?.signal && !cached) {
@@ -367,10 +365,10 @@ export function activate(context: vscode.ExtensionContext): CantoriaApi {
         sing: (score, options) => sing(context, score, options),
         parameters: async (voice) => {
             const asked = (voice ?? '').trim();
-            const singers = asked && voicePieces(asked).length > 0 ? voicePieces(asked).map(voiceOf) : [voiceSetting()];
-            const wrong = singers.flatMap(voiceProblems);
+            const singer = asked ? voiceOf(asked) : voiceSetting();
+            const wrong = voiceProblems(singer);
             if (wrong.length > 0) { throw new Error(wrong.join('; ')); }
-            return engineFor(context).parameters(singers.map(s => s.id).join('+'));
+            return engineFor(context).parameters(singer.id);
         },
         release,
         resolveSinger: async (singer, options) => {

@@ -57,7 +57,7 @@ static int Help(int code)
           voicevox/ずんだもん-ノーマル  a singing style of the running VOICEVOX
 
         sing options:
-          --voice <engine/name>       the voice (default neutrino/MERROW); voices joined by + sing together
+          --voice <engine/name>       the voice (default neutrino/MERROW)
           --neutrino-dir <folder>     NEUTRINO's folder (holds bin\, model\, settings\)
           --voices-dir <folder>       the folder whose subfolders are DiffSinger voices
           --vocoder-dir <folder>      a vocoder folder for DiffSinger voices that bundle none
@@ -383,11 +383,8 @@ static async Task<int> Serve(string[] rest)
     var singers = new Dictionary<string, ISinger>(StringComparer.OrdinalIgnoreCase);
     ISinger SingerOf(string? name)
     {
-        var id = string.Join("+", Engines.Pieces(name ?? defaultVoice).Select(piece =>
-        {
-            var (engine, voice) = Engines.Split(piece);
-            return engine + "/" + voice;
-        }));
+        var (engine, voice) = Engines.Split(name ?? defaultVoice);
+        var id = engine + "/" + voice;
         var key = id.Contains("voicevox/", StringComparison.Ordinal) ? id + "@" + engines.VoicevoxUrl : id;
         lock (singers)
         {
@@ -535,7 +532,7 @@ static async Task<int> Serve(string[] rest)
                     var singer = SingerOf(request.Voice);
                     // A voice not sung a phrase at a time (DiffSinger) does not settle a phrase let go
                     // of in another: it is stopped, not sung beside this score.
-                    if (singer is not (PhrasedSinger or ChorusSinger))
+                    if (singer is not PhrasedSinger)
                     {
                         await engines.Left.Settle(null, _ => false);
                     }

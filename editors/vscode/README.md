@@ -3,7 +3,7 @@
 Sings the lyrics of a score for notation extensions such as
 [Lily#](https://marketplace.visualstudio.com/items?itemName=yotsuda.lilysharp), through the singing
 engines you have installed: **DiffSinger** voices, **NEUTRINO** and **VOICEVOX**. Voices from
-different engines can sing together in one score, even in one part. The extension carries the
+different engines can sing in one score, each asked for by itself. The extension carries the
 `cantoria` program, holds the settings and sings for other extensions through its API. It has no
 editor of its own.
 
@@ -96,7 +96,7 @@ const { wav, duration } = await api.sing({
         { start: 0.5, duration: 0.25, pitch: 62, melisma: true },
         { start: 0.75, duration: 0.5, pitch: 60, lyric: 'き', breath: true },
     ],
-}, { voice: 'neutrino/MERROW+diffsinger/TIGER' });
+}, { voice: 'neutrino/MERROW' });
 ```
 
 - Times are **seconds**, resolved by the caller (tempo, repeats, a practice speed); gaps are
@@ -130,8 +130,7 @@ const { wav, duration } = await api.sing({
   of music — what has to be sung **anew** (a phrase kept from an earlier sing costs nothing and is
   not counted) and how much of it is done. It is told once before the first phrase and once after
   each, so the count begins at 0 and is full when the score is; a score with nothing new to sing
-  says `{ toSing: 0, sung: 0 }`. Voices joined by `+` are one count, its total growing as each
-  begins.
+  says `{ toSing: 0, sung: 0 }`.
 - `resolveSinger(singer, { language, gender })` answers the voice a score's `singer` comes to on this
   machine: the voice it names when installed, else the default voice of the gender it says or of
   `gender`, with a `note` when that is not the one asked for.

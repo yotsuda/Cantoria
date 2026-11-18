@@ -103,22 +103,6 @@ public class PhrasedSingerTests
         Assert.Single(told);
     }
 
-    // A chorus is its voices one after another, each counting from 0: one count of them all.
-    [Fact]
-    public async Task AChorus_IsOneCount_OfItsVoicesOneAfterAnother()
-    {
-        using var chorus = new ChorusSinger([new PhrasedSinger(new Fake()), new PhrasedSinger(new Fake())]);
-        var told = new List<SingProgress>();
-        using (SingReport.Listen(told.Add))
-        {
-            await chorus.SingAsync(new SungScore([.. Phrase(0, "か", "き"), .. Phrase(2, "さ", "し")]));
-        }
-        Assert.Equal([new(2, 0), new(2, 1), new(2, 2), new(4, 2), new(4, 3), new(4, 4)], told);
-        // The count never goes back, and ends full.
-        Assert.True(told.Zip(told.Skip(1)).All(p => p.Second.Sung >= p.First.Sung && p.Second.ToSing >= p.First.ToSing));
-        Assert.Equal(told[^1].ToSing, told[^1].Sung);
-    }
-
     [Fact]
     public async Task AnEdit_SingsOnlyItsPhrase()
     {

@@ -33,10 +33,6 @@ public static class SingerResolver
         _ => null,
     };
 
-    /// <summary>The voices a <c>+</c> joins, each to sing the score together (<c>voicePieces</c>).</summary>
-    public static IReadOnlyList<string> Pieces(string text)
-        => text.Split('+', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
-
     /// <summary>A voice as written, as its <c>engine/name</c>: a bare name is NEUTRINO's, empty its MERROW (<c>splitVoiceId</c>).</summary>
     public static string NormalVoice(string? text)
     {
@@ -89,13 +85,6 @@ public static class SingerResolver
     /// </summary>
     public static ResolvedSinger Resolve(string? written, IReadOnlyList<VoiceEntry> voices, DefaultVoices defaults, string? language = null, string? gender = null)
     {
-        var pieces = Pieces(written ?? "");
-        if (pieces.Count > 1)
-        {
-            var each = pieces.Select(p => Resolve(p, voices, defaults, language, gender)).ToList();
-            var notes = each.Select(r => r.Note).Where(n => !string.IsNullOrEmpty(n)).ToList();
-            return new(string.Join("+", each.Select(r => r.Voice).Distinct()), notes.Count > 0 ? string.Join("; ", notes) : null);
-        }
         var asked = (written ?? "").Trim();
         var said = GenderOfWord(asked);
         var fallback = DefaultVoiceFor(voices, defaults, said ?? (gender == "male" ? "male" : "female"), language);
@@ -155,8 +144,8 @@ public static class SingerResolver
     public static IReadOnlyList<string> SungBy(IReadOnlyList<VoiceEntry> voices) => voices.SelectMany(v => v.Sung).Distinct().ToList();
 }
 
-/// <summary>What a score asks a singer for: a voice by name (<c>neutrino/MERROW</c>; several joined by
-/// <c>+</c>; or as a <c>singer</c> line writes it, a gender word), a gender alone, the words' language —
+/// <summary>What a score asks a singer for: a voice by name (<c>neutrino/MERROW</c>;
+/// or as a <c>singer</c> line writes it, a gender word), a gender alone, the words' language —
 /// each optional — and the part and the key the caller knows the line by, given back as they came.</summary>
 public sealed record PlanAsk(string? Part = null, string? Key = null, string? Voice = null, string? Gender = null, string? Language = null);
 
@@ -200,19 +189,17 @@ public sealed record SingerPlan(IReadOnlyList<PlannedSinger> Singers)
         {
             var language = string.IsNullOrWhiteSpace(ask.Language) ? null : ask.Language.Trim();
             var resolved = SingerResolver.Resolve(ask.Voice, voices, defaults, language, ask.Gender);
-            var named = SingerResolver.Pieces(ask.Voice ?? "").Where(p => p.Contains('/')).Select(SingerResolver.NormalVoice).ToList();
+            // The voice asked for by name, where one is (a gender's word names none).
+            string? named = (ask.Voice ?? "").Contains('/') ? SingerResolver.NormalVoice(ask.Voice) : null;
             string? reason = null;
             if (voices.Count == 0)
             {
                 reason = "no voice is installed" + (setup is { Count: > 0 } ? ": " + string.Join("; ", setup.Values) : "");
             }
             var entries = new List<VoiceEntry>();
-            foreach (var piece in SingerResolver.Pieces(resolved.Voice))
+            if (reason is null)
             {
-                if (reason is not null)
-                {
-                    break;
-                }
+                string piece = resolved.Voice;
                 var entry = voices.FirstOrDefault(v => v.Id == piece);
                 if (entry is null)
                 {
@@ -224,7 +211,7 @@ public sealed record SingerPlan(IReadOnlyList<PlannedSinger> Singers)
                     reason = SingerResolver.LanguageReason(entry, language, voices)
                         ?? (ProblemsOf(piece) is { Count: > 0 } wrong ? string.Join("; ", wrong) : null);
                     // A default voice that was set sings whatever the words are: the setting is what to change.
-                    if (reason is not null && reason.StartsWith(piece + " sings ", StringComparison.Ordinal) && !named.Contains(piece)
+                    if (reason is not null && reason.StartsWith(piece + " sings ", StringComparison.Ordinal) && named != piece
                         && new[] { "female", "male" }.FirstOrDefault(g => defaults.Of(g).Trim().Length > 0 && SingerResolver.NormalVoice(defaults.Of(g)) == piece) is { } whose)
                     {
                         reason = $"the default {whose} voice {reason}";
@@ -235,10 +222,9 @@ public sealed record SingerPlan(IReadOnlyList<PlannedSinger> Singers)
             var note = resolved.Note;
             if (note is not null)
             {
-                var engines = named.Where(v => voices.All(x => x.Id != v)).Select(v => Missing(v[..v.IndexOf('/')])).Where(w => w is not null).Distinct().ToList();
-                if (engines.Count > 0)
+                if (named is not null && voices.All(x => x.Id != named) && Missing(named[..named.IndexOf('/')]) is { } missing)
                 {
-                    note += "; " + string.Join("; ", engines);
+                    note += "; " + missing;
                 }
             }
             IReadOnlyList<string> languages = reason is null ? entries.SelectMany(e => e.Sung).Distinct().ToList() : SingerResolver.SungBy(voices);

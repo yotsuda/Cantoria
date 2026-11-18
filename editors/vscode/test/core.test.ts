@@ -8,7 +8,7 @@ import * as path from 'node:path';
 import {
     ENGINES, characterNameOf, diffSingerEntriesIn, diffSingerSpeakersOf, diffSingerVoicesIn, languageProblem, languageTag, missingProgramNote, neutrinoFolderProblems, parseLine, programCandidates,
     planAsked, planLine, planOfNoOne,
-    cancelLine, defaultVoiceFor, firstOfGender, genderOfWord, requestLine, resolveSinger, rid, scoreProblems, serveArgs, speakerOf, splitVoiceId, voiceEntriesIn, voiceId, voiceKey, voicePieces, voicesFolderProblems, voicesIn, voicevoxEntriesFrom, vsixTarget,
+    cancelLine, defaultVoiceFor, firstOfGender, genderOfWord, requestLine, resolveSinger, rid, scoreProblems, serveArgs, speakerOf, splitVoiceId, voiceEntriesIn, voiceId, voiceKey, voicesFolderProblems, voicesIn, voicevoxEntriesFrom, vsixTarget,
 } from '../src/core';
 import { DIFFSINGER_GENDERS, diffSingerGender } from '../src/diffSingerGenders';
 import { VOICEVOX_GENDERS, voicevoxGender } from '../src/voicevoxGenders';
@@ -75,11 +75,8 @@ describe('a score\'s singer on this machine', () => {
 
     it('refuses words in a language the voice says it does not sing, and lets a silent voice try', () => {
         assert.match(languageProblem({ id: 'neutrino/MERROW', language: 'ja' }, 'en')!, /sings ja, and these words are en/);
-        assert.deepEqual(voicePieces(' a/b + c/d+'), ['a/b', 'c/d']);
-        const chorus = [{ id: 'n/A' }, { id: 'd/B' }];
-        assert.deepEqual(resolveSinger('n/A + d/B', chorus, { female: '', male: '' }), { voice: 'n/A+d/B' }, 'each sings');
-        assert.equal(resolveSinger('n/A + n/A', chorus, { female: '', male: '' }).voice, 'n/A', 'one voice once');
-        assert.match(resolveSinger('n/A + x/Y', chorus, { female: '', male: '' }).note!, /x\/Y is not installed/);
+        // One voice a singer: a + joins nothing (it did until 2026-11-18), so the whole is a voice's name, which is not installed.
+        assert.match(resolveSinger('n/A+d/B', [{ id: 'n/A' }, { id: 'd/B' }], { female: '', male: '' }).note!, /n\/A\+d\/B is not installed/);
         assert.equal(languageProblem({ id: 'neutrino/MERROW', language: 'ja' }, 'ja'), undefined);
         assert.equal(languageProblem({ id: 'd/T', language: 'ja', languages: ['ja', 'en'] }, 'en'), undefined, 'a voice of several languages');
         assert.match(languageProblem({ id: 'd/T', language: 'ja', languages: ['ja', 'en'] }, 'ko')!, /sings ja, en, and these words are ko/);

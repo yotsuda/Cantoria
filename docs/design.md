@@ -290,7 +290,8 @@ alto: female, la -> no installed voice sings Latin (la); installed voices sing j
 
 - A score asks for one voice in its `language` (absent: `ja`, as it is sung); `asked` lists
   several, each field optional, `part` and `key` the caller's own and given back. `voice` is what
-  a `singer` line writes: an `engine/name`, several joined by `+`, or a gender's word.
+  a `singer` line writes: an `engine/name` or a gender's word. One voice an ask: a `+` joined
+  several until 2026-11-18 (each sung in turn and mixed), which gave nothing two asks do not.
 - `voice` is the `engine/name` that would sing — what to hand `sing` — with a `note` when it is
   not the one asked for (`neutrino/NOPE is not installed; singing with neutrino/MERROW`); or
   `null`, and `reason` says why in a score writer's words: no installed voice sings the language

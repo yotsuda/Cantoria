@@ -45,14 +45,13 @@ Cantoria at it, exactly as a score player is pointed at a sound font.
 
 ## Status
 
-Early. All three backends sing. A voice is named `engine/name`, and voices joined by `+` sing
-together:
+Early. All three backends sing. A voice is named `engine/name`, one voice a sing: voices that
+sing together are each sung, and their sounds laid together by the caller.
 
 ```
 cantoria sing examples/yukiyakonko.json -o yuki.wav --voice neutrino/MERROW --neutrino-dir "C:\path\to\NEUTRINO"
 cantoria sing examples/yukiyakonko.json -o yuki.wav --voice diffsinger/TIGER --voices-dir "C:\path\to\voices"
 cantoria sing examples/yukiyakonko.json -o yuki.wav --voice voicevox/ずんだもん-ノーマル
-cantoria sing examples/yukiyakonko.json -o yuki.wav --voice "neutrino/MERROW+diffsinger/TIGER" --neutrino-dir … --voices-dir …
 cantoria voices --neutrino-dir … --voices-dir …                    # each voice, its gender and languages; --language en for those that sing it
 cantoria plan score.json --gender female --neutrino-dir … --voices-dir …
 ```
