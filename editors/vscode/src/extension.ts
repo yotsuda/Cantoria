@@ -374,7 +374,6 @@ export function activate(context: vscode.ExtensionContext): CantoriaApi {
         vscode.commands.registerCommand('cantoria.chooseFemaleVoice', () => chooseDefaultVoice(context, 'female')),
         vscode.commands.registerCommand('cantoria.chooseMaleVoice', () => chooseDefaultVoice(context, 'male')),
         vscode.commands.registerCommand('cantoria.checkSetup', () => checkSetup(context)),
-        vscode.commands.registerCommand('cantoria.installGuide', () => openInstallGuide()),
         vscode.commands.registerCommand('cantoria.findEngines', () => findEnginesHere()),
         vscode.commands.registerCommand('cantoria.forgetVoices', () => {
             release();      // the engine holds phrases in memory too

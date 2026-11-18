@@ -22,9 +22,8 @@ itself: on a laptop with Intel graphics, a 36-second part in about 2¼ minutes w
 that has the tuning tool, and 4 with the plain one. What was sung is kept, so after the first
 time only a phrase you change is sung again.
 
-Three engines; set up any of them. A voice is named `engine/name`. **Cantoria: How to Install a
-Voice** opens this page inside VS Code, and so does the button of that name where Cantoria says it
-has no voice.
+Three engines; set up any of them. A voice is named `engine/name`. The button **How to Install a
+Voice**, where Cantoria says it has no voice, opens this page inside VS Code.
 
 **Cantoria: Find Engines on This Computer** looks where the engines' own programs put them and
 offers what it finds, so that no folder has to be looked for: VOICEVOX as its installer leaves it

@@ -385,7 +385,7 @@ describe('the manifest', () => {
     });
 
     it('contributes the ten commands and starts on nothing but them and the API', () => {
-        assert.deepEqual(commands.sort(), ['cantoria.checkSetup', 'cantoria.chooseFemaleVoice', 'cantoria.chooseMaleVoice', 'cantoria.chooseNeutrinoFolder', 'cantoria.chooseVocoderFolder', 'cantoria.chooseVoicesFolder', 'cantoria.chooseVoicevoxFolder', 'cantoria.findEngines', 'cantoria.forgetVoices', 'cantoria.installGuide']);
+        assert.deepEqual(commands.sort(), ['cantoria.checkSetup', 'cantoria.chooseFemaleVoice', 'cantoria.chooseMaleVoice', 'cantoria.chooseNeutrinoFolder', 'cantoria.chooseVocoderFolder', 'cantoria.chooseVoicesFolder', 'cantoria.chooseVoicevoxFolder', 'cantoria.findEngines', 'cantoria.forgetVoices']);
         assert.deepEqual(manifest.activationEvents, []);
         assert.equal(manifest.main, './out/extension.js');
         assert.equal(manifest.license, 'Apache-2.0');
