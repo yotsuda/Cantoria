@@ -280,7 +280,11 @@ export function findEngines(platform: string, home: string, env: Record<string, 
     found.voicevoxFolder = [...installs, ...listDirs(downloaded).sort().map(name => join(downloaded, name))]
         .find(folder => voicevoxRunIn(folder, exists, join) !== undefined);
 
-    const openUtau = platform === 'win32' ? [join(home, 'Documents', 'OpenUtau'), join(home, 'OneDrive', 'Documents', 'OpenUtau')]
+    // Documents may be kept in OneDrive (seen 2026-11-18 on an installed OpenUtau: Program Files\OpenUtau
+    // with its installed.txt, the data under OneDrive\Documents\OpenUtau): the environment names it.
+    const documents = [join(home, 'Documents'), ...[env.OneDrive, env.OneDriveConsumer, env.OneDriveCommercial, join(home, 'OneDrive')]
+        .filter((d): d is string => !!d).map(d => join(d, 'Documents'))];
+    const openUtau = platform === 'win32' ? [...new Set(documents)].map(d => join(d, 'OpenUtau'))
         : platform === 'darwin' ? [join(home, 'Library', 'OpenUtau')]
         : [join(env.XDG_DATA_HOME ?? join(home, '.local', 'share'), 'OpenUtau')];
     found.voicesFolder = openUtau.map(data => join(data, 'Singers'))

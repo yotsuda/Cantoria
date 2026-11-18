@@ -427,8 +427,12 @@ describe('finding the engines where their programs put them', () => {
         const data = `${H}\\Documents\\OpenUtau`;
         assert.deepEqual(find([`${data}\\Singers\\TIGER\\dsconfig.yaml`, `${data}\\Dependencies\\nsf_hifigan\\vocoder.yaml`, `${data}\\Dependencies\\other\\readme.txt`]),
             { voicesFolder: `${data}\\Singers`, vocoderFolder: `${data}\\Dependencies\\nsf_hifigan` });
-        // Documents kept in OneDrive.
+        // Documents kept in OneDrive: the usual folder, or the one the environment names.
         assert.deepEqual(find([`${H}\\OneDrive\\Documents\\OpenUtau\\Singers\\TIGER\\dsconfig.yaml`]), { voicesFolder: `${H}\\OneDrive\\Documents\\OpenUtau\\Singers` });
+        assert.deepEqual(find(['D:\\OneDrive - Work\\Documents\\OpenUtau\\Singers\\TIGER\\dsconfig.yaml'], 'win32', H, { ...env, OneDriveCommercial: 'D:\\OneDrive - Work' }),
+            { voicesFolder: 'D:\\OneDrive - Work\\Documents\\OpenUtau\\Singers' });
+        // A voice of another kind there (UTAU: no dsconfig.yaml) does not make it a DiffSinger voices folder.
+        assert.deepEqual(find([`${H}\\OneDrive\\Documents\\OpenUtau\\Singers\\Kura\\character.yaml`]), {});
     });
 
     it('looks in each system\'s own places', () => {

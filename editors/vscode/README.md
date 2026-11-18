@@ -15,6 +15,12 @@ their own.
 
 ## Setup
 
+**A GPU makes the difference.** NEUTRINO sings on an NVIDIA GPU (CUDA), and a DiffSinger voice on
+any DirectX 12 GPU on Windows; with none they sing on the CPU, far slower. Measured with NEUTRINO:
+43 s of song in 7 s on an RTX 5070 Ti, and 37 s of song in 5 min 40 s on a laptop with no NVIDIA
+GPU. On such a PC a song is minutes the first time. What was sung is kept, so after that only a
+phrase you change is sung again.
+
 Three engines; set up any of them. A voice is named `engine/name`. **Cantoria: How to Install a
 Voice** opens this page inside VS Code, and so does the button of that name where Cantoria says it
 has no voice.
