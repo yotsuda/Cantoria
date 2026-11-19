@@ -318,7 +318,14 @@ static async Task<int> Sing(string[] rest)
     try
     {
         var watch = Stopwatch.StartNew();
-        var audio = SungLevels.Apply(await singer.SingAsync(score), score);
+        // What the singer has to say of the score (a setting it does not take, a syllable it
+        // leaves silent): a line each, as `serve` sends them back in "notes".
+        SungAudio sung;
+        using (SingReport.ListenNotes(text => Console.Error.WriteLine($"cantoria: {text}")))
+        {
+            sung = await singer.SingAsync(score);
+        }
+        var audio = SungLevels.Apply(sung, score);
         var dirName = Path.GetDirectoryName(Path.GetFullPath(a.Output));
         if (!string.IsNullOrEmpty(dirName))
         {

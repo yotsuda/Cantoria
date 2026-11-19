@@ -145,6 +145,7 @@ public sealed class DiffSingerSinger : ISinger, ISingParameters, IDisposable
         // ---- words: a note with words, and the melisma notes that carry its vowel on ----
         var words = new List<Word>();
         var unknown = new List<string>();
+        var notSung = new List<(int Note, double Start, string Lyric)>();
         var guessed = new List<string>();
         for (int i = 0; i < notes.Count; i++)
         {
@@ -171,6 +172,7 @@ public sealed class DiffSingerSinger : ISinger, ISingParameters, IDisposable
                 if (sung.Missing)
                 {
                     unknown.Add(n.Lyric!);
+                    notSung.Add((i, n.Start, n.Lyric!));
                 }
             }
             else
@@ -185,6 +187,7 @@ public sealed class DiffSingerSinger : ISinger, ISingParameters, IDisposable
                 if (missing.Count > 0)
                 {
                     unknown.Add($"{n.Lyric} ({string.Join(" ", missing)})");
+                    notSung.Add((i, n.Start, n.Lyric!));
                 }
             }
             if (phonemes.Count == 0)
@@ -204,6 +207,10 @@ public sealed class DiffSingerSinger : ISinger, ISingParameters, IDisposable
                 throw new SingerException($"no syllable of the score is in the voice's {dur.DictionaryFile}: {string.Join(", ", unknown.Take(5))}{(unknown.Count > 5 ? ", …" : "")}");
             }
             log.AppendLine($"not in {dur.DictionaryFile}, sung as silence: {string.Join(", ", unknown)}");
+            // Said to whoever wrote the score, not only logged (owner's report 2026-11-19, Lily#'s
+            // Moon-on-the-River.lys: TIGER's Chinese dictionary has no "an", 岸 was a silent note,
+            // and nothing anywhere said so).
+            SingReport.Note(NotInDictionary(Name, dur.DictionaryFile, notSung));
         }
         // A syllable the dictionary spells in a phoneme one of the voice's models was not taught
         // (owner's report 2026-11-19: TIGER's dictionary gives 思 as "s iz", and its pitch model's
@@ -283,6 +290,24 @@ public sealed class DiffSingerSinger : ISinger, ISingParameters, IDisposable
         log.AppendLine($"provider: {voice.Provider}" + (voice.ProviderNote is { } note ? $" ({note})" : ""));
         LastLog = log.ToString();
         return new SungAudio(SungPhrase.Lay(placed, rate), rate);
+    }
+
+    /// <summary>
+    /// What is said of the syllables the voice's dictionary has no entry for, which it leaves
+    /// silent while it sings the rest: each with its note (counted from 0, as
+    /// <see cref="SungScore.Validate"/> counts) and time, the first twelve. ⚠️ Lily# reads
+    /// `does not sing` and every `"…" (note N at` out of it to warn on those notes (its
+    /// singerCore.ts and Audio.SingerFailure): keep those words.
+    /// </summary>
+    public static string NotInDictionary(string voice, string dictionaryFile, IReadOnlyList<(int Note, double Start, string Lyric)> syllables)
+    {
+        string listed = string.Join(", ", syllables.Take(12).Select(s =>
+            string.Create(System.Globalization.CultureInfo.InvariantCulture, $"\"{s.Lyric}\" (note {s.Note} at {s.Start:0.###} s)")));
+        return $"{voice} does not sing {listed}{(syllables.Count > 12 ? ", …" : "")}: "
+            + (syllables.Count == 1 ? "the syllable is" : "these syllables are")
+            + $" not in its dictionary ({Path.GetFileName(dictionaryFile)}), and "
+            + (syllables.Count == 1 ? "its note is" : "their notes are")
+            + " silent. Write other words there, or take another voice";
     }
 
     /// <summary>
