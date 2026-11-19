@@ -108,7 +108,9 @@ public sealed class DiffSingerSinger : ISinger, ISingParameters, IDisposable
 
     private sealed class Word
     {
-        public Word(SungNote first, List<string> phonemes) { Notes = [first]; Phonemes = phonemes; }
+        public Word(SungNote first, List<string> phonemes, int index = -1) { Notes = [first]; Phonemes = phonemes; Index = index; }
+        /// <summary>Where its first note is among the score's notes, from 0 (as SungScore.Validate counts them).</summary>
+        public int Index { get; }
         public List<SungNote> Notes { get; }
         public List<string> Phonemes { get; }
         public double StartMs => Notes[0].Start * 1000;
@@ -189,7 +191,7 @@ public sealed class DiffSingerSinger : ISinger, ISingParameters, IDisposable
             {
                 phonemes.Add("SP");
             }
-            words.Add(new Word(n, phonemes));
+            words.Add(new Word(n, phonemes, i));
         }
         if (guessed.Count > 0)
         {
@@ -202,6 +204,26 @@ public sealed class DiffSingerSinger : ISinger, ISingParameters, IDisposable
                 throw new SingerException($"no syllable of the score is in the voice's {dur.DictionaryFile}: {string.Join(", ", unknown.Take(5))}{(unknown.Count > 5 ? ", …" : "")}");
             }
             log.AppendLine($"not in {dur.DictionaryFile}, sung as silence: {string.Join(", ", unknown)}");
+        }
+        // A syllable the dictionary spells in a phoneme one of the voice's models was not taught
+        // (owner's report 2026-11-19: TIGER's dictionary gives 思 as "s iz", and its pitch model's
+        // list has no "iz" - the song failed two minutes in on `the phoneme "iz" is not in …`,
+        // which named no word): found here, before a phrase is sung, and said by its syllable.
+        var acousticModel = voice.Acoustic;
+        var models = new List<(string Model, string File, Func<string, bool> Knows)>();
+        if (voice.Pitch is { } pitchModel)
+        {
+            models.Add(("pitch", Path.GetFullPath(Path.Combine(pitchModel.Dir, pitchModel.Config.Phonemes)), s => pitchModel.Symbol(s) is not null));
+        }
+        if (voice.Variance is { } varianceModel
+            && (acousticModel.UseEnergyEmbed || acousticModel.UseBreathinessEmbed || acousticModel.UseVoicingEmbed || acousticModel.UseTensionEmbed))
+        {
+            models.Add(("variance", Path.GetFullPath(Path.Combine(varianceModel.Dir, varianceModel.Config.Phonemes)), s => varianceModel.Symbol(s) is not null));
+        }
+        models.Add(("acoustic", acousticModel.Phonemes, s => voice.AcousticSymbol(s) is not null));
+        if (NoSoundFor(Name, words.Select(w => (w.Index, w.Notes[0].Start, w.Notes[0].Lyric ?? "", (IReadOnlyList<string>)w.Phonemes)).ToList(), models) is { } noSound)
+        {
+            throw new SingerException(noSound);
         }
 
         // ---- the phrases: each sung from its own time 0, once, and laid at its place in the score ----
@@ -261,6 +283,47 @@ public sealed class DiffSingerSinger : ISinger, ISingParameters, IDisposable
         log.AppendLine($"provider: {voice.Provider}" + (voice.ProviderNote is { } note ? $" ({note})" : ""));
         LastLog = log.ToString();
         return new SungAudio(SungPhrase.Lay(placed, rate), rate);
+    }
+
+    /// <summary>
+    /// The syllables the voice has no sound for: a phoneme of theirs is in none of a model's list
+    /// (<paramref name="models"/>: the model's name, its phoneme file, whether it knows a symbol).
+    /// Null when every syllable can be sung. The sentence names the first such syllable, its note
+    /// (counted from 0, as <see cref="SungScore.Validate"/> counts) and time, the model and the
+    /// phoneme, then the others. ⚠️ Lily# reads `has no sound for "…" (note N` out of it to point
+    /// at the note (its singerCore.ts and Audio.SingerFailure): keep those words.
+    /// </summary>
+    public static string? NoSoundFor(string voice, IReadOnlyList<(int Note, double Start, string Lyric, IReadOnlyList<string> Phonemes)> words,
+        IReadOnlyList<(string Model, string File, Func<string, bool> Knows)> models)
+    {
+        var found = new List<(int Note, double Start, string Lyric, string Phoneme, string Model, string File)>();
+        foreach (var w in words)
+        {
+            foreach (var (model, file, knows) in models)
+            {
+                if (w.Phonemes.FirstOrDefault(p => !knows(p)) is { } phoneme)
+                {
+                    found.Add((w.Note, w.Start, w.Lyric, phoneme, model, file));
+                    break;
+                }
+            }
+        }
+        if (found.Count == 0)
+        {
+            return null;
+        }
+        var first = found[0];
+        string spelled = string.Join(" ", words.First(w => w.Note == first.Note).Phonemes);
+        var said = new System.Text.StringBuilder(string.Create(System.Globalization.CultureInfo.InvariantCulture,
+            $"{voice} has no sound for \"{first.Lyric}\" (note {first.Note} at {first.Start:0.###} s): its dictionary spells it \"{spelled}\", and its {first.Model} model has no phoneme \"{first.Phoneme}\" ({first.File})"));
+        // The same syllable again is the same trouble: each said once, the first five.
+        var others = found.Skip(1).Where(f => f.Lyric != first.Lyric).DistinctBy(f => f.Lyric).ToList();
+        if (others.Count > 0)
+        {
+            said.Append(System.Globalization.CultureInfo.InvariantCulture,
+                $"; nor for {string.Join(", ", others.Take(5).Select(f => $"\"{f.Lyric}\" (note {f.Note})"))}{(others.Count > 5 ? ", …" : "")}");
+        }
+        return said.Append(". Write other words there, or take another voice").ToString();
     }
 
     /// <summary>The word with its notes' times counted from <paramref name="seconds"/>.</summary>

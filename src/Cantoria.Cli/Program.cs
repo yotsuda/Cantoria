@@ -13,6 +13,19 @@ using Cantoria.DiffSinger;
 // Exit codes: 0 done, 1 the backend failed, 2 bad arguments, score or settings,
 // 3 (plan only) something asked for has no singer.
 
+// What a program reads from cantoria is UTF-8, whatever the console's code page (as `serve`'s wire
+// is): Lily#'s lysc reads it so, and on a Japanese Windows a lyric in a message - "思" in `has no
+// sound for "思"` - reached it as two other characters (owner's report 2026-11-19). A console
+// window keeps its own encoding.
+if (Console.IsErrorRedirected)
+{
+    Console.SetError(new StreamWriter(Console.OpenStandardError(), new System.Text.UTF8Encoding(false)) { AutoFlush = true });
+}
+if (Console.IsOutputRedirected)
+{
+    Console.SetOut(new StreamWriter(Console.OpenStandardOutput(), new System.Text.UTF8Encoding(false)) { AutoFlush = true });
+}
+
 return args switch
 {
     ["--version"] or ["-V"] => Version(),
