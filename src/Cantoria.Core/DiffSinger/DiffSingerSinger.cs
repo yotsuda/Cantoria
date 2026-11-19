@@ -198,7 +198,7 @@ public sealed class DiffSingerSinger : ISinger, ISingParameters, IDisposable
         }
         if (guessed.Count > 0)
         {
-            log.AppendLine($"not in {dur.DictionaryFile}, pronounced from the spelling: {string.Join(", ", guessed.Distinct())}");
+            log.AppendLine($"not in {dur.DictionaryFile}, read as the CMU dictionary lists them or from their spelling: {string.Join(", ", guessed.Distinct())}");
         }
         if (unknown.Count > 0)
         {

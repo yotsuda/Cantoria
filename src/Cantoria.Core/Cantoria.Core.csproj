@@ -43,6 +43,9 @@
   <ItemGroup>
     <!-- Han characters by Mandarin reading (tools/Generate-Pinyin.ps1; see THIRD-PARTY-NOTICES.md). -->
     <EmbeddedResource Include="DiffSinger\pinyin.txt" LogicalName="Cantoria.DiffSinger.pinyin.txt" />
+    <!-- English words a voice's dictionary does not list: OpenUtau's ARPABET pack, as it is (CMUdict
+         0.7 and the model trained on it; EnglishG2p.cs; see THIRD-PARTY-NOTICES.md). -->
+    <EmbeddedResource Include="DiffSinger\g2p-arpabet.zip" LogicalName="Cantoria.DiffSinger.g2p-arpabet.zip" />
   </ItemGroup>
 
   <ItemGroup>

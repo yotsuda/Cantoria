@@ -40,11 +40,22 @@ public static class EnglishPhonemizer
             var parts = notes.Skip(first).Take(last - first + 1).Select(n => Clean(n.Text)).ToList();
             string word = string.Concat(parts);
             var whole = Spell(word, dictionary, known);
-            // A word the dictionary lacks: each syllable may still be a word of its own, and
-            // failing that the letters give a guess.
+            // A word the voice's dictionary lacks (owner's report 2026-11-19: TIGER's has ten
+            // thousand words, and "folded", "worries", "heavy" were read from their letters as
+            // f aa l d eh d, w aa r iy z, hh iy v iy): as the CMU dictionary lists it; else each
+            // syllable may be a word of the voice's own; else as the model trained on that
+            // dictionary reads it, and only then by the letters' rules. Named in the render's log.
+            bool guessed = false;
+            if (whole is null && Read(word, known, EnglishG2p.Listed) is { } listed)
+            {
+                (whole, guessed) = (listed, true);
+            }
             var alone = whole is null ? parts.Select(p => Spell(p, dictionary, known)).ToList() : null;
-            bool guessed = alone is not null && alone.Contains(null);
-            whole ??= guessed ? Spell(word, dictionary, known, guess: true) : null;
+            if (alone is not null && alone.Contains(null))
+            {
+                guessed = true;
+                whole = Read(word, known, EnglishG2p.Predicted) ?? Spell(word, dictionary, known, guess: true);
+            }
             if (whole is not null)
             {
                 foreach (var dealt in Deal(whole, parts.Count, dictionary.IsVowel))
@@ -100,6 +111,30 @@ public static class EnglishPhonemizer
                 return null;
             }
             phonemes.AddRange(symbols);
+        }
+        return phonemes.Count > 0 ? phonemes : null;
+    }
+
+    /// <summary>A word, or an elision's words, as <paramref name="said"/> says each
+    /// (<see cref="EnglishG2p"/>: ARPABET), in the voice's own symbols; null if one is not to be
+    /// had. The schwa is the voice's <c>ax</c> where it has one, else its <c>ah</c>.</summary>
+    private static List<string>? Read(string text, Func<string, string?> known, Func<string, string[]?> said)
+    {
+        var phonemes = new List<string>();
+        foreach (var word in text.Split(' ', StringSplitOptions.RemoveEmptyEntries))
+        {
+            if (said(word) is not { Length: > 0 } arpabet)
+            {
+                return null;
+            }
+            foreach (var p in arpabet)
+            {
+                if ((known(p) ?? (p == EnglishG2p.Schwa ? known("ah") : null)) is not { } symbol)
+                {
+                    return null;
+                }
+                phonemes.Add(symbol);
+            }
         }
         return phonemes.Count > 0 ? phonemes : null;
     }

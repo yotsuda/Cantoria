@@ -25,7 +25,9 @@ that is the one thing this library adds.
     ONNX Runtime, after the C# implementation in
     [OpenUtau](https://github.com/stakira/OpenUtau). Japanese lyrics (kana),
     and English, Chinese and Korean where the voice has that language's dictionary
-    (`dsdict-en.yaml`, `dsdict-zh.yaml`, `dsdict-ko.yaml`). On Windows the models run
+    (`dsdict-en.yaml`, `dsdict-zh.yaml`, `dsdict-ko.yaml`). An English word the
+    voice's dictionary does not list is read as the CMU Pronouncing Dictionary
+    lists it, or by a model trained on that dictionary. On Windows the models run
     on the GPU through DirectML (any DirectX 12 device; the CPU where there is
     none, or with `--cpu`); on Linux and macOS on the CPU (CoreML on request,
     `--provider coreml`, untested).

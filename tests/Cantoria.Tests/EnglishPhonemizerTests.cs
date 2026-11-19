@@ -151,7 +151,65 @@ public class EnglishPhonemizerTests
         Assert.True(sung[0].Guessed);
         Assert.False(sung[0].Missing);
         Assert.Equal("b l ae ng", Show(sung[0]));
-        Assert.Equal("k eh t", Show(sung[1]));
+        // As the CMU dictionary lists the word (B L AE1 NG K AH0 T), its schwa the voice's ax -
+        // the letters' rules alone said "k eh t" until 2026-11-19.
+        Assert.Equal("k ax t", Show(sung[1]));
+    }
+
+    // Owner's report 2026-11-19 (Lily#'s Paper-Boats.lys under diffsinger/TIGER, whose dictionary has
+    // ten thousand words): these were read from their letters - f aa l d eh d, w aa r iy z,
+    // hh iy v iy, ae n ih m ao r. A word the voice's dictionary lacks is read as the CMU
+    // dictionary lists it (EnglishG2p), in the voice's symbols.
+    /// <summary>A voice with every ARPABET phoneme and the schwa, and no word of its own.</summary>
+    private static readonly DsDictionary Bare = DsDictionary.Parse("symbols:\n"
+        + string.Concat("aa ae ah ao aw ax ay eh er ey ih iy ow oy uh uw".Split(' ').Select(s => $"- {{symbol: {s}, type: vowel}}\n"))
+        + string.Concat("b ch d dh f g hh jh k l m n ng p r s sh t th v w y z zh".Split(' ').Select(s => $"- {{symbol: {s}, type: stop}}\n"))
+        + "entries: []\n");
+
+    [Theory]
+    [InlineData("fold- ed", "f ow l|d ax d")]
+    [InlineData("wor- ries", "w er|iy z")]
+    [InlineData("heav- y", "hh eh|v iy")]
+    [InlineData("an- y- more", "eh|n iy|m ao r")]
+    [InlineData("riv- er", "r ih|v er")]
+    [InlineData("gen- tly", "jh eh n t|l iy")]
+    public void AWordTheVoicesDictionaryLacks_IsReadAsTheCmuDictionaryListsIt(string written, string expected)
+    {
+        var notes = written.Split(' ').Select(s => (s.TrimEnd('-'), s.EndsWith('-'))).ToArray();
+        var sung = EnglishPhonemizer.Syllables(notes, Bare, s => Bare.IsSymbol(s) ? s : null);
+        Assert.Equal(expected, string.Join('|', sung.Select(Show)));
+        Assert.All(sung, s => { Assert.True(s.Guessed); Assert.False(s.Missing); });   // (named in the render's log)
+    }
+
+    [Fact]
+    public void TheSchwa_IsTheVoicesAh_WhereItHasNoAx()
+        => Assert.Equal("f ow l|d ah d", string.Join('|',
+            EnglishPhonemizer.Syllables([("fold", true), ("ed", false)], Bare, s => s != "ax" && Bare.IsSymbol(s) ? s : null).Select(Show)));
+
+    [Fact]
+    public void TheVoicesOwnDictionary_ComesFirst()
+        => Assert.Equal("l ah", Show(Sing(("love", false))[0]));       // (the CMU dictionary says l ah v)
+
+    [Fact]
+    public void AWordNoDictionaryLists_IsReadByTheModel_ALetterAtATime()
+    {
+        Assert.Null(EnglishG2p.Listed("zundamon"));
+        var read = EnglishG2p.Predicted("zundamon");
+        Assert.NotNull(read);
+        Assert.Equal("z", read![0]);
+        Assert.Contains("m", read);
+        // Not a word of another script, nor one with a letter that is not the model's.
+        Assert.Null(EnglishG2p.Predicted("ほげ"));
+        Assert.Null(EnglishG2p.Predicted("starほげ"));
+    }
+
+    [Fact]
+    public void TheCmuDictionary_ListsAWordsFirstReading_WithoutItsStress()
+    {
+        Assert.Equal("d ao r", string.Join(' ', EnglishG2p.Listed("door")!));
+        Assert.Equal("w ah n", string.Join(' ', EnglishG2p.Listed("One")!));
+        Assert.Equal("dh ax", string.Join(' ', EnglishG2p.Listed("the")!));          // (AH0, the schwa)
+        Assert.Null(EnglishG2p.Listed("zundamon"));
     }
 
     [Fact]
