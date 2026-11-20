@@ -43,7 +43,8 @@ public class NoSoundForTests
     {
         Assert.Equal("diffsinger/V does not sing \"岸\" (note 46 at 57.25 s): the syllable is not in its dictionary (dsdict-zh.yaml), and its note is silent. "
             + "Write other words there, or take another voice",
-            DiffSingerSinger.NotInDictionary("diffsinger/V", @"C:\voices\V\dsdur\dsdict-zh.yaml", [(46, 57.25, "岸")]));
+            // '/': Path.GetFileName splits on it on every OS, on '\' only on Windows.
+            DiffSingerSinger.NotInDictionary("diffsinger/V", "C:/voices/V/dsdur/dsdict-zh.yaml", [(46, 57.25, "岸")]));
     }
 
     [Fact]
