@@ -140,6 +140,14 @@ public sealed class DiffSingerSinger : ISinger, ISingParameters, IDisposable
         var english = language == "en"
             ? EnglishPhonemizer.Syllables(notes.Where(n => !n.Melisma).Select(n => (n.Lyric!, n.Hyphen)).ToList(), dur.Dictionary, dur.Symbol)
             : null;
+        // Chinese: each character read by the word it stands in, across the notes. Korean: a final
+        // consonant carried on within a word. A note's hyphen may stand on its last melisma note.
+        var sungNotes = notes.Select((n, i) => (Note: n, Hyphen: n.Hyphen || notes.Skip(i + 1).TakeWhile(m => m.Melisma).Any(m => m.Hyphen)))
+            .Where(s => !s.Note.Melisma).ToList();
+        var chinese = language == "zh" ? ChinesePhonemizer.Read(sungNotes.Select(s => s.Note.Lyric).ToList()) : null;
+        var korean = language == "ko"
+            ? KoreanPhonemizer.Carry(sungNotes.Select(s => (s.Note.Lyric!, s.Hyphen)).ToList(), g => dur.Dictionary.Spell(g, dur.Symbol) is not null)
+            : null;
         int syllable = 0;
 
         // ---- words: a note with words, and the melisma notes that carry its vowel on ----
@@ -180,10 +188,11 @@ public sealed class DiffSingerSinger : ISinger, ISingParameters, IDisposable
                 var missing = new List<string>();
                 phonemes = language switch
                 {
-                    "zh" => ChinesePhonemizer.Phonemes(n.Lyric!, dur.Dictionary, dur.Symbol, missing),
-                    "ko" => KoreanPhonemizer.Phonemes(n.Lyric!, dur.Dictionary, dur.Symbol, missing),
+                    "zh" => ChinesePhonemizer.Phonemes(n.Lyric!, dur.Dictionary, dur.Symbol, missing, chinese![syllable]),
+                    "ko" => KoreanPhonemizer.Phonemes(korean![syllable], dur.Dictionary, dur.Symbol, missing),
                     _ => KanaPhonemizer.Phonemes(n.Lyric!, dur.Dictionary, dur.Symbol, missing),
                 };
+                syllable++;
                 if (missing.Count > 0)
                 {
                     unknown.Add($"{n.Lyric} ({string.Join(" ", missing)})");

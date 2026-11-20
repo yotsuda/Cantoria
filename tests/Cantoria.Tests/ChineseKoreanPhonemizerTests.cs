@@ -82,6 +82,75 @@ public class ChineseKoreanPhonemizerTests
         Assert.Equal(["哆"], unknown);
     }
 
+    // A character is read by the word it stands in, across notes; alone by its customary reading,
+    // or by the table's own where Unihan's first is one almost no word has (佛 fo, 长 chang).
+    [Theory]
+    [InlineData(new[] { "长", "大" }, "zhang da")]
+    [InlineData(new[] { "长", "城" }, "chang cheng")]
+    [InlineData(new[] { "长" }, "chang")]
+    [InlineData(new[] { "银", "行" }, "yin hang")]
+    [InlineData(new[] { "行", "人" }, "xing ren")]
+    [InlineData(new[] { "音", "乐" }, "yin yue")]
+    [InlineData(new[] { "快", "乐" }, "kuai le")]
+    [InlineData(new[] { "睡", "觉" }, "shui jiao")]
+    [InlineData(new[] { "觉", "得" }, "jue de")]
+    [InlineData(new[] { "重", "新" }, "chong xin")]
+    [InlineData(new[] { "了", "解" }, "liao jie")]
+    [InlineData(new[] { "大", "地" }, "da di")]
+    [InlineData(new[] { "慢", "慢", "地" }, "man man de")]
+    [InlineData(new[] { "佛" }, "fo")]
+    [InlineData(new[] { "落", "下" }, "luo xia")]
+    [InlineData(new[] { "长城" }, "chang cheng")]
+    public void Chinese_ACharacterIsReadByItsWord(string[] notes, string read)
+        => Assert.Equal(read, string.Join(" ", ChinesePhonemizer.Read(notes).SelectMany(r => r)));
+
+    [Fact]
+    public void Chinese_AWordDoesNotRunThroughPinyinOrPunctuation()
+    {
+        // 银 then "hang" written out, then 行 alone: xing, not the 银行 the two Han characters would be.
+        Assert.Equal("yin|xing", string.Join("|", ChinesePhonemizer.Read(["银", "hang", "行"]).SelectMany(r => r)));
+        Assert.Equal("yin|xing", string.Join("|", ChinesePhonemizer.Read(["银，", "行"]).SelectMany(r => r)));
+        Assert.Equal("yin|xing", string.Join("|", ChinesePhonemizer.Read(["银", null, "行"]).SelectMany(r => r)));
+    }
+
+    [Fact]
+    public void Chinese_TheReadingOfItsWordIsSpelled()
+    {
+        var zh = DsDictionary.Parse("""
+            entries:
+            - {grapheme: chang, phonemes: [ch, ang]}
+            - {grapheme: zhang, phonemes: [zh, ang]}
+            """);
+        var read = ChinesePhonemizer.Read(["长", "城"]);
+        Assert.Equal(["ch", "ang"], ChinesePhonemizer.Phonemes("长", zh, AnyKnown, [], read[0]));
+        Assert.Equal(["zh", "ang"], ChinesePhonemizer.Phonemes("长", zh, AnyKnown, [], ["zhang"]));
+    }
+
+    // Within a word a final consonant goes on to a syllable that begins with a vowel.
+    [Theory]
+    [InlineData("밥이", false, "", "바비")]
+    [InlineData("밥", true, "이", "바|비")]
+    [InlineData("밥", false, "이", "밥|이")]              // another word: as written
+    [InlineData("닭이", false, "", "달기")]
+    [InlineData("값이", false, "", "갑씨")]
+    [InlineData("같이", false, "", "가치")]
+    [InlineData("굳이", false, "", "구지")]
+    [InlineData("좋아", false, "", "조아")]
+    [InlineData("많이", false, "", "마니")]
+    [InlineData("사랑이", false, "", "사랑이")]            // ㅇ stays
+    [InlineData("음악", false, "", "으막")]
+    [InlineData("밥도", false, "", "밥도")]               // not before a vowel
+    [InlineData("밥,이", false, "", "밥,이")]
+    public void Korean_AFinalIsCarriedOnWithinAWord(string first, bool hyphen, string second, string sung)
+    {
+        var notes = second == "" ? new[] { (first, hyphen) } : new[] { (first, hyphen), (second, false) };
+        Assert.Equal(sung, string.Join("|", KoreanPhonemizer.Carry(notes, _ => true)));
+    }
+
+    [Fact]
+    public void Korean_ACarryTheDictionaryCannotSpellIsNotMade()
+        => Assert.Equal(["밥", "이"], KoreanPhonemizer.Carry([("밥", true), ("이", false)], s => s != "비"));
+
     [Theory]
     [InlineData("도")]
     [InlineData("do")]

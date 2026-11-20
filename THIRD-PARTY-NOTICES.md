@@ -17,6 +17,37 @@ https://www.unicode.org/reports/tr38/
 `Unihan_Readings.txt` (Unicode 18.0.0) by `tools/Generate-Pinyin.ps1`: each character's reading,
 tone removed. © 1991-2026 Unicode, Inc. Terms: https://www.unicode.org/license.txt
 
+### phrase-pinyin-data — MIT (data derived)
+
+https://github.com/mozillazg/phrase-pinyin-data
+
+`src/Cantoria.Core/DiffSinger/pinyin-phrases.txt` is generated from its `pinyin.txt` (0.20.0,
+commit 4afa322) by `tools/Generate-PinyinPhrases.ps1`: the words whose characters are read otherwise
+than alone, or that hold a character read two ways, tone removed; and a few corrections of
+Cantoria's own, which the script lists. Its notice:
+
+    MIT License
+
+    Copyright (c) 2017 mozillazg
+
+    Permission is hereby granted, free of charge, to any person obtaining a copy
+    of this software and associated documentation files (the "Software"), to deal
+    in the Software without restriction, including without limitation the rights
+    to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+    copies of the Software, and to permit persons to whom the Software is
+    furnished to do so, subject to the following conditions:
+
+    The above copyright notice and this permission notice shall be included in all
+    copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+    SOFTWARE.
+
 ### OpenUtau — MIT (adapted)
 
 https://github.com/stakira/OpenUtau

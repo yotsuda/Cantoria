@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- **A Chinese character is read by the word it stands in**: 长 in 长大 is `zhang`, in 长城 `chang`; 行 in 银行 `hang`, in 行人 `xing`; 乐 in 音乐 `yue`, in 快乐 `le`. The words are found across the notes, one character a note as a song has them, from a table of 24,000 words after phrase-pinyin-data (pypinyin's). A character in no word is read as before, alone, except a few whose customary reading no word has (佛 `fo`, 长 `chang`). Pinyin written out is sung as written.
+- **A Korean final consonant goes on to a following vowel within a word**: 밥이 sings 바비, 닭이 달기, 값이 갑씨, 같이 가치, and a final ㅎ is not sung before a vowel (좋아 조아, 많이 마니). Within one note's text, or across notes joined by a hyphen; a carry the voice's dictionary cannot spell is not made.
+
 ## 0.5.0
 
 - **Find Engines on This Computer**: a new command that looks where the engines' own programs put them and offers what stands there for the settings: VOICEVOX as its installer leaves it — the engine in its folder, or, with the installer that downloads the engine at first launch, under its user data's `vvpp-engines`, where *Choose VOICEVOX Folder…* had to be pointed by hand — and OpenUtau's `Singers` folder with a vocoder among its dependencies. Nothing is set unasked. *Check Setup* offers it when nothing can sing.
