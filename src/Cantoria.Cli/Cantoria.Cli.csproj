@@ -9,7 +9,7 @@
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <RootNamespace>Cantoria.Cli</RootNamespace>
     <AssemblyName>cantoria</AssemblyName>
-    <Version>0.4.0</Version>
+    <Version>0.5.0</Version>
     <InvariantGlobalization>true</InvariantGlobalization>
     <IsPackable>false</IsPackable>
   </PropertyGroup>

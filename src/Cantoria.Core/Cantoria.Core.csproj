@@ -10,7 +10,7 @@
     <NoWarn>$(NoWarn);CS1591</NoWarn>
     <RootNamespace>Cantoria</RootNamespace>
     <PackageId>Cantoria.Core</PackageId>
-    <Version>0.4.0</Version>
+    <Version>0.5.0</Version>
     <Authors>Yoshifumi Tsuda</Authors>
     <Description>A singing engine for notation software: notes with lyrics in, a voice out.</Description>
     <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
