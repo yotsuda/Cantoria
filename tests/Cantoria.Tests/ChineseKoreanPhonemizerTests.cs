@@ -151,6 +151,27 @@ public class ChineseKoreanPhonemizerTests
     public void Korean_ACarryTheDictionaryCannotSpellIsNotMade()
         => Assert.Equal(["밥", "이"], KoreanPhonemizer.Carry([("밥", true), ("이", false)], s => s != "비"));
 
+    // A final goes on to the next note when the singer goes on to it with nothing between.
+    [Theory]
+    [InlineData(1.0, false, false, true)]
+    [InlineData(1.0005, false, false, true)]     // a caller's rounding
+    [InlineData(1.2, false, false, false)]       // a rest
+    [InlineData(1.0, true, false, false)]        // a breath
+    [InlineData(1.0, false, true, false)]        // a breath taken into the next note
+    public void Korean_ANoteIsSungOn_WithNoRestOrBreathBetween(double next, bool breath, bool inhale, bool on)
+        => Assert.Equal(on, KoreanPhonemizer.SungOn(new SungNote(0.5, 0.5, 60, "밥", Breath: breath, Inhale: inhale), new SungNote(next, 0.5, 60, "이")));
+
+    [Theory]
+    [InlineData("밥", "이", true)]
+    [InlineData("좋", "아", true)]              // the ㅎ goes
+    [InlineData("사랑", "이", false)]           // ㅇ stays
+    [InlineData("밥", "도", false)]
+    [InlineData("바", "이", false)]
+    [InlineData("밥", null, false)]
+    [InlineData("bap", "이", false)]
+    public void Korean_CarriesAcross_SaysWhetherAFinalGoesOn(string? before, string? next, bool carries)
+        => Assert.Equal(carries, KoreanPhonemizer.CarriesAcross(before, next));
+
     [Theory]
     [InlineData("도")]
     [InlineData("do")]

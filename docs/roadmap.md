@@ -89,10 +89,13 @@ Phonemisation is the backend's; the caller sends the text as sung and the langua
   kanji is the caller's to read (Lily# attaches a reading to the syllable).
 - Through DiffSinger voices: English, Chinese (Han characters by the word they stand in, across
   notes, from phrase-pinyin-data, else alone; or pinyin) and Korean (Hangul, a final consonant
-  carried to a following vowel within a word, *done 2026-11-21*), and others as their dictionaries
-  allow; the contract's `language` picks the dictionary; a mismatch is one sentence back. Not done:
-  Korean's other sound changes (nasalisation 밥만 밤만, aspiration 축하 추카, tensing), a carry
-  across a word's end (꽃 위 꼬뒤), and a Mandarin word the table lacks.
+  carried to a following vowel in the same note or the next one sung on from it, *done
+  2026-11-21*; "sung on" is a hyphen, or no rest and no breath between, as Lily# parts a Korean
+  word's syllables with spaces), and others as their dictionaries allow; the contract's
+  `language` picks the dictionary; a mismatch is one sentence back. Not done: Korean's other
+  sound changes (nasalisation 밥만 밤만, aspiration 축하 추카, tensing); what a final becomes
+  across a word's end (꽃 위 꼬뒤, 옷 안 오단: the words are not known, so it is carried as
+  within a word, 꼬취, 오산); and a Mandarin word the table lacks.
 - An optional per-note `phonemes` override in the contract for what a dictionary gets wrong
   (stress, an unusual split). Older engines ignore unknown fields already.
 

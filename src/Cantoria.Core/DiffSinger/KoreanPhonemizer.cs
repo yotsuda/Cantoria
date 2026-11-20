@@ -5,8 +5,9 @@ namespace Cantoria.DiffSinger;
 
 /// <summary>
 /// Korean words to phonemes through a voice's dictionary, which spells each Hangul syllable (and
-/// its romanisation). Within a word, a final consonant before a syllable that begins with a vowel
-/// is sung as that syllable's first (<see cref="Carry"/>: 밥이 sings 바 and 비).
+/// its romanisation). A final consonant before a syllable that begins with a vowel, in one note or
+/// in the next note sung on from it, is sung as that syllable's first (<see cref="Carry"/>: 밥이
+/// sings 바 and 비).
 /// </summary>
 public static class KoreanPhonemizer
 {
@@ -26,16 +27,32 @@ public static class KoreanPhonemizer
     ];
 
     /// <summary>
-    /// The notes' Hangul as sung: where a syllable with a final consonant is followed in the same
-    /// word by one that begins with a vowel - in one note's text, or in the next note's after a
-    /// hyphen - the final is carried on (밥이 바비, 닭이 달기, 값이 갑씨); ㄷ and ㅌ so carried
-    /// before ㅣ are ㅈ and ㅊ (같이 가치); a final ㅎ is not sung before a vowel (좋아 조아, 많이
-    /// 마니); ㅇ stays. A pair is changed only where <paramref name="spelled"/> knows both
-    /// syllables it becomes. Romanised text is left as written.
+    /// True when the singer goes from <paramref name="before"/> (a word's last note, its melisma
+    /// included) to <paramref name="next"/> with nothing between: no rest, no breath. A final is
+    /// carried across such notes whether a hyphen joins them or not: Korean set a syllable to a
+    /// note seldom marks its words (Lily# parts them with spaces, as Korean scores print them), and
+    /// in a sung line a final goes on to the vowel of the word after too.
     /// </summary>
-    /// <param name="syllables">Each note's text, and whether the next note's is of the same word.</param>
+    public static bool SungOn(SungNote before, SungNote next)
+        => !before.Breath && !before.Inhale && next.Start - before.End < SungScore.RoundingOverlap;
+
+    /// <summary>True when <see cref="Carry"/> would carry the last syllable of
+    /// <paramref name="before"/> on to the first of <paramref name="next"/> (the dictionary aside).</summary>
+    public static bool CarriesAcross(string? before, string? next)
+        => before is [.., var b and >= First and <= Last] && next is [var x and >= First and <= Last, ..]
+            && CarryOn(b, x).Before != b;
+
+    /// <summary>
+    /// The notes' Hangul as sung: where a syllable with a final consonant is followed by one that
+    /// begins with a vowel - in one note's text, or in the next note's when that is sung on from it
+    /// (a hyphen, or <see cref="SungOn"/>) - the final is carried on (밥이 바비, 닭이 달기, 값이
+    /// 갑씨); ㄷ and ㅌ so carried before ㅣ are ㅈ and ㅊ (같이 가치); a final ㅎ is not sung before
+    /// a vowel (좋아 조아, 많이 마니); ㅇ stays. A pair is changed only where
+    /// <paramref name="spelled"/> knows both syllables it becomes. Romanised text is left as written.
+    /// </summary>
+    /// <param name="syllables">Each note's text, and whether the next note's is sung on from it.</param>
     /// <param name="spelled">Whether the voice's dictionary spells a syllable.</param>
-    public static List<string> Carry(IReadOnlyList<(string Text, bool Hyphen)> syllables, Func<string, bool> spelled)
+    public static List<string> Carry(IReadOnlyList<(string Text, bool SungOn)> syllables, Func<string, bool> spelled)
     {
         var sung = syllables.Select(s => s.Text.ToCharArray()).ToList();
         var none = (Note: -1, At: -1);
@@ -60,7 +77,7 @@ public static class KoreanPhonemizer
                 }
                 before = (n, i);
             }
-            if (!syllables[n].Hyphen)
+            if (!syllables[n].SungOn)
             {
                 before = none;
             }

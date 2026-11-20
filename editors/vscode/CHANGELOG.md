@@ -3,7 +3,7 @@
 ## Unreleased
 
 - **A Chinese character is read by the word it stands in**: 长 in 长大 is `zhang`, in 长城 `chang`; 行 in 银行 `hang`, in 行人 `xing`; 乐 in 音乐 `yue`, in 快乐 `le`. The words are found across the notes, one character a note as a song has them, from a table of 24,000 words after phrase-pinyin-data (pypinyin's). A character in no word is read as before, alone, except a few whose customary reading no word has (佛 `fo`, 长 `chang`). Pinyin written out is sung as written.
-- **A Korean final consonant goes on to a following vowel within a word**: 밥이 sings 바비, 닭이 달기, 값이 갑씨, 같이 가치, and a final ㅎ is not sung before a vowel (좋아 조아, 많이 마니). Within one note's text, or across notes joined by a hyphen; a carry the voice's dictionary cannot spell is not made.
+- **A Korean final consonant goes on to a following vowel**: 밥이 sings 바비, 닭이 달기, 값이 갑씨, 같이 가치, and a final ㅎ is not sung before a vowel (좋아 조아, 많이 마니). Within one note's text, or on to the next note when it follows with no rest and no breath between (or a hyphen joins them): a Korean song's syllables are written one to a note with spaces, so the words are not marked. A carry the voice's dictionary cannot spell is not made, and a phrase is never cut between the two notes.
 
 ## 0.5.0
 

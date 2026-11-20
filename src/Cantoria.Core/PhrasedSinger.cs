@@ -55,10 +55,17 @@ public sealed class PhrasedSinger(ISinger inner, Action<SungScore>? check = null
         score = SingCurves.Resolve(score, Parameters, Name);
 
         var notes = score.Notes;
+        bool korean = score.Language.Split('-')[0] == "ko";
         var words = new List<(int First, int Last)>();
+        string? lyric = null;   // the syllable the note before sang
         for (int i = 0; i < notes.Count; i++)
         {
-            if (i > 0 && CarriesOn(notes[i - 1], notes[i]))
+            // In Korean a note the final of the syllable before is carried on to goes with it too:
+            // the phrase sung alone sings it as the whole score does.
+            bool on = i > 0 && (CarriesOn(notes[i - 1], notes[i])
+                || korean && KoreanPhonemizer.SungOn(notes[i - 1], notes[i]) && KoreanPhonemizer.CarriesAcross(lyric, notes[i].Lyric));
+            lyric = notes[i].Melisma ? lyric : notes[i].Lyric;
+            if (on)
             {
                 words[^1] = (words[^1].First, i);
             }

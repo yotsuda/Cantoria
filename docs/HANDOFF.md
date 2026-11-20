@@ -15,15 +15,18 @@ DiffSinger (プロセス内の ONNX)、NEUTRINO、VOICEVOX。主な呼び手は 
   - 中国語: 漢字を語で読む (长城 chang、长大 zhang、银行 hang)。`ChinesePhonemizer.Read` が音符をまたいで
     漢字の並びを最長一致で語に切る。表は `src/Cantoria.Core/DiffSinger/pinyin-phrases.txt`
     (phrase-pinyin-data の pinyin.txt から `tools/Generate-PinyinPhrases.ps1` で生成。自前の訂正の表もこのスクリプトの中)。
-  - 韓国語: 語の中で終声を次の母音へ (밥이 바비、같이 가치、좋아 조아)。`KoreanPhonemizer.Carry`。
-    音符をまたぐのは hyphen でつながっているときだけ (フレーズはそこで切れないので、フレーズ単体と曲全体で同じに歌う)。
-  - diffsinger/Nishiren で韓国語・中国語とも描けることは確かめた。**耳ではまだ聞いていない。**
+  - 韓国語: 終声を次の母音へ (밥이 바비、같이 가치、좋아 조아)。`KoreanPhonemizer.Carry`。
+    音符をまたいでも運ぶ: hyphen があるとき、または**休符も息継ぎもなく続くとき** (`KoreanPhonemizer.SungOn`)。
+    Lily# は韓国語の音節を空白で区切り hyphen を付けない (walkthrough のアリラン、site の Spring-Breeze-Bicycle) ので、
+    hyphen だけでは一度も効かなかった (2026-11-21 に確かめ、ユーザーの決定で Cantoria 側で運ぶことにした)。
+    運ぶ二つの音符の間では `PhrasedSinger` がフレーズを切らない (`CarriesAcross`)。語の境は分からないので、
+    語をまたいでも語の中と同じに運ぶ (꽃 위 は 꼬뒤 でなく 꼬취)。
+  - diffsinger/Nishiren で韓国語・中国語とも描けることは確かめた (hyphen なしの 밥|이 が 바|비 と読まれることも)。
+    **耳ではまだ聞いていない。** (描くたびに音が少し変わる (サンプリングが乱数) ので、wav の hash では比べられない。)
 
 **次の一手**:
-1. Lily# が韓国語の一語の音節の間に hyphen を付けて送るか確かめる。付けていなければ、音符をまたぐ連音は効かない
-   (一つの音符の中の「밥이」は効く)。
-2. ユーザーに描いた音を聞いてもらう (中国語の多音字、韓国語の連音)。
-3. roadmap C の残り: 韓国語のほかの音変化 (鼻音化 밥만 밤만、激音化 축하 추카、濃音化)、語の境をまたぐ連音
+1. ユーザーに描いた音を聞いてもらう (中国語の多音字、韓国語の連音)。Spring-Breeze-Bicycle の 햇살이、바람이 がよい例。
+2. roadmap C の残り: 韓国語のほかの音変化 (鼻音化 밥만 밤만、激音化 축하 추카、濃音化)、語の境をまたぐときの終声
    (꽃 위 꼬뒤)、表にない中国語の語。ほかに roadmap C の「音符ごとの `phonemes` 上書き」、D (表情のヒント)。
 
 ## 最初に読むもの

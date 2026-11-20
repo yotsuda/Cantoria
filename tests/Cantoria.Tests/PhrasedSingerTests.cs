@@ -141,6 +141,20 @@ public class PhrasedSingerTests
         Assert.Equal(phrases, fake.Sung.Count);
     }
 
+    // Korean: a final carried on to the next note binds the two, as a hyphen does (밥 이: 바 비),
+    // though nothing marks them one word; a phrase too long to sing at once is cut elsewhere.
+    [Fact]
+    public async Task InKorean_NoPhraseBegins_OnANoteTheFinalBeforeIsCarriedOnTo()
+    {
+        var fake = new Fake();
+        using var singer = new PhrasedSinger(fake);
+        var notes = Enumerable.Range(0, 150).Select(i => new SungNote(i * 0.5, 0.5, 60, i % 2 == 0 ? "밥" : "이")).ToArray();
+        await singer.SingAsync(new SungScore(notes, "ko"));
+        Assert.True(fake.Sung.Count > 1);
+        Assert.All(fake.Sung, s => Assert.Equal("밥", s.Notes[0].Lyric));
+    }
+
+
     [Fact]
     public async Task ALongVowelMark_DoesNotBeginAPhrase()
     {

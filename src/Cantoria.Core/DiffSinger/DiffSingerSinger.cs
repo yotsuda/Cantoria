@@ -141,12 +141,22 @@ public sealed class DiffSingerSinger : ISinger, ISingParameters, IDisposable
             ? EnglishPhonemizer.Syllables(notes.Where(n => !n.Melisma).Select(n => (n.Lyric!, n.Hyphen)).ToList(), dur.Dictionary, dur.Symbol)
             : null;
         // Chinese: each character read by the word it stands in, across the notes. Korean: a final
-        // consonant carried on within a word. A note's hyphen may stand on its last melisma note.
-        var sungNotes = notes.Select((n, i) => (Note: n, Hyphen: n.Hyphen || notes.Skip(i + 1).TakeWhile(m => m.Melisma).Any(m => m.Hyphen)))
-            .Where(s => !s.Note.Melisma).ToList();
+        // consonant carried on to the next note sung on from it. A note's hyphen may stand on its
+        // last melisma note, and the word ends there.
+        var sungNotes = notes.Select((n, i) =>
+        {
+            int last = i;
+            while (last + 1 < notes.Count && notes[last + 1].Melisma)
+            {
+                last++;
+            }
+            bool sungOn = notes.Skip(i).Take(last - i + 1).Any(m => m.Hyphen)
+                || (language == "ko" && last + 1 < notes.Count && KoreanPhonemizer.SungOn(notes[last], notes[last + 1]));
+            return (Note: n, SungOn: sungOn);
+        }).Where(s => !s.Note.Melisma).ToList();
         var chinese = language == "zh" ? ChinesePhonemizer.Read(sungNotes.Select(s => s.Note.Lyric).ToList()) : null;
         var korean = language == "ko"
-            ? KoreanPhonemizer.Carry(sungNotes.Select(s => (s.Note.Lyric!, s.Hyphen)).ToList(), g => dur.Dictionary.Spell(g, dur.Symbol) is not null)
+            ? KoreanPhonemizer.Carry(sungNotes.Select(s => (s.Note.Lyric!, s.SungOn)).ToList(), g => dur.Dictionary.Spell(g, dur.Symbol) is not null)
             : null;
         int syllable = 0;
 
