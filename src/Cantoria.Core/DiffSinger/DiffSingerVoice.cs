@@ -56,8 +56,8 @@ public sealed class DiffSingerVoice : IDisposable
         Pitch = File.Exists(Path.Combine(pitchDir, "dsconfig.yaml")) ? new Module(pitchDir, options.Speaker, options.Language, Open) : null;
         var varianceDir = Path.Combine(Folder, "dsvariance");
         Variance = File.Exists(Path.Combine(varianceDir, "dsconfig.yaml")) ? new Module(varianceDir, options.Speaker, options.Language, Open) : null;
-        var own = Path.Combine(Folder, "dsvocoder");
-        VocoderFolder = File.Exists(Path.Combine(own, "vocoder.yaml")) ? own : options.VocoderFolder!;
+        VocoderFolder = options.Vocoder()
+            ?? throw new InvalidDataException($"{Folder}: the voice bundles no vocoder, and none it names ({options.NamedVocoder() ?? "none named"}) or set is found");
         Vocoder = DsVocoderConfig.Load(Path.Combine(VocoderFolder, "vocoder.yaml"));
         if (Vocoder.SampleRate != Acoustic.SampleRate || Vocoder.HopSize != Acoustic.HopSize || Vocoder.NumMelBins != Acoustic.NumMelBins)
         {

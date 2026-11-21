@@ -41,13 +41,24 @@ DiffSinger (プロセス内の ONNX)、NEUTRINO、VOICEVOX。主な呼び手は 
   Lily# からはまだ送らない (`\bendAfter`・グリッサンドから作るのは Lily# の仕事)。D の残りの legato (スラー) は
   調べて見送った (理由は roadmap D: 声に glide の入力がなく、歌のスラーはほぼ melisma で Lily# が melisma として送る)。
 
+- **roadmap F (どの機械でも歌える) を始めた** (2026-11-21、オーナーの選択)。声の規約の調査は `docs/voices-2026-11-21.md`。
+  配れて歌で稼ぐのも許し、Cantoria のような推論プログラムも明記して許すのは DiffSinger の **Qixuan 绮萱** + OpenVPI の
+  **pc_nsf_hifigan 2025.02** だけ。`C:\Tools\voices\Qixuan` と `C:\Tools\voices\pc_nsf_hifigan` に入れた。Cantoria は手を入れずに
+  読み、ja・en・zh で歌い、`DiffSingerSingerTests` 7 件が通る。性別は作者が書いていないので表に入れていない。
+  - 見つかった穴と直したこと: vocoder を持たない声は、声が名指す vocoder に関係なく設定の 1 つで歌われていた。
+    `DiffSingerOptions.Vocoder()` が名指しの vocoder を探す (設定の folder・その中・その隣・声の隣)。声と vocoder を
+    voices folder に並べれば設定なしで歌う。
+  - 聞き比べ用の wav (scratchpad、消えうる): `qixuan-ja.wav`・`qixuan-zh.wav`・`qixuan-en.wav`。
+
 **次の一手**:
 1. **友人の答えを待っている** (ユーザーは韓国語も中国語も話せない)。聞き取りのページと答えの読み方は
    `docs/listening-2026-11-21.md`。答えが届いたら、そこの表で「今」が選ばれたかを見る。K1・K8〜K11 は調査の後に読みを変えた。
 2. roadmap C の残り: 韓国語の語ごとに決まる変化 (발병 발뼝 の濃音化、꽃잎 꼰닙 の ㄴ添加、語尾と同じ形で始まる語)、
    表にない中国語の語 (どれも今は `phonemes` で楽譜側から直せる)。C・D はこれで区切り。次の大きな段は
    F (どの機械でも歌える: 配れる声の調査、ライセンスが先) か E (sinsy などの新しいエンジン) で、どちらもオーナーが選ぶ。
-3. **オーナーの耳を待っている**: `bend` の試行 (すくい上げと落とし) の聞こえ方。
+3. **オーナーの耳を待っている**: `bend` の試行 (すくい上げと落とし) の聞こえ方。Qixuan の日本語・英語が
+   最初に勧める声に足りるか。足りるなら F の本体: 拡張の「声をダウンロード」(規約を見せ、AI 表示と署名の決まりを伝え、
+   2 つの release file を voices folder に落として展開。`checkSetup` と「no voice to list」の警告にボタン)。
    - 終声と次の子音の音変化 (鼻音化・激音化・流音化・濃音化) は入れた (`KoreanPhonemizer.Meet`、標準発音法 12・17〜20・23 項)。
      友人の答えより前に入れたので、K9・K10 は今は「もう一方」と同じ読み。
 

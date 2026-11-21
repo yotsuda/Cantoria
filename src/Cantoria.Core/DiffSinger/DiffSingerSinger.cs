@@ -603,7 +603,7 @@ public sealed class DiffSingerSinger : ISinger, ISingParameters, IDisposable
         var waveform = Run(voice.VocoderSession, [NamedOnnxValue.CreateFromTensor("mel", mel), Row("f0", f0Hz)], "vocoder");
         var samples = waveform.First().AsTensor<float>().ToArray();
         int rate = voice.Vocoder.SampleRate;
-        log.AppendLine($"vocoder: {samples.Length / (double)rate:0.00} s at {rate} Hz in {clock.Elapsed.TotalSeconds:0.00} s");
+        log.AppendLine($"vocoder {voice.Vocoder.Name}: {samples.Length / (double)rate:0.00} s at {rate} Hz in {clock.Elapsed.TotalSeconds:0.00} s");
         return new SungPhrase(samples, renderStartMs, rate);
     }
 

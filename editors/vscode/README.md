@@ -40,8 +40,10 @@ own, is chosen by its folder as below.
    voice computes into sound. Download the `.oudep` file of the one the voice's readme names (for
    `nsf_hifigan`, the usual one, `nsf_hifigan_44.1k_hop512_128bin_2024.02.oudep`) from the
    [DiffSinger community vocoders](https://github.com/openvpi/vocoders) (their releases), rename it to
-   `.zip`, unpack it into a folder, and choose that folder with **Cantoria: Choose Vocoder
-   Folder…**. The vocoders have terms of their own, in the `NOTICE.txt` they come with.
+   `.zip`, and unpack it into a folder of its own beside your voices (`C:\voices\pc_nsf_hifigan`):
+   each voice is sung with the vocoder its `dsconfig.yaml` names, found there, in or beside the
+   folder chosen with **Cantoria: Choose Vocoder Folder…** (OpenUtau's `Dependencies` will do), or
+   else the chosen one. The vocoders have terms of their own, in the `NOTICE.txt` they come with.
 4. Name the voice by its folder: `diffsinger/TIGER`.
 
 A voice sings Japanese through its dictionary, and English where it has a `dsdict-en.yaml`. An
