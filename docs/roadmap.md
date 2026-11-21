@@ -115,8 +115,12 @@ Where it stands (2026-11-21): loudness is `level`/`levelEnd`, applied to what wa
 vibrato is `vibrato`/`vibratoRate` (a trial, DiffSinger); a voice's own inputs are `sing` and
 `singTo`; the pitch bend is `bend`, points of (seconds from the note's start, cents), smooth
 between them and nothing outside the note (a trial, DiffSinger; `Bend.cs`). Not done: legato
-from slurs (what a DiffSinger voice can be told for it is not yet known: the consonant's
-length, the gap, the pitch model's transition).
+from slurs. Looked into 2026-11-21 and left: the voices have no input for it (TIGER's and
+Nishiren's pitch models take `expr` and `note_rest`, no glide; `expr` is already `sing`), so it
+could only be shorter consonants into the next note (as OpenUtau's velocity) and no gap - the
+gap is the caller's already, and notes that touch are sung joined. And a slur in a song is
+almost always a melisma, which Lily# sends as melisma notes: a slur across syllables would
+seldom reach Cantoria. Taken up again if a score asks for it.
 
 ## E. More backends
 
