@@ -33,7 +33,8 @@ public static class ScoreJson
             ?? throw new JsonException("the score is null");
         var notes = (dto.Notes ?? []).Select(n => new SungNote(
             n.Start, n.Duration, n.Pitch, n.Lyric, n.Melisma ?? false, n.Breath ?? false, n.Level, n.LevelEnd, n.Inhale ?? false, n.Hyphen ?? false,
-            n.Vibrato, n.VibratoRate, SingOf(n.Sing), SingOf(n.SingTo))).ToList();
+            n.Vibrato, n.VibratoRate, SingOf(n.Sing), SingOf(n.SingTo),
+            Phonemes: string.IsNullOrWhiteSpace(n.Phonemes) ? null : n.Phonemes.Trim())).ToList();
         return new SungScore(notes, dto.Language ?? "ja", dto.SampleRate ?? 44100, SingOf(dto.Sing)).Tidy();
     }
 
@@ -76,7 +77,7 @@ public static class ScoreJson
                 Melisma = n.Melisma ? true : null, Breath = n.Breath ? true : null,
                 Level = n.Level, LevelEnd = n.LevelEnd, Inhale = n.Inhale ? true : null, Hyphen = n.Hyphen ? true : null,
                 Vibrato = n.Vibrato, VibratoRate = n.VibratoRate,
-                Sing = SingElements(n.Sing), SingTo = SingElements(n.SingTo),
+                Sing = SingElements(n.Sing), SingTo = SingElements(n.SingTo), Phonemes = n.Phonemes,
             }).ToList(),
         };
         return JsonSerializer.Serialize(dto, Options);
@@ -110,5 +111,6 @@ public static class ScoreJson
         public double? VibratoRate { get; set; }
         public Dictionary<string, JsonElement>? Sing { get; set; }
         public Dictionary<string, JsonElement>? SingTo { get; set; }
+        public string? Phonemes { get; set; }
     }
 }

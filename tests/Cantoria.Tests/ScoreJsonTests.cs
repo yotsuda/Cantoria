@@ -102,6 +102,25 @@ public class ScoreJsonTests
     }
 
     [Fact]
+    public void Phonemes_WrittenOnANote_AreReadTrimmed_WrittenBack_AndBlankIsNone()
+    {
+        var score = ScoreJson.Read("""
+            { "language": "ko", "notes": [
+              { "start": 0, "duration": 1, "pitch": 60, "lyric": "발" },
+              { "start": 1, "duration": 1, "pitch": 62, "lyric": "병", "phonemes": " pp yeo ng " },
+              { "start": 2, "duration": 1, "pitch": 64, "lyric": "이", "phonemes": "  " } ] }
+            """);
+        Assert.Null(score.Notes[0].Phonemes);
+        Assert.Equal("pp yeo ng", score.Notes[1].Phonemes);
+        Assert.Null(score.Notes[2].Phonemes);
+        string json = ScoreJson.Write(score);
+        Assert.Contains("\"phonemes\": \"pp yeo ng\"", json);
+        Assert.Equal(score.Notes, ScoreJson.Read(json).Notes);
+        var melisma = new SungScore([new SungNote(0, 1, 60, "a"), new SungNote(1, 1, 60, Melisma: true, Phonemes: "a")]);
+        Assert.Contains(melisma.Validate(), p => p.Contains("melisma note carries no phonemes"));
+    }
+
+    [Fact]
     public void EmptyScore_IsValid_AndEndsAtZero()
     {
         var score = ScoreJson.Read("""{ "notes": [] }""");

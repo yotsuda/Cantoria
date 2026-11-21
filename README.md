@@ -112,6 +112,12 @@ NEUTRINO render of a score takes under half a second). See
 - `breath: true` marks a phrase end after the note (the singer breathes), and
   `inhale: true` an audible breath before the next one. `level` and `levelEnd`
   scale the sung audio across the note (absent: 1).
+- `phonemes` says what a note sings where the reading is wrong, in the voice's own phoneme
+  symbols parted by spaces: `{ "lyric": "병", "phonemes": "pp y eo NG" }` sings 발병 as 발뼝.
+  The language prefix a voice may use (`ko/`) can be left out. The lyric stays (it names the
+  note in messages), the notes around it are read as before, and a symbol the voice does not
+  have is refused with the note named. DiffSinger voices sing it; the other engines read the
+  lyric.
 
 ## Relation to Lily#
 

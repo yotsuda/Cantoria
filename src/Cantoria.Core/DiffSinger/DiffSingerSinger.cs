@@ -165,6 +165,7 @@ public sealed class DiffSingerSinger : ISinger, ISingParameters, IDisposable
         var unknown = new List<string>();
         var notSung = new List<(int Note, double Start, string Lyric)>();
         var guessed = new List<string>();
+        var writtenWords = new List<(int Note, double Start, string Lyric, string Written, IReadOnlyList<string> Phonemes)>();
         for (int i = 0; i < notes.Count; i++)
         {
             var n = notes[i];
@@ -174,7 +175,14 @@ public sealed class DiffSingerSinger : ISinger, ISingParameters, IDisposable
                 continue;
             }
             List<string> phonemes;
-            if (english is not null)
+            if (n.Phonemes is { } written)
+            {
+                // Written on the note: sung as written, the symbols as the duration model spells them.
+                syllable++;
+                phonemes = [.. written.Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Select(p => dur.Symbol(p) ?? p)];
+                writtenWords.Add((i, n.Start, n.Lyric ?? "", written, phonemes));
+            }
+            else if (english is not null)
             {
                 var sung = english[syllable++];
                 if (sung.Phonemes.Count == 0 && !sung.Missing && words.Count > 0)
@@ -247,6 +255,11 @@ public sealed class DiffSingerSinger : ISinger, ISingParameters, IDisposable
             models.Add(("variance", Path.GetFullPath(Path.Combine(varianceModel.Dir, varianceModel.Config.Phonemes)), s => varianceModel.Symbol(s) is not null));
         }
         models.Add(("acoustic", acousticModel.Phonemes, s => voice.AcousticSymbol(s) is not null));
+        if (NotAPhoneme(Name, writtenWords,
+                [("duration", Path.GetFullPath(Path.Combine(dur.Dir, dur.Config.Phonemes)), s => dur.Symbol(s) is not null), .. models]) is { } notAPhoneme)
+        {
+            throw new SingerException(notAPhoneme);
+        }
         if (NoSoundFor(Name, words.Select(w => (w.Index, w.Notes[0].Start, w.Notes[0].Lyric ?? "", (IReadOnlyList<string>)w.Phonemes)).ToList(), models) is { } noSound)
         {
             throw new SingerException(noSound);
@@ -327,6 +340,28 @@ public sealed class DiffSingerSinger : ISinger, ISingParameters, IDisposable
             + $" not in its dictionary ({Path.GetFileName(dictionaryFile)}), and "
             + (syllables.Count == 1 ? "its note is" : "their notes are")
             + " silent. Write other words there, or take another voice";
+    }
+
+    /// <summary>
+    /// The first note whose written phonemes (<see cref="SungNote.Phonemes"/>) hold a symbol one of
+    /// the voice's models does not know, said as <see cref="NoSoundFor"/> says it (Lily# reads the
+    /// same words to point at the note), with what was written; null when all are known.
+    /// </summary>
+    public static string? NotAPhoneme(string voice, IReadOnlyList<(int Note, double Start, string Lyric, string Written, IReadOnlyList<string> Phonemes)> words,
+        IReadOnlyList<(string Model, string File, Func<string, bool> Knows)> models)
+    {
+        foreach (var w in words)
+        {
+            foreach (var (model, file, knows) in models)
+            {
+                if (w.Phonemes.FirstOrDefault(p => !knows(p)) is { } phoneme)
+                {
+                    return string.Create(System.Globalization.CultureInfo.InvariantCulture,
+                        $"{voice} has no sound for \"{w.Lyric}\" (note {w.Note} at {w.Start:0.###} s): its phonemes are written \"{w.Written}\", and its {model} model has no phoneme \"{phoneme}\" ({file})");
+                }
+            }
+        }
+        return null;
     }
 
     /// <summary>

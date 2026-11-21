@@ -35,6 +35,10 @@ export interface CantoriaNote {
     /** Settings ARRIVED at with this note: reached at its start, gliding from where the value
      *  before was written. For a setting whose scope is `curve`. */
     singTo?: Record<string, number | string>;
+    /** What the note sings, in the voice's own phoneme symbols parted by spaces (`"pp y eo NG"`),
+     *  for what the dictionary or the reading rules get wrong. A DiffSinger voice sings it; the
+     *  other engines read the lyric. */
+    phonemes?: string;
 }
 
 /** The score a caller hands `sing`: notes in seconds; the sample rate and language optional. */

@@ -57,6 +57,18 @@ public class NoSoundForTests
         Assert.Contains("\"岸\" (note 11 at 11 s), …: these syllables", DiffSingerSinger.NotInDictionary("diffsinger/V", "d.yaml", many));
     }
 
+    // A note's written phonemes (SungNote.Phonemes) hold a symbol a model lacks: said in the same
+    // words Lily# reads to point at the note, with what was written, not what a dictionary spells.
+    [Fact]
+    public void AWrittenPhonemeAModelLacks_IsNamedWithItsNoteAndWhatWasWritten()
+    {
+        var words = new[] { (2, 1.5, "병", "pp yeo ng", (IReadOnlyList<string>)["pp", "yeo", "ng"]) };
+        Assert.Equal("diffsinger/V has no sound for \"병\" (note 2 at 1.5 s): its phonemes are written \"pp yeo ng\", and its duration model has no phoneme \"yeo\" "
+            + @"(C:\voices\V\dsduration\phonemes.txt)",
+            DiffSingerSinger.NotAPhoneme("diffsinger/V", words, [Model("duration", "pp", "ng"), Model("acoustic", "pp", "yeo", "ng")]));
+        Assert.Null(DiffSingerSinger.NotAPhoneme("diffsinger/V", words, [Model("duration", "pp", "yeo", "ng")]));
+    }
+
     [Fact]
     public void TheOtherSyllables_AreSaidOnceEach_AndTheSameOneNotAgain()
     {

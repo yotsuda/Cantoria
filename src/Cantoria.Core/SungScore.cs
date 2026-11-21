@@ -31,6 +31,11 @@ namespace Cantoria;
 /// <param name="Curve">What <see cref="SingCurves.Resolve"/> made of the two for this note: each
 /// name's value at the note's start and at its end. Not a caller's to write.</param>
 /// <param name="VibratoRate">Its swings a second; null is <see cref="Cantoria.DiffSinger.Vibrato.DefaultRate"/>.</param>
+/// <param name="Phonemes">What the note sings, in the voice's own phoneme symbols parted by spaces
+/// (<c>"p a l"</c>), for what the dictionary or the reading rules get wrong; null to read the lyric.
+/// The language prefix a voice may use (<c>ko/</c>) may be left out. It stands for this note only:
+/// the notes around it are read as before (a Korean final carried into it still leaves the note
+/// before). Sung by DiffSinger voices only; the other engines read the lyric.</param>
 public sealed record SungNote(
     double Start,
     double Duration,
@@ -46,7 +51,8 @@ public sealed record SungNote(
     double? VibratoRate = null,
     IReadOnlyDictionary<string, SingValue>? Sing = null,
     IReadOnlyDictionary<string, SingValue>? SingTo = null,
-    IReadOnlyDictionary<string, (double Start, double End)>? Curve = null)
+    IReadOnlyDictionary<string, (double Start, double End)>? Curve = null,
+    string? Phonemes = null)
 {
     /// <summary>Seconds at which the note ends.</summary>
     public double End => Start + Duration;
@@ -136,6 +142,10 @@ public sealed record SungScore(
                 if (!string.IsNullOrEmpty(n.Lyric))
                 {
                     problems.Add($"{at}: a melisma note carries no lyric (has \"{n.Lyric}\")");
+                }
+                if (n.Phonemes is not null)
+                {
+                    problems.Add($"{at}: a melisma note carries no phonemes (has \"{n.Phonemes}\")");
                 }
             }
             else if (string.IsNullOrWhiteSpace(n.Lyric))

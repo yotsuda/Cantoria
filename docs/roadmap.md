@@ -100,7 +100,10 @@ Phonemisation is the backend's; the caller sends the text as sung and the langua
   endings: 꽃 아래 sings 꼬차래, not 꼬다래); and a Mandarin word the table lacks. A final goes on
   as said at a word's end before any syllable not in `KoreanPhonemizer.Endings` (꽃 위 꼬뒤).
 - An optional per-note `phonemes` override in the contract for what a dictionary gets wrong
-  (stress, an unusual split). Older engines ignore unknown fields already.
+  (stress, an unusual split, the Korean changes a word has of its own). Older engines ignore
+  unknown fields already. *Done 2026-11-21*: the voice's symbols parted by spaces, the language
+  prefix optional, sung by DiffSinger voices; a symbol a model lacks is refused naming the note
+  as `NoSoundFor` does. NEUTRINO and VOICEVOX read the lyric.
 
 ## D. Expression hints
 

@@ -28,11 +28,18 @@ DiffSinger (プロセス内の ONNX)、NEUTRINO、VOICEVOX。主な呼び手は 
     **耳ではまだ聞いていない。** (描くたびに音が少し変わる (サンプリングが乱数) ので、wav の hash では比べられない。)
     読みだけを見るなら、Cantoria.Core を参照する小さな console で `KoreanPhonemizer.Carry` / `ChinesePhonemizer.Read` を呼ぶのが早い。
 
+- **音符ごとの `phonemes` 上書き** (roadmap C) を入れた (2026-11-21)。`SungNote.Phonemes` (声の記号を空白区切り、
+  `ko/` などの前置きは省ける)。DiffSinger だけが歌う (`DiffSingerSinger.Render` の語を作る輪で辞書と運びを飛ばす)。
+  NEUTRINO・VOICEVOX は歌詞を読む。知らない記号は `NotAPhoneme` が duration を含む全モデルで調べ、
+  `has no sound for "…" (note N` の言い回しで返す (Lily# がこの言葉で音符を指す)。diffsinger/Nishiren で
+  발|병 (`pp y eo NG`) を描けることと、`yeo` が断られることを確かめた。**Lily# 側で書く手段はまだない**
+  (Lily# のリポジトリの仕事。音節に読みを付ける仕組みに倣うのが自然)。
+
 **次の一手**:
 1. **友人の答えを待っている** (ユーザーは韓国語も中国語も話せない)。聞き取りのページと答えの読み方は
    `docs/listening-2026-11-21.md`。答えが届いたら、そこの表で「今」が選ばれたかを見る。K1・K8〜K11 は調査の後に読みを変えた。
 2. roadmap C の残り: 韓国語の語ごとに決まる変化 (발병 발뼝 の濃音化、꽃잎 꼰닙 の ㄴ添加、語尾と同じ形で始まる語)、
-   表にない中国語の語。ほかに roadmap C の「音符ごとの `phonemes` 上書き」、D (表情のヒント)。
+   表にない中国語の語 (どれも今は `phonemes` で楽譜側から直せる)。ほかに D (表情のヒント)。
    - 終声と次の子音の音変化 (鼻音化・激音化・流音化・濃音化) は入れた (`KoreanPhonemizer.Meet`、標準発音法 12・17〜20・23 項)。
      友人の答えより前に入れたので、K9・K10 は今は「もう一方」と同じ読み。
 
