@@ -7,7 +7,7 @@ namespace Cantoria.DiffSinger;
 /// Korean words to phonemes through a voice's dictionary, which spells each Hangul syllable (and
 /// its romanisation). A final consonant before a syllable that begins with a vowel, in one note or
 /// in the next note sung on from it, is sung as that syllable's first (<see cref="Carry"/>: 밥이
-/// sings 바 and 비).
+/// sings 바 and 비); before a consonant it changes as the standard pronunciation says (밥만 밤만).
 /// </summary>
 public static class KoreanPhonemizer
 {
@@ -51,7 +51,7 @@ public static class KoreanPhonemizer
     /// <paramref name="before"/> on to the first of <paramref name="next"/> (the dictionary aside).</summary>
     public static bool CarriesAcross(string? before, string? next)
         => before is [.., var b and >= First and <= Last] && next is [var x and >= First and <= Last, ..]
-            && CarryOn(b, x).Before != b;
+            && CarryOn(b, x) != (b, x);
 
     /// <summary>
     /// The notes' Hangul as sung: where a syllable with a final consonant is followed by one that
@@ -83,7 +83,7 @@ public static class KoreanPhonemizer
                 if (before is var (bn, bi) && bn >= 0)
                 {
                     var (carried, next) = CarryOn(sung[bn][bi], text[i]);
-                    if (carried != sung[bn][bi] && spelled(carried.ToString()) && spelled(next.ToString()))
+                    if ((carried, next) != (sung[bn][bi], text[i]) && spelled(carried.ToString()) && spelled(next.ToString()))
                     {
                         (sung[bn][bi], text[i]) = (carried, next);
                     }
@@ -102,7 +102,11 @@ public static class KoreanPhonemizer
     {
         int b = before - First, x = next - First;
         int final = b % 28, first = x / 28 / 21, vowel = x / 28 % 21;
-        if (final == 0 || first != Silent || Carried[final].Goes == Silent)
+        if (final != 0 && first != Silent)
+        {
+            return Meet(before, next, final, first, vowel);
+        }
+        if (final == 0 || Carried[final].Goes == Silent)
         {
             return (before, next);
         }
@@ -123,6 +127,79 @@ public static class KoreanPhonemizer
             goes = goes switch { 3 => 12, 16 => 14, _ => goes };    // ㄷ ㅌ before ㅣ: ㅈ ㅊ
         }
         return ((char)(before - final + stays), goes < 0 ? next : (char)(First + (goes * 21 + vowel) * 28 + x % 28));
+    }
+
+    // Finals by how they sound at a word's end: ㄱ (ㄱ ㄲ ㄳ ㄺ ㅋ), ㄷ (ㄷ ㅅ ㅆ ㅈ ㅊ ㅌ), ㅂ (ㅂ ㅄ ㄿ ㅍ).
+    private static bool IsK(int f) => f is 1 or 2 or 3 or 9 or 24;
+    private static bool IsT(int f) => f is 7 or 19 or 20 or 22 or 23 or 25;
+    private static bool IsP(int f) => f is 14 or 17 or 18 or 26;
+
+    /// <summary>
+    /// A final meeting the consonant that begins the next syllable (the standard pronunciation's
+    /// rules 12, 17 to 20 and 23): ㅎ with ㄱ ㄷ ㅈ is ㅋ ㅌ ㅊ either way round (좋다 조타, 축하 추카,
+    /// 못하다 모타다, 굳히다 구치다); ㄱ ㄷ ㅂ before ㄴ ㅁ are ㅇ ㄴ ㅁ (국물 궁물, 밥만 밤만, 꽃말
+    /// 꼰말, 없는 엄는); ㄹ after ㅁ ㅇ is ㄴ, and after ㄱ ㅂ too, which become ㅇ ㅁ (종로 종노,
+    /// 독립 동닙, 협력 혐녁); ㄴ and ㄹ meeting are ㄹ ㄹ (신라 실라, 설날 설랄); ㄱ ㄷ ㅂ ㅅ ㅈ after
+    /// ㄱ ㄷ ㅂ are tense (학교 학꾜, 국밥 국빱, 옷장 옷짱). The final is otherwise left as written.
+    /// </summary>
+    private static (char Before, char Next) Meet(char before, char next, int final, int first, int vowel)
+    {
+        int f = final, o = first;
+        switch (final)
+        {
+            case 27 or 6 or 15:     // ㅎ ㄶ ㅀ
+                int rest = final == 27 ? 0 : final == 6 ? 4 : 8;
+                if (first is 0 or 3 or 12)
+                {
+                    (f, o) = (rest, first switch { 0 => 15, 3 => 16, _ => 14 });
+                }
+                else if (first == 9)
+                {
+                    (f, o) = (rest, 10);
+                }
+                else if (first == 2)
+                {
+                    (f, o) = final == 15 ? (8, 5) : (4, 2);     // 놓는 논는, 않는 안는, 싫네 실레
+                }
+                break;
+            case var _ when first == 18 && (IsK(final) || IsT(final) || IsP(final) || final is 5 or 11):
+                (f, o) = final switch
+                {
+                    9 => (8, 15),                               // 밝히다 발키다
+                    11 => (8, 17),                              // 넓히다 널피다
+                    5 => (4, 14),                               // 앉히다 안치다
+                    _ when IsK(final) => (0, 15),
+                    _ when IsP(final) => (0, 17),
+                    7 or 25 when vowel == I => (0, 14),         // 굳히다 구치다
+                    _ => (0, 16),
+                };
+                break;
+            case var _ when first is 2 or 6 && (IsK(final) || IsT(final) || IsP(final)):
+                f = IsK(final) ? 21 : IsT(final) ? 4 : 16;
+                break;
+            case var _ when first == 5:
+                if (final is 16 or 21)
+                {
+                    o = 2;
+                }
+                else if (IsK(final) || IsT(final) || IsP(final))
+                {
+                    (f, o) = (IsK(final) ? 21 : IsT(final) ? 4 : 16, 2);
+                }
+                else if (final == 4)
+                {
+                    f = 8;
+                }
+                break;
+            case 8 or 13 when first == 2:   // ㄹ ㄾ before ㄴ
+                o = 5;
+                break;
+            case var _ when first is 0 or 3 or 7 or 9 or 12 && (IsK(final) || IsT(final) || IsP(final)):
+                o = first switch { 0 => 1, 3 => 4, 7 => 8, 9 => 10, _ => 13 };
+                break;
+        }
+        int x = next - First;
+        return ((char)(before - final + f), (char)(First + (o * 21 + vowel) * 28 + x % 28));
     }
 
     /// <summary>

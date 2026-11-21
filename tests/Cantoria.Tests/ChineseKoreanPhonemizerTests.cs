@@ -126,7 +126,7 @@ public class ChineseKoreanPhonemizerTests
         Assert.Equal(["zh", "ang"], ChinesePhonemizer.Phonemes("长", zh, AnyKnown, [], ["zhang"]));
     }
 
-    // Within a word a final consonant goes on to a syllable that begins with a vowel.
+    // A final consonant goes on to a syllable that begins with a vowel, and changes with a consonant.
     [Theory]
     [InlineData("밥이", false, "", "바비")]
     [InlineData("밥", true, "이", "바|비")]
@@ -139,18 +139,43 @@ public class ChineseKoreanPhonemizerTests
     [InlineData("많이", false, "", "마니")]
     [InlineData("사랑이", false, "", "사랑이")]            // ㅇ stays
     [InlineData("음악", false, "", "으막")]
-    [InlineData("밥도", false, "", "밥도")]               // not before a vowel
+    [InlineData("밥도", false, "", "밥또")]               // tense after ㅂ
+    [InlineData("바도", false, "", "바도")]
+    // A final meeting a consonant (the standard pronunciation's rules 12, 17 to 20, 23).
+    [InlineData("밥", true, "만", "밤|만")]
+    [InlineData("국물", false, "", "궁물")]
+    [InlineData("꽃말", false, "", "꼰말")]
+    [InlineData("없는", false, "", "엄는")]
+    [InlineData("읽는", false, "", "잉는")]
+    [InlineData("축하", false, "", "추카")]
+    [InlineData("좋다", false, "", "조타")]
+    [InlineData("많고", false, "", "만코")]
+    [InlineData("싫소", false, "", "실쏘")]
+    [InlineData("놓는", false, "", "논는")]
+    [InlineData("못하다", false, "", "모타다")]
+    [InlineData("굳히다", false, "", "구치다")]
+    [InlineData("밝히다", false, "", "발키다")]
+    [InlineData("앉히다", false, "", "안치다")]
+    [InlineData("종로", false, "", "종노")]
+    [InlineData("독립", false, "", "동닙")]
+    [InlineData("협력", false, "", "혐녁")]
+    [InlineData("신라", false, "", "실라")]
+    [InlineData("설날", false, "", "설랄")]
+    [InlineData("학교", false, "", "학꾜")]
+    [InlineData("국밥", false, "", "국빱")]
+    [InlineData("옷장", false, "", "옷짱")]
+    [InlineData("밥", false, "만", "밥|만")]              // another note not sung on: as written
     [InlineData("밥,이", false, "", "밥,이")]
     // Before a word's own first syllable the final goes on as said at a word's end, and before ㅣ
     // or a y- vowel not at all (꽃잎 꼰닙 takes an ㄴ that 금요일 그묘일 does not).
     [InlineData("꽃", true, "위에", "꼬|뒤에")]
     [InlineData("옷안", false, "", "오단")]
-    [InlineData("맛없다", false, "", "마덦다")]
+    [InlineData("맛없다", false, "", "마덦따")]
     [InlineData("닭앞", false, "", "다갚")]
     [InlineData("넋없이", false, "", "너겁씨")]
     [InlineData("꽃", true, "잎이", "꽃|이피")]
     [InlineData("금요일", false, "", "금요일")]
-    public void Korean_AFinalIsCarriedOnWithinAWord(string first, bool hyphen, string second, string sung)
+    public void Korean_AFinalChangesWithWhatFollows(string first, bool hyphen, string second, string sung)
     {
         var notes = second == "" ? new[] { (first, hyphen) } : new[] { (first, hyphen), (second, false) };
         Assert.Equal(sung, string.Join("|", KoreanPhonemizer.Carry(notes, _ => true)));
@@ -176,7 +201,8 @@ public class ChineseKoreanPhonemizerTests
     [InlineData("꽃", "위", true)]              // 꼬뒤
     [InlineData("꽃", "잎", false)]
     [InlineData("사랑", "이", false)]           // ㅇ stays
-    [InlineData("밥", "도", false)]
+    [InlineData("밥", "도", true)]               // 밥또
+    [InlineData("바", "도", false)]
     [InlineData("바", "이", false)]
     [InlineData("밥", null, false)]
     [InlineData("bap", "이", false)]

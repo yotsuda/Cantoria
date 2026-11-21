@@ -92,9 +92,11 @@ Phonemisation is the backend's; the caller sends the text as sung and the langua
   carried to a following vowel in the same note or the next one sung on from it, *done
   2026-11-21*; "sung on" is a hyphen, or no rest and no breath between, as Lily# parts a Korean
   word's syllables with spaces), and others as their dictionaries allow; the contract's
-  `language` picks the dictionary; a mismatch is one sentence back. Not done: Korean's other
-  sound changes (nasalisation 밥만 밤만, aspiration 축하 추카, tensing, the ㄴ some compounds
-  take: 꽃잎 꼰닙); telling a word from an ending that looks the same (이름, 아래 are read as
+  `language` picks the dictionary; a final meeting a consonant changes by the standard
+  pronunciation's rules (nasalisation 밥만 밤만, aspiration 축하 추카, ㄹ to ㄴ 십리 심니, ㄴㄹ to
+  ㄹㄹ 신라 실라, tensing after ㄱ ㄷ ㅂ 학교 학꾜; *done 2026-11-21*); a mismatch is one
+  sentence back. Not done: the tensing and the ㄴ a word has of its own (발병 발뼝, 앉고 안꼬,
+  꽃잎 꼰닙); telling a word from an ending that looks the same (이름, 아래 are read as
   endings: 꽃 아래 sings 꼬차래, not 꼬다래); and a Mandarin word the table lacks. A final goes on
   as said at a word's end before any syllable not in `KoreanPhonemizer.Endings` (꽃 위 꼬뒤).
 - An optional per-note `phonemes` override in the contract for what a dictionary gets wrong
