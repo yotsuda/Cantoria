@@ -26,6 +26,17 @@ public static class KoreanPhonemizer
         (0, 12), (0, 14), (0, 15), (0, 16), (0, 17), (0, -1),
     ];
 
+    // A final as it is said at a word's end, as the first of the next syllable: ㄱ ㄴ ㄷ ㄹ ㅁ ㅂ
+    // (a pair gives the one of its two that is said: 닭 앞 다갑, 넋 없이 너겁씨).
+    private static readonly int[] AtAWordsEnd =
+        [Silent, 0, 0, 0, 2, 2, 2, 3, 5, 0, 6, 5, 5, 5, 7, 5, 6, 7, 7, 3, 3, Silent, 3, 3, 0, 3, 7, 3];
+
+    // The syllables that begin a particle or an ending after a final (밥이, 밥을, 밥은, 밥에, 밥의,
+    // 밥으로, 먹어, 잡아, 먹었다, 잡았다, 웃음, 학생인데, 학생일까, 학생입니다, 학생임): the final
+    // goes on to them as it is. Any other syllable is taken to begin a word. The notes do not say
+    // which a syllable is, so a word that begins as an ending does (이름, 아래, 어깨) is read as one.
+    private static readonly HashSet<char> Endings = [.. "이을은에의으어아었았음인일입임엔"];
+
     /// <summary>
     /// True when the singer goes from <paramref name="before"/> (a word's last note, its melisma
     /// included) to <paramref name="next"/> with nothing between: no rest, no breath. A final is
@@ -47,7 +58,9 @@ public static class KoreanPhonemizer
     /// begins with a vowel - in one note's text, or in the next note's when that is sung on from it
     /// (a hyphen, or <see cref="SungOn"/>) - the final is carried on (밥이 바비, 닭이 달기, 값이
     /// 갑씨); ㄷ and ㅌ so carried before ㅣ are ㅈ and ㅊ (같이 가치); a final ㅎ is not sung before
-    /// a vowel (좋아 조아, 많이 마니); ㅇ stays. A pair is changed only where
+    /// a vowel (좋아 조아, 많이 마니); ㅇ stays. Before a syllable that is not a particle's or an
+    /// ending's (<see cref="Endings"/>) the final goes on as said at a word's end (꽃 위 꼬뒤), and
+    /// not at all before ㅣ or a y- vowel (꽃잎이 꽃이피). A pair is changed only where
     /// <paramref name="spelled"/> knows both syllables it becomes. Romanised text is left as written.
     /// </summary>
     /// <param name="syllables">Each note's text, and whether the next note's is sung on from it.</param>
@@ -94,7 +107,18 @@ public static class KoreanPhonemizer
             return (before, next);
         }
         var (stays, goes) = Carried[final];
-        if (vowel == I)
+        if (!Endings.Contains(next))
+        {
+            // A word's own first syllable: the final goes on as it is said at a word's end (꽃 위
+            // 꼬뒤, 옷 안 오단); before ㅣ and the y- vowels it is left (꽃잎 꼰닙 takes an ㄴ some
+            // compounds have and others do not, 금요일 그묘일).
+            if (vowel is I or 2 or 3 or 6 or 7 or 12 or 17)
+            {
+                return (before, next);
+            }
+            (stays, goes) = (0, AtAWordsEnd[final]);
+        }
+        else if (vowel == I)
         {
             goes = goes switch { 3 => 12, 16 => 14, _ => goes };    // ㄷ ㅌ before ㅣ: ㅈ ㅊ
         }

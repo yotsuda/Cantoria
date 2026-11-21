@@ -141,6 +141,15 @@ public class ChineseKoreanPhonemizerTests
     [InlineData("음악", false, "", "으막")]
     [InlineData("밥도", false, "", "밥도")]               // not before a vowel
     [InlineData("밥,이", false, "", "밥,이")]
+    // Before a word's own first syllable the final goes on as said at a word's end, and before ㅣ
+    // or a y- vowel not at all (꽃잎 꼰닙 takes an ㄴ that 금요일 그묘일 does not).
+    [InlineData("꽃", true, "위에", "꼬|뒤에")]
+    [InlineData("옷안", false, "", "오단")]
+    [InlineData("맛없다", false, "", "마덦다")]
+    [InlineData("닭앞", false, "", "다갚")]
+    [InlineData("넋없이", false, "", "너겁씨")]
+    [InlineData("꽃", true, "잎이", "꽃|이피")]
+    [InlineData("금요일", false, "", "금요일")]
     public void Korean_AFinalIsCarriedOnWithinAWord(string first, bool hyphen, string second, string sung)
     {
         var notes = second == "" ? new[] { (first, hyphen) } : new[] { (first, hyphen), (second, false) };
@@ -164,6 +173,8 @@ public class ChineseKoreanPhonemizerTests
     [Theory]
     [InlineData("밥", "이", true)]
     [InlineData("좋", "아", true)]              // the ㅎ goes
+    [InlineData("꽃", "위", true)]              // 꼬뒤
+    [InlineData("꽃", "잎", false)]
     [InlineData("사랑", "이", false)]           // ㅇ stays
     [InlineData("밥", "도", false)]
     [InlineData("바", "이", false)]
