@@ -111,6 +111,13 @@ Optional fields on a note or a span, mapped by each backend to what it understan
 ignored otherwise: loudness (0..1, from dynamics), legato (from slurs), vibrato depth/rate,
 a pitch-bend curve. The contract stays small; nothing here is required.
 
+Where it stands (2026-11-21): loudness is `level`/`levelEnd`, applied to what was sung;
+vibrato is `vibrato`/`vibratoRate` (a trial, DiffSinger); a voice's own inputs are `sing` and
+`singTo`; the pitch bend is `bend`, points of (seconds from the note's start, cents), smooth
+between them and nothing outside the note (a trial, DiffSinger; `Bend.cs`). Not done: legato
+from slurs (what a DiffSinger voice can be told for it is not yet known: the consonant's
+length, the gap, the pitch model's transition).
+
 ## E. More backends
 
 In the order their value against their cost looks today:

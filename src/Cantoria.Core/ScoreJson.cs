@@ -34,8 +34,18 @@ public static class ScoreJson
         var notes = (dto.Notes ?? []).Select(n => new SungNote(
             n.Start, n.Duration, n.Pitch, n.Lyric, n.Melisma ?? false, n.Breath ?? false, n.Level, n.LevelEnd, n.Inhale ?? false, n.Hyphen ?? false,
             n.Vibrato, n.VibratoRate, SingOf(n.Sing), SingOf(n.SingTo),
-            Phonemes: string.IsNullOrWhiteSpace(n.Phonemes) ? null : n.Phonemes.Trim())).ToList();
+            Phonemes: string.IsNullOrWhiteSpace(n.Phonemes) ? null : n.Phonemes.Trim(), Bend: BendOf(n.Bend))).ToList();
         return new SungScore(notes, dto.Language ?? "ja", dto.SampleRate ?? 44100, SingOf(dto.Sing)).Tidy();
+    }
+
+    /// <summary>A "bend": points written <c>[seconds, cents]</c>; empty is none.</summary>
+    private static List<(double At, double Cents)>? BendOf(List<double[]>? bend)
+    {
+        if (bend is null || bend.Count == 0)
+        {
+            return null;
+        }
+        return [.. bend.Select(p => p is { Length: 2 } ? (p[0], p[1]) : throw new JsonException("bend: a point is [seconds from the note's start, cents]"))];
     }
 
     /// <summary>The settings of a "sing" object: a number or a word a name; anything else is not one.</summary>
@@ -78,6 +88,7 @@ public static class ScoreJson
                 Level = n.Level, LevelEnd = n.LevelEnd, Inhale = n.Inhale ? true : null, Hyphen = n.Hyphen ? true : null,
                 Vibrato = n.Vibrato, VibratoRate = n.VibratoRate,
                 Sing = SingElements(n.Sing), SingTo = SingElements(n.SingTo), Phonemes = n.Phonemes,
+                Bend = n.Bend is { Count: > 0 } b ? [.. b.Select(p => new[] { p.At, p.Cents })] : null,
             }).ToList(),
         };
         return JsonSerializer.Serialize(dto, Options);
@@ -112,5 +123,6 @@ public static class ScoreJson
         public Dictionary<string, JsonElement>? Sing { get; set; }
         public Dictionary<string, JsonElement>? SingTo { get; set; }
         public string? Phonemes { get; set; }
+        public List<double[]>? Bend { get; set; }
     }
 }

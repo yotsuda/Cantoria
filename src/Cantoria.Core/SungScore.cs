@@ -36,6 +36,11 @@ namespace Cantoria;
 /// The language prefix a voice may use (<c>ko/</c>) may be left out. It stands for this note only:
 /// the notes around it are read as before (a Korean final carried into it still leaves the note
 /// before). Sung by DiffSinger voices only; the other engines read the lyric.</param>
+/// <param name="Bend">A pitch bend written on the note: points of (seconds from the note's start,
+/// cents off its pitch), in time order; between them the pitch moves smoothly, before the first
+/// and after the last it holds, outside the note it is nothing. <c>[(0, -200), (0.12, 0)]</c>
+/// scoops up into the note; <c>[(0.6, 0), (1, -700)]</c> falls off a note of one second. A trial,
+/// sung by DiffSinger voices only (<see cref="Cantoria.DiffSinger.Bend"/>).</param>
 public sealed record SungNote(
     double Start,
     double Duration,
@@ -52,7 +57,8 @@ public sealed record SungNote(
     IReadOnlyDictionary<string, SingValue>? Sing = null,
     IReadOnlyDictionary<string, SingValue>? SingTo = null,
     IReadOnlyDictionary<string, (double Start, double End)>? Curve = null,
-    string? Phonemes = null)
+    string? Phonemes = null,
+    IReadOnlyList<(double At, double Cents)>? Bend = null)
 {
     /// <summary>Seconds at which the note ends.</summary>
     public double End => Start + Duration;
@@ -132,6 +138,25 @@ public sealed record SungScore(
             if (i > 0 && n.Start < Notes[i - 1].End - 1e-9)
             {
                 problems.Add($"{at}: starts before note {i - 1} ends ({Notes[i - 1].End:0.###} s)");
+            }
+            if (n.Bend is { } bend)
+            {
+                for (int k = 0; k < bend.Count; k++)
+                {
+                    var (bendAt, cents) = bend[k];
+                    if (!double.IsFinite(bendAt) || !double.IsFinite(cents))
+                    {
+                        problems.Add($"{at}: bend point {k} is not a number");
+                    }
+                    else if (bendAt < 0 || bendAt > n.Duration + 1e-9)
+                    {
+                        problems.Add($"{at}: bend point {k} at {bendAt:0.###} s is outside the note (0 to {n.Duration:0.###} s)");
+                    }
+                    else if (k > 0 && bendAt < bend[k - 1].At)
+                    {
+                        problems.Add($"{at}: bend point {k} at {bendAt:0.###} s comes before point {k - 1}");
+                    }
+                }
             }
             if (n.Melisma)
             {

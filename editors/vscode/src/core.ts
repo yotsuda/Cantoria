@@ -39,6 +39,10 @@ export interface CantoriaNote {
      *  for what the dictionary or the reading rules get wrong. A DiffSinger voice sings it; the
      *  other engines read the lyric. */
     phonemes?: string;
+    /** A pitch bend (a trial): points `[seconds from the note's start, cents]` in time order,
+     *  smooth between them, held before the first and after the last, nothing outside the note.
+     *  A DiffSinger voice sings it. */
+    bend?: [number, number][];
 }
 
 /** The score a caller hands `sing`: notes in seconds; the sample rate and language optional. */

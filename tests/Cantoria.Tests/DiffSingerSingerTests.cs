@@ -50,6 +50,27 @@ public class DiffSingerSingerTests
         Assert.Equal(audio.Samples.Length, again.Samples.Length);
     }
 
+    // A bend written on a note (Bend.cs) is sung: held 300 cents down over the whole note, the note
+    // sounds three semitones under what is written; the notes around it stay in tune.
+    [Fact]
+    public async Task ABendWrittenOnANote_IsSung()
+    {
+        if (Voice is null)
+        {
+            return;
+        }
+        using var singer = new DiffSingerSinger(new DiffSingerOptions(Voice) { VocoderFolder = Vocoder, Steps = 10, Provider = OnnxProvider.Cpu });
+        var score = new SungScore([
+            new SungNote(0.2, 0.8, 64, "ら"),
+            new SungNote(1.0, 1.2, 67, "あ", Bend: [(0, -300)]),
+            new SungNote(2.2, 0.8, 64, "ら"),
+        ]);
+        var results = PitchCheck.Of(await singer.SingAsync(score), score);
+        Assert.InRange(results[1].Sung!.Value, 63.5, 64.5);
+        Assert.InRange(results[0].Sung!.Value, 63.5, 64.5);
+        Assert.InRange(results[2].Sung!.Value, 63.5, 64.5);
+    }
+
     [Fact]
     public async Task TheProvider_IsSettledByTheFirstModel_AndTheCpuIsAlwaysThere()
     {

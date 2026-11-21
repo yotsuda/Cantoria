@@ -288,7 +288,7 @@ public sealed class DiffSingerSinger : ISinger, ISingParameters, IDisposable
             var phrase = words.GetRange(first, count).Select(w => Shifted(w, startSeconds)).ToList();
             double? breathRoom = first + count < words.Count ? EndBreathRoom(words[first + count - 1], words[first + count]) : null;
             var key = new PhraseKey(speaker, language,
-                [.. phrase.Select(w => $"{string.Join(' ', w.Phonemes)}|{w.Notes.Count}{Vibrato.KeyOf(w.Notes)}{SingCurves.KeyOf(w.Notes)}"), .. singKey],
+                [.. phrase.Select(w => $"{string.Join(' ', w.Phonemes)}|{w.Notes.Count}{Vibrato.KeyOf(w.Notes)}{Bend.KeyOf(w.Notes)}{SingCurves.KeyOf(w.Notes)}"), .. singKey],
                 phrase.SelectMany(w => w.Notes).Select(n => new PhraseNote(n.Start, n.Duration, n.Pitch, n.Breath)).ToList(),
                 breathRoom);
             var kept = _phrases.TryGet(key, out var found) ? found : null;
@@ -500,6 +500,12 @@ public sealed class DiffSingerSinger : ISinger, ISingParameters, IDisposable
         {
             Vibrato.Apply(f0Midi, frameMs, renderStartMs, written, steady: true);
             log.AppendLine($"vibrato: written on {written.Count} note{(written.Count == 1 ? "" : "s")}");
+        }
+        // A bend written on a note (a trial; Bend.cs): on top of the vibrato, before the variance model too.
+        if (Bend.Of(notes) is { Count: > 0 } bends)
+        {
+            Bend.Apply(f0Midi, frameMs, renderStartMs, bends);
+            log.AppendLine($"bend: written on {bends.Count} note{(bends.Count == 1 ? "" : "s")}");
         }
 
         // ---- variance ----

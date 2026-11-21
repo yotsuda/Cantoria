@@ -118,6 +118,11 @@ NEUTRINO render of a score takes under half a second). See
   note in messages), the notes around it are read as before, and a symbol the voice does not
   have is refused with the note named. DiffSinger voices sing it; the other engines read the
   lyric.
+- `bend` bends a note's pitch (a trial): points `[seconds from the note's start, cents]`,
+  in time order. `[[0, -200], [0.12, 0]]` scoops up into the note, `[[0.6, 0], [1, -700]]`
+  falls off a note of one second. Between points the pitch moves smoothly, before the first
+  and after the last it holds, and outside the note it is nothing. DiffSinger voices sing it;
+  the other engines sing the note plain.
 
 ## Relation to Lily#
 
