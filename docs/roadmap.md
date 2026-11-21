@@ -145,6 +145,10 @@ points at where voices are published and what their terms say.
 
 *Done when* a fresh machine can sing within ten minutes of installing the extension.
 
+Research 2026-11-21: [voices-2026-11-21.md](voices-2026-11-21.md). The best fit found is the
+DiffSinger voice Qixuan (zh, ja, en; its terms allow redistribution, songs for money, and new
+inference programs) with OpenVPI's pc_nsf_hifigan vocoder (CC BY-NC-SA 4.0, integration allowed).
+
 ## G. For other callers
 
 The CLI and the extension API are the public surface. A notation program that is not a VS
