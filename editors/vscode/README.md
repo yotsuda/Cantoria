@@ -22,6 +22,15 @@ itself: on a laptop with Intel graphics, a 36-second part in about 2¼ minutes w
 that has the tuning tool, and 4 with the plain one. What was sung is kept, so after the first
 time only a phrase you change is sung again.
 
+**The quickest way: Cantoria: Download a Voice…** (also a button where Cantoria says it cannot
+sing yet). It offers Qixuan 绮萱, a free DiffSinger voice by the DiffSinger community that sings
+Chinese, Japanese and English, shows its terms, and on your agreement fetches it and its vocoder
+(about 450 MB) from their authors' own pages into your voices folder (`~/Cantoria/voices` when
+none is set), each file checked against the one published. Then it sings, with nothing else to
+set. Where you publish a song made with it, its terms ask you to say that it is synthesised with
+AI and to credit "绮萱 (Qixuan)" and "DiffSinger"; read them before you use it. Cantoria itself
+ships no voice.
+
 Three engines; set up any of them. A voice is named `engine/name`. The button **How to Install a
 Voice**, where Cantoria says it has no voice, opens this page inside VS Code.
 

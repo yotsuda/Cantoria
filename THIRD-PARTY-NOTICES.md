@@ -199,6 +199,19 @@ No voice (sound bank, singing library, trained model) is included in this
 repository or its releases. Each is the work of its author and the user
 installs it under that author's terms.
 
+**Download a Voice** (`cantoria fetch`) fetches, at the user's request and
+after showing the terms, a voice whose terms allow it from its author's own
+release, into the user's voices folder; nothing is copied into Cantoria:
+
+- Qixuan 绮萱 2.7.0, by the DiffSinger community (data 颜绮萱; training
+  YQ之神), https://github.com/yqzhishen/qixuan-diffsinger — its own terms
+  (`Terms_of_Use.zh-CN`, which come with it): free, not to be sold; works made
+  with it may be published and sold, marked as AI-synthesised and credited
+  "绮萱" and "DiffSinger"; the model files not to be changed.
+- OpenVPI pc_nsf_hifigan 44.1k hop512 128bin 2025.02, the vocoder it names,
+  https://github.com/openvpi/vocoders — CC BY-NC-SA 4.0 (its `NOTICE.txt`
+  comes with it); what it synthesises is not restricted.
+
 ## The icon
 
 The extension's icon is the C clef of Emmentaler, LilyPond's music font.

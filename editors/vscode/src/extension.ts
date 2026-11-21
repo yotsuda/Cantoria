@@ -16,7 +16,8 @@ import * as vscode from 'vscode';
 import {
     PlanAsk, SingParameter, SingProgress, SingerPlan, planAsked, planOfNoOne,
     CantoriaScore, DefaultVoices, ENGINES, EngineName, VOICEVOX_URL, VoiceEntry, VoiceGender, defaultVoiceFor, diffSingerEntriesIn, diffSingerVoicesIn, findEngines, languageProblem, missingProgramNote, needsVoicevox, neutrinoFolderProblems, voicevoxRunIn, programCandidates,
-    resolveSinger, scoreProblems, splitVoiceId, voiceEntriesIn, voiceId, voicesFolderProblems, voicesIn, 
+    resolveSinger, scoreProblems, splitVoiceId, voiceEntriesIn, voiceId, voicesFolderProblems, voicesIn,
+    VoiceOffer, defaultVoicesFolder, fetchLine, offerDetail,
 } from './core';
 import { Engine, EngineSetup, RenderedVoice } from './engine';
 import { VoicevoxServer } from './voicevox';
@@ -303,8 +304,9 @@ async function chooseDefaultVoice(context: vscode.ExtensionContext, gender: Voic
     const all = voices();
     if (all.length === 0) {
         const neutrino = 'Choose NEUTRINO Folder…', ds = 'Choose Voices Folder…';
-        const choice = await vscode.window.showWarningMessage(`Cantoria: no voice to list — ${s.problems[0] ?? 'the folders hold no voice'}`, HOW_TO_INSTALL, neutrino, ds);
-        if (choice === HOW_TO_INSTALL) { openInstallGuide(); }
+        const choice = await vscode.window.showWarningMessage(`Cantoria: no voice to list — ${s.problems[0] ?? 'the folders hold no voice'}`, DOWNLOAD_VOICE, HOW_TO_INSTALL, neutrino, ds);
+        if (choice === DOWNLOAD_VOICE) { await downloadVoice(context); }
+        else if (choice === HOW_TO_INSTALL) { openInstallGuide(); }
         else if (choice === neutrino) { await chooseNeutrinoFolder(); }
         else if (choice === ds) { await chooseVoicesFolder(); }
         return;
@@ -322,6 +324,80 @@ async function chooseDefaultVoice(context: vscode.ExtensionContext, gender: Voic
 }
 
 const FIND_ENGINES = 'Find Engines on This Computer';
+const DOWNLOAD_VOICE = 'Download a Voice…';
+
+/**
+ * Offers a voice whose terms let a program fetch it for the user (roadmap F; the program's
+ * `offers`), shows those terms, and has the program fetch it into the voices folder — the one set,
+ * else ~/Cantoria/voices, which is then set. The program checks each file against the SHA-256 it
+ * was published with and leaves nothing half there; stopped, what it was fetching is removed.
+ */
+async function downloadVoice(context: vscode.ExtensionContext): Promise<void> {
+    const prog = program(context);
+    if (!prog) { vscode.window.showErrorMessage(`Cantoria: ${missingProgramNote(process.platform, process.arch, bundledBuilds(context))}`); return; }
+    let offers: VoiceOffer[];
+    try { offers = JSON.parse(cp.execFileSync(prog, ['offers', '--json'], { encoding: 'utf8', windowsHide: true })); }
+    catch (e) { vscode.window.showErrorMessage(`Cantoria: could not list the voices to download: ${(e as Error).message}`); return; }
+    const installed = new Set(voices().map(v => v.id));
+    let offer: VoiceOffer | undefined = offers.length === 1 ? offers[0] : (await vscode.window.showQuickPick(
+        offers.map(o => ({ label: o.title, description: `${o.languages.join(', ')} · ${Math.round(o.size / 1048576)} MB${installed.has(o.voice) ? ' · installed' : ''}`, offer: o })),
+        { title: 'Cantoria: Download a Voice', placeHolder: 'A voice whose author lets it be fetched for you' }))?.offer;
+    if (!offer) { return; }
+    const folder = voicesFolder() || defaultVoicesFolder(os.homedir(), path.join);
+    const agree = 'Agree and Download', read = 'Read the Terms';
+    for (;;) {
+        const choice = await vscode.window.showInformationMessage(`Download ${offer.title}?`, { modal: true, detail: offerDetail(offer, folder) }, agree, read);
+        if (choice === read) { await vscode.env.openExternal(vscode.Uri.parse(offer.termsUrl)); continue; }
+        if (choice !== agree) { return; }
+        break;
+    }
+    const chosen = offer;
+    const done = await vscode.window.withProgress({ location: vscode.ProgressLocation.Notification, title: `Cantoria: downloading ${chosen.title}`, cancellable: true },
+        (progress, token) => new Promise<{ installed: string } | undefined>((resolve, reject) => {
+            const child = cp.spawn(prog, ['fetch', chosen.id, '--voices-dir', folder, '--json'], { windowsHide: true });
+            const received = new Map<string, number>();
+            let shown = 0, current = '', errors = '', answer: { installed: string } | undefined, buffered = '';
+            child.stdout.setEncoding('utf8');
+            child.stdout.on('data', (chunk: string) => {
+                buffered += chunk;
+                let nl: number;
+                while ((nl = buffered.indexOf('\n')) >= 0) {
+                    const line = buffered.slice(0, nl).trim();
+                    buffered = buffered.slice(nl + 1);
+                    const said = fetchLine(line, received);
+                    if (said && 'received' in said) {
+                        current = [...received.keys()].at(-1) ?? current;
+                        const share = Math.min(100, 100 * said.received / chosen.size);
+                        progress.report({ increment: share - shown, message: `${Math.round(said.received / 1048576)} of ${Math.round(chosen.size / 1048576)} MB` });
+                        shown = share;
+                    } else if (said) { answer = said; }
+                }
+            });
+            child.stderr.setEncoding('utf8');
+            child.stderr.on('data', (chunk: string) => { errors += chunk; });
+            token.onCancellationRequested(() => child.kill());
+            child.on('error', reject);
+            child.on('close', code => {
+                if (token.isCancellationRequested) {
+                    // Killed: what it was fetching is not left behind (the program removes it itself only when it ends on its own).
+                    for (const leftover of [`.${current}.download`, `.${current}.unpacking`]) {
+                        if (current) { try { fs.rmSync(path.join(folder, leftover), { recursive: true, force: true }); } catch { /* the next fetch removes it */ } }
+                    }
+                    resolve(undefined);
+                } else if (code === 0 && answer) { resolve(answer); }
+                else { reject(new Error(errors.trim().split('\n').at(-1)?.replace(/^cantoria: /, '') || `the program ended with ${code}`)); }
+            });
+        })).then(r => r, (e: Error) => { vscode.window.showErrorMessage(`Cantoria: ${chosen.title} was not downloaded: ${e.message}`); return null; });
+    if (!done) {
+        if (done === undefined) { vscode.window.setStatusBarMessage(`Cantoria: the download of ${chosen.title} was stopped`, 4000); }
+        return;
+    }
+    output.appendLine(`download: ${done.installed} into ${folder}`);
+    if (!voicesFolder()) { await settings().update('voicesFolder', folder, vscode.ConfigurationTarget.Global); }
+    release();
+    vscode.window.showInformationMessage(`Cantoria: ${done.installed} is installed in ${folder} and sings. Where you publish a song made with it, follow its terms: say it is synthesised with AI, and credit the voice and DiffSinger.`, read)
+        .then(c => { if (c === read) { void vscode.env.openExternal(vscode.Uri.parse(chosen.termsUrl)); } });
+}
 
 /**
  * Looks where the engines' own programs put them (core's findEngines) and offers what stands
@@ -359,8 +435,9 @@ async function checkSetup(context: vscode.ExtensionContext): Promise<void> {
         return;
     }
     const neutrino = 'Choose NEUTRINO Folder…', ds = 'Choose Voices Folder…', log = 'Show Output';
-    const choice = await vscode.window.showWarningMessage(`Cantoria cannot sing yet: ${s.problems[0]}`, HOW_TO_INSTALL, FIND_ENGINES, neutrino, ds, log);
-    if (choice === FIND_ENGINES) { await findEnginesHere(); }
+    const choice = await vscode.window.showWarningMessage(`Cantoria cannot sing yet: ${s.problems[0]}`, DOWNLOAD_VOICE, HOW_TO_INSTALL, FIND_ENGINES, neutrino, ds, log);
+    if (choice === DOWNLOAD_VOICE) { await downloadVoice(context); }
+    else if (choice === FIND_ENGINES) { await findEnginesHere(); }
     else if (choice === neutrino) { await chooseNeutrinoFolder(); }
     else if (choice === ds) { await chooseVoicesFolder(); }
     else if (choice === HOW_TO_INSTALL) { openInstallGuide(); }
@@ -381,6 +458,7 @@ export function activate(context: vscode.ExtensionContext): CantoriaApi {
         vscode.commands.registerCommand('cantoria.chooseMaleVoice', () => chooseDefaultVoice(context, 'male')),
         vscode.commands.registerCommand('cantoria.checkSetup', () => checkSetup(context)),
         vscode.commands.registerCommand('cantoria.findEngines', () => findEnginesHere()),
+        vscode.commands.registerCommand('cantoria.downloadVoice', () => downloadVoice(context)),
         vscode.commands.registerCommand('cantoria.forgetVoices', () => {
             release();      // the engine holds phrases in memory too
             const n = new Engine({ program: '', neutrinoFolder: '', voicesFolder: '', vocoderFolder: '', gpu: true, threads: 1, cacheSizeMB: 0 }, path.join(storage, 'voices'), () => undefined).forget();

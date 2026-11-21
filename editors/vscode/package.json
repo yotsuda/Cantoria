@@ -180,6 +180,11 @@
         "title": "Find Engines on This Computer"
       },
       {
+        "command": "cantoria.downloadVoice",
+        "category": "Cantoria",
+        "title": "Download a Voice…"
+      },
+      {
         "command": "cantoria.forgetVoices",
         "category": "Cantoria",
         "title": "Forget Rendered Voices"

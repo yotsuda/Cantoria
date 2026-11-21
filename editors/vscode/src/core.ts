@@ -307,6 +307,36 @@ export function findEngines(platform: string, home: string, env: Record<string, 
     return found;
 }
 
+/** A voice the program can fetch from its authors (`cantoria offers --json`; roadmap F). */
+export interface VoiceOffer { id: string; voice: string; title: string; languages: string[]; size: number; terms: string[]; termsUrl: string }
+
+/** Where an offered voice goes when no voices folder is set: one of the user's own, easy to find. */
+export function defaultVoicesFolder(home: string, join: (...parts: string[]) => string): string {
+    return join(home, 'Cantoria', 'voices');
+}
+
+/** What the user reads before an offered voice is fetched: what it is, how much, where to, and its terms. */
+export function offerDetail(offer: VoiceOffer, folder: string): string {
+    return [
+        `${offer.title} sings ${offer.languages.join(', ')}. ${Math.round(offer.size / 1048576)} MB from its authors' own pages, into ${folder}.`,
+        '',
+        ...offer.terms.map(t => `• ${t}`),
+    ].join('\n');
+}
+
+/** What a line of `cantoria fetch --json` says: the bytes received so far over every file
+ *  (`received` holds each file's), or what was installed; undefined for a line that is neither. */
+export function fetchLine(line: string, received: Map<string, number>): { received: number } | { installed: string; folders: string[] } | undefined {
+    let message: { progress?: { folder: string; received: number }; installed?: string; folders?: string[] };
+    try { message = JSON.parse(line); } catch { return undefined; }
+    if (message.progress) {
+        received.set(message.progress.folder, message.progress.received);
+        return { received: [...received.values()].reduce((a, b) => a + b, 0) };
+    }
+    if (message.installed) { return { installed: message.installed, folders: message.folders ?? [] }; }
+    return undefined;
+}
+
 /** Whether a score's `singer` calls for a VOICEVOX voice: it names one, or it names none and the
  *  default voice is one, or nothing else is installed. No `language`: no words are being sung. */
 export function needsVoicevox(written: string, defaults: DefaultVoices, otherVoices: number, language: string | undefined): boolean {

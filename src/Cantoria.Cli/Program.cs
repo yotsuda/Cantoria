@@ -34,6 +34,8 @@ return args switch
     ["voices", ..] => Voices(args[1..]),
     ["plan", ..] => Plan(args[1..]),
     ["providers"] => Providers(),
+    ["offers", ..] => Offers(args[1..]),
+    ["fetch", ..] => await Fetch(args[1..]),
     ["sing", ..] => await Sing(args[1..]),
     ["serve", ..] => await Serve(args[1..]),
     _ => Help(2),
@@ -61,6 +63,11 @@ static int Help(int code)
           cantoria plan [<score.json>] [plan options] [options]
                                                           who would sing it here, without singing
           cantoria providers                             where DiffSinger models can run on this machine
+          cantoria offers [--json]                        the voices Cantoria can fetch from their authors, with their terms
+          cantoria fetch <offer> [--voices-dir <folder>] [--json]
+                                                          fetch an offered voice into the voices folder (what is there
+                                                          already is kept); --json: a {"progress":…} line a MB, then
+                                                          {"installed":"engine/name","folders":[…]}
           cantoria serve [options]                        sing scores sent on stdin, one JSON line each
           cantoria --version
 
@@ -217,6 +224,102 @@ static int Voices(string[] rest)
         Console.WriteLine(says.Count == 0 ? v.Id : $"{v.Id.PadRight(width)}  {string.Join(", ", says)}");
     }
     return 0;
+}
+
+/// <summary>The voices that can be fetched (roadmap F): each with what it sings, its size and terms.</summary>
+static int Offers(string[] rest)
+{
+    bool json = rest is ["--json"];
+    if (rest.Length > 0 && !json)
+    {
+        Console.Error.WriteLine($"cantoria: unknown option {string.Join(" ", rest)}");
+        return Help(2);
+    }
+    if (json)
+    {
+        Console.WriteLine(JsonSerializer.Serialize(VoiceOffers.All.Select(o => new { id = o.Id, voice = o.Voice, title = o.Title, languages = o.Languages, size = o.Size, terms = o.Terms, termsUrl = o.TermsUrl }), Wire()));
+        return 0;
+    }
+    foreach (var o in VoiceOffers.All)
+    {
+        Console.WriteLine($"{o.Id}: {o.Title}, sings {string.Join(", ", o.Languages)}, {o.Size / 1048576.0:0} MB; installs {o.Voice}");
+        foreach (var t in o.Terms)
+        {
+            Console.WriteLine($"  - {t}");
+        }
+        Console.WriteLine($"  the terms: {o.TermsUrl}");
+    }
+    return 0;
+}
+
+/// <summary>Fetches an offered voice into the voices folder (the option, else as `sing` finds it).</summary>
+static async Task<int> Fetch(string[] rest)
+{
+    string? id = null, voicesDir = null;
+    bool json = false;
+    for (int i = 0; i < rest.Length; i++)
+    {
+        switch (rest[i])
+        {
+            case "--voices-dir" when i + 1 < rest.Length: voicesDir = rest[++i]; break;
+            case "--json": json = true; break;
+            case var s when !s.StartsWith('-') && id is null: id = s; break;
+            default:
+                Console.Error.WriteLine($"cantoria: unknown option {rest[i]}");
+                return Help(2);
+        }
+    }
+    var offer = id is null ? null : VoiceOffers.Find(id);
+    if (offer is null)
+    {
+        Console.Error.WriteLine($"cantoria: {(id is null ? "name the voice to fetch" : $"no voice offered as \"{id}\"")} (offered: {string.Join(", ", VoiceOffers.All.Select(o => o.Id))})");
+        return 2;
+    }
+    string? folder = voicesDir ?? Engines.Configure(null, null, null, OnnxProvider.Auto, 4, 20, false).VoicesFolder;
+    if (folder is null)
+    {
+        Console.Error.WriteLine("cantoria: name the voices folder to fetch into (--voices-dir)");
+        return 2;
+    }
+    using var stop = new CancellationTokenSource();
+    Console.CancelKeyPress += (_, e) => { e.Cancel = true; stop.Cancel(); };
+    using var http = new HttpClient { Timeout = Timeout.InfiniteTimeSpan };
+    http.DefaultRequestHeaders.UserAgent.ParseAdd("cantoria");
+    var progress = new Progress<FetchProgress>(p =>
+    {
+        if (json)
+        {
+            Console.WriteLine(new System.Text.Json.Nodes.JsonObject { ["progress"] = new System.Text.Json.Nodes.JsonObject { ["folder"] = p.Folder, ["received"] = p.Received, ["size"] = p.Size } }.ToJsonString());
+        }
+        else
+        {
+            Console.Error.Write($"\r{p.Folder}: {p.Received / 1048576.0:0} of {p.Size / 1048576.0:0} MB ");
+        }
+    });
+    try
+    {
+        var made = await VoiceOffers.FetchAsync(offer, folder, http, progress, stop.Token);
+        if (json)
+        {
+            Console.WriteLine(new System.Text.Json.Nodes.JsonObject { ["installed"] = offer.Voice, ["folders"] = new System.Text.Json.Nodes.JsonArray([.. made.Select(m => (System.Text.Json.Nodes.JsonNode?)m)]) }.ToJsonString());
+        }
+        else
+        {
+            Console.Error.WriteLine();
+            Console.WriteLine(made.Count == 0 ? $"{offer.Voice} is already under {folder}" : $"installed {offer.Voice} under {folder}: {string.Join(", ", made.Select(Path.GetFileName))}");
+        }
+        return 0;
+    }
+    catch (OperationCanceledException)
+    {
+        Console.Error.WriteLine("cantoria: fetch stopped; nothing half-fetched is left");
+        return 1;
+    }
+    catch (Exception e) when (e is IOException or HttpRequestException or UnauthorizedAccessException or InvalidDataException)
+    {
+        Console.Error.WriteLine($"cantoria: {e.Message}");
+        return 1;
+    }
 }
 
 /// <summary>

@@ -49,6 +49,13 @@ DiffSinger (プロセス内の ONNX)、NEUTRINO、VOICEVOX。主な呼び手は 
     `DiffSingerOptions.Vocoder()` が名指しの vocoder を探す (設定の folder・その中・その隣・声の隣)。声と vocoder を
     voices folder に並べれば設定なしで歌う。
   - 聞き比べ用の wav (scratchpad、消えうる): `qixuan-ja.wav`・`qixuan-zh.wav`・`qixuan-en.wav`。
+    **オーナーの耳: どの言語もちゃんと歌えている** (2026-11-21)。
+  - **F の本体を作った** (2026-11-21): `VoiceOffers` (Core。申し出・規約の要点・SHA-256 で固定した 2 つの release file。
+    `.X.download` に落として `.X.unpacking` に展開し、そろってから名前を付ける＝途中で止まっても何も残らない。zip の外へ出る
+    entry は断る)、CLI の `offers` / `fetch <id> [--voices-dir] [--json]`、拡張の **Download a Voice…** (`downloadVoice`:
+    規約を modal で見せ「Read the Terms」で原文、同意で fetch、進み具合、止めたら残りを消す。voices folder が空なら
+    `~/Cantoria/voices` にして設定する。`checkSetup` と「no voice to list」の警告の先頭ボタン)。
+    CLI で GitHub から空の folder へ 15 秒、vocoder 設定なしで歌えた。**VS Code の中ではまだ動かしていない**。
 
 **次の一手**:
 1. **友人の答えを待っている** (ユーザーは韓国語も中国語も話せない)。聞き取りのページと答えの読み方は
@@ -56,9 +63,9 @@ DiffSinger (プロセス内の ONNX)、NEUTRINO、VOICEVOX。主な呼び手は 
 2. roadmap C の残り: 韓国語の語ごとに決まる変化 (발병 발뼝 の濃音化、꽃잎 꼰닙 の ㄴ添加、語尾と同じ形で始まる語)、
    表にない中国語の語 (どれも今は `phonemes` で楽譜側から直せる)。C・D はこれで区切り。次の大きな段は
    F (どの機械でも歌える: 配れる声の調査、ライセンスが先) か E (sinsy などの新しいエンジン) で、どちらもオーナーが選ぶ。
-3. **オーナーの耳を待っている**: `bend` の試行 (すくい上げと落とし) の聞こえ方。Qixuan の日本語・英語が
-   最初に勧める声に足りるか。足りるなら F の本体: 拡張の「声をダウンロード」(規約を見せ、AI 表示と署名の決まりを伝え、
-   2 つの release file を voices folder に落として展開。`checkSetup` と「no voice to list」の警告にボタン)。
+3. **オーナーの耳を待っている**: `bend` の試行 (すくい上げと落とし) の聞こえ方。
+4. **F の仕上げ**: Download a Voice… を VS Code で試す (F5 の Extension Development Host、voicesFolder を空にして)。
+   F の *done when* (何も入っていない機械で拡張を入れて 10 分で歌う) はそれで見る。リリースに入れるかはオーナー。
    - 終声と次の子音の音変化 (鼻音化・激音化・流音化・濃音化) は入れた (`KoreanPhonemizer.Meet`、標準発音法 12・17〜20・23 項)。
      友人の答えより前に入れたので、K9・K10 は今は「もう一方」と同じ読み。
 

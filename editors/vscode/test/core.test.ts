@@ -9,7 +9,7 @@ import {
     ENGINES, characterNameOf, diffSingerEntriesIn, diffSingerSpeakersOf, diffSingerVoicesIn, languageProblem, languageTag, missingProgramNote, neutrinoFolderProblems, parseLine, programCandidates,
     planAsked, planLine, planOfNoOne,
     cancelLine, defaultVoiceFor, firstOfGender, genderOfWord, requestLine, resolveSinger, rid, scoreProblems, serveArgs, speakerOf, splitVoiceId, voiceEntriesIn, voiceId, voiceKey, voicesFolderProblems, voicesIn, voicevoxEntriesFrom, vsixTarget,
-    findEngines,
+    findEngines, VoiceOffer, defaultVoicesFolder, fetchLine, offerDetail,
 } from '../src/core';
 import { DIFFSINGER_GENDERS, diffSingerGender } from '../src/diffSingerGenders';
 import { VOICEVOX_GENDERS, voicevoxGender } from '../src/voicevoxGenders';
@@ -384,11 +384,31 @@ describe('the manifest', () => {
         assert.match(props['cantoria.vocoderFolder'].markdownDescription, /command:cantoria\.chooseVocoderFolder/);
     });
 
-    it('contributes the ten commands and starts on nothing but them and the API', () => {
-        assert.deepEqual(commands.sort(), ['cantoria.checkSetup', 'cantoria.chooseFemaleVoice', 'cantoria.chooseMaleVoice', 'cantoria.chooseNeutrinoFolder', 'cantoria.chooseVocoderFolder', 'cantoria.chooseVoicesFolder', 'cantoria.chooseVoicevoxFolder', 'cantoria.findEngines', 'cantoria.forgetVoices']);
+    it('contributes the eleven commands and starts on nothing but them and the API', () => {
+        assert.deepEqual(commands.sort(), ['cantoria.checkSetup', 'cantoria.chooseFemaleVoice', 'cantoria.chooseMaleVoice', 'cantoria.chooseNeutrinoFolder', 'cantoria.chooseVocoderFolder', 'cantoria.chooseVoicesFolder', 'cantoria.chooseVoicevoxFolder', 'cantoria.downloadVoice', 'cantoria.findEngines', 'cantoria.forgetVoices']);
         assert.deepEqual(manifest.activationEvents, []);
         assert.equal(manifest.main, './out/extension.js');
         assert.equal(manifest.license, 'Apache-2.0');
+    });
+});
+
+// "Download a Voice" (roadmap F, 2026-11-21): what the user reads before, and the program's lines after.
+describe('downloading an offered voice', () => {
+    const offer: VoiceOffer = { id: 'q', voice: 'diffsinger/Q', title: 'Q 1.0', languages: ['zh', 'ja'], size: 3 * 1048576, terms: ['It is free.', 'Say it is AI.'], termsUrl: 'https://t' };
+
+    it('tells what it is, how much, where to, and every point of its terms', () => {
+        assert.equal(offerDetail(offer, 'C:\\v'), 'Q 1.0 sings zh, ja. 3 MB from its authors\' own pages, into C:\\v.\n\n• It is free.\n• Say it is AI.');
+        assert.equal(defaultVoicesFolder('C:\\Users\\u', join), 'C:\\Users\\u\\Cantoria\\voices');
+    });
+
+    it('adds up what each file has received, and reads what was installed', () => {
+        const received = new Map<string, number>();
+        assert.deepEqual(fetchLine('{"progress":{"folder":"Q","received":100,"size":200}}', received), { received: 100 });
+        assert.deepEqual(fetchLine('{"progress":{"folder":"Q","received":200,"size":200}}', received), { received: 200 });
+        assert.deepEqual(fetchLine('{"progress":{"folder":"voc","received":50,"size":80}}', received), { received: 250 });
+        assert.deepEqual(fetchLine('{"installed":"diffsinger/Q","folders":["C:\\\\v\\\\Q"]}', received), { installed: 'diffsinger/Q', folders: ['C:\\v\\Q'] });
+        assert.equal(fetchLine('not json', received), undefined);
+        assert.equal(fetchLine('{"other":1}', received), undefined);
     });
 });
 
