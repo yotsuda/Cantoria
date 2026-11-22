@@ -33,7 +33,9 @@ DiffSinger (プロセス内の ONNX)、NEUTRINO、VOICEVOX。主な呼び手は 
   NEUTRINO・VOICEVOX は歌詞を読む。知らない記号は `NotAPhoneme` が duration を含む全モデルで調べ、
   `has no sound for "…" (note N` の言い回しで返す (Lily# がこの言葉で音符を指す)。diffsinger/Nishiren で
   발|병 (`pp y eo NG`) を描けることと、`yeo` が断られることを確かめた。**Lily# 側で書く手段はまだない**
-  (Lily# のリポジトリの仕事。音節に読みを付ける仕組みに倣うのが自然)。
+  (Lily# のリポジトリの仕事。音節に読みを付ける仕組みに倣うのが自然)。**依頼した (2026-11-22)**:
+  `docs/repro/REQUESTS.md` の 1 (bend は 2)。Calamo・Orecchiante・Shosa と同じ 1 枚の形。セッションの頭で状態を見て、
+  `fixed` なら確かめて `done` にする。
 - **音符ごとのピッチベンド `bend`** (roadmap D、試行) を入れた (2026-11-21)。`SungNote.Bend` = (音符の頭からの秒, セント)
   の点の並び。点の間は cos でなめらか、最初の前と最後の後は保つ、音符の外は 0。`Bend.cs`、ビブラートの後・variance の前に
   f0 へ足す。phrase の鍵に `|bend1 …`。TIGER で「音符全体 −300」が 3 半音下で歌われる試験 (`DiffSingerSingerTests.ABendWrittenOnANote_IsSung`、
