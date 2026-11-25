@@ -54,6 +54,16 @@ public class ScoreJsonTests
         Assert.Equal(tidy.Notes[2].Start, tidy.Notes[1].End, 12);
         Assert.Equal(0.5, tidy.Notes[2].Duration);              // the last note is left alone
 
+        // A fall written to the note's end is trimmed with it, not left outside the note.
+        var fall = ScoreJson.Read("""
+            { "notes": [
+              { "start": 6.25, "duration": 0.113637, "pitch": 60, "lyric": "あ", "bend": [[0.05, 0], [0.113637, -400]] },
+              { "start": 6.363636, "duration": 0.227273, "pitch": 62, "lyric": "い" } ] }
+            """);
+        Assert.Empty(fall.Validate());
+        Assert.Equal(fall.Notes[0].Duration, fall.Notes[0].Bend![1].At, 12);
+        Assert.Equal(-400, fall.Notes[0].Bend![1].Cents);
+
         var overlapping = ScoreJson.Read("""
             { "notes": [
               { "start": 0, "duration": 0.51, "pitch": 60, "lyric": "あ" },

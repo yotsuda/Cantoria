@@ -106,7 +106,10 @@ public sealed record SungScore(
                 continue;
             }
             notes ??= Notes.ToList();
-            notes[i - 1] = prev with { Duration = Math.Max(RoundingOverlap, Notes[i].Start - prev.Start) };
+            double duration = Math.Max(RoundingOverlap, Notes[i].Start - prev.Start);
+            // A bend point at the note's written end (a fall, a glissando) stays inside it.
+            var bend = prev.Bend?.Select(p => (Math.Min(p.At, duration), p.Cents)).ToList();
+            notes[i - 1] = prev with { Duration = duration, Bend = bend };
         }
         return notes is null ? this : this with { Notes = notes };
     }
