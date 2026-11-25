@@ -19,6 +19,9 @@
   "engines": {
     "vscode": "^1.90.0"
   },
+  "extensionDependencies": [
+    "yotsuda.lilysharp"
+  ],
   "categories": [
     "Other"
   ],
