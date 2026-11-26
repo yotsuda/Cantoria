@@ -64,7 +64,7 @@ DiffSinger (プロセス内の ONNX)、NEUTRINO、VOICEVOX。主な呼び手は 
     `.X.download` に落として `.X.unpacking` に展開し、そろってから名前を付ける＝途中で止まっても何も残らない。zip の外へ出る
     entry は断る)、CLI の `offers` / `fetch <id> [--voices-dir] [--json]`、拡張の **Download a Voice…** (`downloadVoice`:
     規約を modal で見せ「Read the Terms」で原文、同意で fetch、進み具合、止めたら残りを消す。voices folder が空なら
-    `~/Cantoria/voices` にして設定する。`checkSetup` と「no voice to list」の警告の先頭ボタン)。
+    `~/Cantoria/DiffSinger` にして設定する (2026-11-26 までは `~/Cantoria/voices`)。`checkSetup` と「no voice to list」の警告の先頭ボタン)。
     CLI で GitHub から空の folder へ 15 秒、vocoder 設定なしで歌えた。**VS Code の中ではまだ動かしていない**。
 
 **次の一手**:

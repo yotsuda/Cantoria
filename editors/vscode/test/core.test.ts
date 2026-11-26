@@ -448,7 +448,7 @@ describe('downloading an offered voice', () => {
 
     it('tells what it is, how much, where to, and every point of its terms', () => {
         assert.equal(offerDetail(offer, 'C:\\v'), 'Q 1.0 sings zh, ja. 3 MB from its authors\' own pages, into C:\\v.\n\n• It is free.\n• Say it is AI.');
-        assert.equal(defaultVoicesFolder('C:\\Users\\u', join), 'C:\\Users\\u\\Cantoria\\voices');
+        assert.equal(defaultVoicesFolder('C:\\Users\\u', join), 'C:\\Users\\u\\Cantoria\\DiffSinger');
     });
 
     it('adds up what each file has received, and reads what was installed', () => {

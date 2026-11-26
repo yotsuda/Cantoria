@@ -370,9 +370,9 @@ export function findEngines(platform: string, home: string, env: Record<string, 
 /** A voice the program can fetch from its authors (`cantoria offers --json`; roadmap F). */
 export interface VoiceOffer { id: string; voice: string; title: string; languages: string[]; size: number; terms: string[]; termsUrl: string }
 
-/** Where an offered voice goes when no voices folder is set: one of the user's own, easy to find. */
+/** Where an offered voice goes when no DiffSinger voices folder is set: one of the user's own, easy to find, named for the engine (the owner's choice 2026-11-26: `~/Cantoria/voices` read as every engine's). Its vocoders go in it too, beside the voices. */
 export function defaultVoicesFolder(home: string, join: (...parts: string[]) => string): string {
-    return join(home, 'Cantoria', 'voices');
+    return join(home, 'Cantoria', 'DiffSinger');
 }
 
 /** What the user reads before an offered voice is fetched: what it is, how much, where to, and its terms. */

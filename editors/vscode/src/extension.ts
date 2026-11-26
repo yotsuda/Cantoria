@@ -330,7 +330,7 @@ const DOWNLOAD_VOICE = 'Download a Voice…';
 /**
  * Offers a voice whose terms let a program fetch it for the user (roadmap F; the program's
  * `offers`), shows those terms, and has the program fetch it into the voices folder — the one set,
- * else ~/Cantoria/voices, which is then set. The program checks each file against the SHA-256 it
+ * else ~/Cantoria/DiffSinger, which is then set. The program checks each file against the SHA-256 it
  * was published with and leaves nothing half there; stopped, what it was fetching is removed.
  */
 async function downloadVoice(context: vscode.ExtensionContext): Promise<void> {
@@ -415,7 +415,7 @@ const OWN_VOICE = 'Add a Voice of Your Own…';
  * How to add a voice the user chooses: what Download a Voice offers is only what may be fetched for
  * them, and any DiffSinger voice in the OpenUtau format sings once it is unpacked into the voices
  * folder (the owner asked that this be plain, 2026-11-26). Opens that folder — the one set, else
- * ~/Cantoria/voices, made and set as Download a Voice would — or the steps in this README.
+ * ~/Cantoria/DiffSinger, made and set as Download a Voice would — or the steps in this README.
  */
 async function addOwnVoice(): Promise<void> {
     if (await offerToMoveUp()) { return; }

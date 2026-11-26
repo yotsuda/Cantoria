@@ -25,7 +25,7 @@ time only a phrase you change is sung again.
 **The quickest way: Cantoria: Download a Voice…** (also a button where Cantoria says it cannot
 sing yet). It offers Qixuan 绮萱, a free DiffSinger voice by the DiffSinger community that sings
 Chinese, Japanese and English, shows its terms, and on your agreement fetches it and its vocoder
-(about 450 MB) from their authors' own pages into your voices folder (`~/Cantoria/voices` when
+(about 450 MB) from their authors' own pages into your voices folder (`~/Cantoria/DiffSinger` when
 none is set), each file checked against the one published. Then it sings, with nothing else to
 set. Where you publish a song made with it, its terms ask you to say that it is synthesised with
 AI and to credit "绮萱 (Qixuan)" and "DiffSinger"; read them before you use it. Cantoria itself
@@ -62,7 +62,7 @@ own, is chosen by its folder as below.
    (OpenUtau's `Singers` folder is such a folder):
 
    ```
-   C:\Users\you\Cantoria\voices\         ← the DiffSinger voices folder
+   C:\Users\you\Cantoria\DiffSinger\     ← the DiffSinger voices folder
    ├─ Qixuan\
    │  ├─ dsconfig.yaml                   → diffsinger/Qixuan
    │  └─ …
@@ -76,7 +76,7 @@ own, is chosen by its folder as below.
    not listed. Cantoria notices this (in **Add a Voice of Your Own…**, **Check Setup** and the
    default-voice lists) and offers **Move It Up**.
 2. **Cantoria: Choose Voices Folder… (DiffSinger)**: that folder, if it is not the one Download a
-   Voice set (`~/Cantoria/voices`).
+   Voice set (`~/Cantoria/DiffSinger`).
 3. A voice with no `dsvocoder` folder of its own needs a vocoder, the part that turns what the
    voice computes into sound. Download the `.oudep` file of the one the voice's readme names (for
    `nsf_hifigan`, the usual one, `nsf_hifigan_44.1k_hop512_128bin_2024.02.oudep`) from the
