@@ -339,10 +339,16 @@ async function downloadVoice(context: vscode.ExtensionContext): Promise<void> {
     try { offers = JSON.parse(cp.execFileSync(prog, ['offers', '--json'], { encoding: 'utf8', windowsHide: true })); }
     catch (e) { vscode.window.showErrorMessage(`Cantoria: could not list the voices to download: ${(e as Error).message}`); return; }
     const installed = new Set(voices().map(v => v.id));
-    let offer: VoiceOffer | undefined = offers.length === 1 ? offers[0] : (await vscode.window.showQuickPick(
-        offers.map(o => ({ label: o.title, description: `${o.languages.join(', ')} · ${Math.round(o.size / 1048576)} MB${installed.has(o.voice) ? ' · installed' : ''}`, offer: o })),
-        { title: 'Cantoria: Download a Voice', placeHolder: 'A voice whose author lets it be fetched for you' }))?.offer;
-    if (!offer) { return; }
+    // Always a list, even of one offer: its last line says that the voices offered are not the only ones (the owner asked, 2026-11-26).
+    const items: (vscode.QuickPickItem & { offer?: VoiceOffer })[] = [
+        ...offers.map(o => ({ label: o.title, description: `${o.languages.join(', ')} · ${Math.round(o.size / 1048576)} MB${installed.has(o.voice) ? ' · installed' : ''}`, detail: 'Fetched for you from its author, once you agree to its terms', offer: o })),
+        { label: '', kind: vscode.QuickPickItemKind.Separator },
+        { label: `$(folder-opened) ${OWN_VOICE}`, description: 'any DiffSinger voice in the OpenUtau format', detail: 'One you download from its author yourself: unpacked into the voices folder, it sings with nothing to set' },
+    ];
+    const pick = await vscode.window.showQuickPick(items, { title: 'Cantoria: Download a Voice', placeHolder: 'A voice Cantoria fetches for you, or one of your own' });
+    if (!pick) { return; }
+    if (!pick.offer) { await addOwnVoice(); return; }
+    const offer = pick.offer;
     const folder = voicesFolder() || defaultVoicesFolder(os.homedir(), path.join);
     const agree = 'Agree and Download', read = 'Read the Terms';
     for (;;) {
@@ -395,8 +401,36 @@ async function downloadVoice(context: vscode.ExtensionContext): Promise<void> {
     output.appendLine(`download: ${done.installed} into ${folder}`);
     if (!voicesFolder()) { await settings().update('voicesFolder', folder, vscode.ConfigurationTarget.Global); }
     release();
-    vscode.window.showInformationMessage(`Cantoria: ${done.installed} is installed in ${folder} and sings. Where you publish a song made with it, follow its terms: say it is synthesised with AI, and credit the voice and DiffSinger.`, read)
-        .then(c => { if (c === read) { void vscode.env.openExternal(vscode.Uri.parse(chosen.termsUrl)); } });
+    vscode.window.showInformationMessage(`Cantoria: ${done.installed} is installed in ${folder} and sings. Where you publish a song made with it, follow its terms: say it is synthesised with AI, and credit the voice and DiffSinger. Other voices you choose go beside it.`, read, OWN_VOICE)
+        .then(c => {
+            if (c === read) { void vscode.env.openExternal(vscode.Uri.parse(chosen.termsUrl)); }
+            else if (c === OWN_VOICE) { void addOwnVoice(); }
+        });
+}
+
+const OWN_VOICE = 'Add a Voice of Your Own…';
+
+/**
+ * How to add a voice the user chooses: what Download a Voice offers is only what may be fetched for
+ * them, and any DiffSinger voice in the OpenUtau format sings once it is unpacked into the voices
+ * folder (the owner asked that this be plain, 2026-11-26). Opens that folder — the one set, else
+ * ~/Cantoria/voices, made and set as Download a Voice would — or the steps in this README.
+ */
+async function addOwnVoice(): Promise<void> {
+    const folder = voicesFolder() || defaultVoicesFolder(os.homedir(), path.join);
+    const open = 'Open the Voices Folder';
+    const detail = 'Download a DiffSinger voice in the OpenUtau format from its author, under the author\'s terms, and unpack it '
+        + `so that it is a folder of its own holding a dsconfig.yaml, in the voices folder:\n\n${folder}\n\n`
+        + 'It is listed as diffsinger/<its folder> at once, with nothing to set. A voice with no vocoder of its own sings with the one it names, '
+        + 'unpacked beside it (How to Install a Voice says where to get one). '
+        + 'NEUTRINO and VOICEVOX voices are installed in those programs: Cantoria finds them there.';
+    const choice = await vscode.window.showInformationMessage('Add a voice of your own', { modal: true, detail }, open, HOW_TO_INSTALL);
+    if (choice === open) {
+        try { fs.mkdirSync(folder, { recursive: true }); }
+        catch (e) { vscode.window.showErrorMessage(`Cantoria: could not make ${folder}: ${(e as Error).message}`); return; }
+        if (!voicesFolder()) { await settings().update('voicesFolder', folder, vscode.ConfigurationTarget.Global); }
+        await vscode.env.openExternal(vscode.Uri.file(folder));
+    } else if (choice === HOW_TO_INSTALL) { openInstallGuide(); }
 }
 
 /**
@@ -459,6 +493,7 @@ export function activate(context: vscode.ExtensionContext): CantoriaApi {
         vscode.commands.registerCommand('cantoria.checkSetup', () => checkSetup(context)),
         vscode.commands.registerCommand('cantoria.findEngines', () => findEnginesHere()),
         vscode.commands.registerCommand('cantoria.downloadVoice', () => downloadVoice(context)),
+        vscode.commands.registerCommand('cantoria.addOwnVoice', () => addOwnVoice()),
         vscode.commands.registerCommand('cantoria.forgetVoices', () => {
             release();      // the engine holds phrases in memory too
             const n = new Engine({ program: '', neutrinoFolder: '', voicesFolder: '', vocoderFolder: '', gpu: true, threads: 1, cacheSizeMB: 0 }, path.join(storage, 'voices'), () => undefined).forget();

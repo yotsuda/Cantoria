@@ -31,6 +31,12 @@ set. Where you publish a song made with it, its terms ask you to say that it is 
 AI and to credit "绮萱 (Qixuan)" and "DiffSinger"; read them before you use it. Cantoria itself
 ships no voice.
 
+**Any other voice you like sings too.** Qixuan is only the voice Cantoria may fetch for you. Any
+DiffSinger voice in the OpenUtau format, downloaded from its author under the author's terms, sings
+once it is unpacked as a folder of its own in the voices folder, beside Qixuan: it is listed as
+`diffsinger/<its folder>` at once, with nothing to set. **Cantoria: Add a Voice of Your Own…** (also
+the last line of Download a Voice) opens that folder. NEUTRINO and VOICEVOX voices: see below.
+
 Three engines; set up any of them. A voice is named `engine/name`. The button **How to Install a
 Voice**, where Cantoria says it has no voice, opens this page inside VS Code.
 

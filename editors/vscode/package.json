@@ -188,6 +188,11 @@
         "title": "Download a Voice…"
       },
       {
+        "command": "cantoria.addOwnVoice",
+        "category": "Cantoria",
+        "title": "Add a Voice of Your Own…"
+      },
+      {
         "command": "cantoria.forgetVoices",
         "category": "Cantoria",
         "title": "Forget Rendered Voices"
