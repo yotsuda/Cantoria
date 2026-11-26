@@ -410,28 +410,41 @@ describe('the manifest', () => {
     it('groups the settings by what they are for', () => {
         const groups = Object.fromEntries(manifest.contributes.configuration.map((c: { title: string; properties: object }) => [c.title, Object.keys(c.properties).map(k => k.replace('cantoria.', '')).sort()]));
         assert.deepEqual(groups, {
-            General: ['cacheSizeMB', 'defaultFemaleVoice', 'defaultMaleVoice', 'gpu'],
-            NEUTRINO: ['neutrinoFolder', 'threads'],
-            DiffSinger: ['diffsingerVocoderFolder', 'diffsingerVoicesFolder'],
-            VOICEVOX: ['voicevoxFolder', 'voicevoxUrl'],
+            General: ['cacheSizeMB', 'defaultFemaleVoice', 'defaultMaleVoice', 'useGPU'],
+            NEUTRINO: ['neutrino.installFolder', 'neutrino.threads'],
+            DiffSinger: ['diffsinger.vocoderFolder', 'diffsinger.voicesFolder'],
+            VOICEVOX: ['voicevox.address', 'voicevox.installFolder'],
             Developer: ['program'],
         });
+    });
+
+    // VS Code makes a setting's label from its key and allows no other (microsoft/vscode, settingsTreeModels.ts: settingKeyToDisplayFormat):
+    // `diffsingerVoicesFolder` shows as "Diffsinger Voices Folder". What comes before the key's last dot is dropped where
+    // it begins the id of the setting's section (trimCategoryForGroup), so the engines' names stand only in the sections'
+    // titles, written as they are spelt, and each label is plain ("Voices Folder" under "DiffSinger") (2026-11-26).
+    it('gives each section an id its keys begin with, so that a label shows no category before it', () => {
+        for (const section of manifest.contributes.configuration as { id: string; title: string; properties: object }[]) {
+            for (const key of Object.keys(section.properties)) {
+                const category = key.slice(0, key.lastIndexOf('.'));
+                assert.ok(section.id === category || section.id.startsWith(category + '.'), `${key} under ${section.id}`);
+            }
+        }
     });
 
     const commands = (manifest.contributes.commands as { command: string }[]).map(c => c.command);
 
     it('holds the settings, each engine setting machine-overridable', () => {
-        for (const name of ['cantoria.neutrinoFolder', 'cantoria.diffsingerVoicesFolder', 'cantoria.diffsingerVocoderFolder', 'cantoria.defaultFemaleVoice', 'cantoria.defaultMaleVoice', 'cantoria.gpu', 'cantoria.threads', 'cantoria.program', 'cantoria.cacheSizeMB']) {
+        for (const name of ['cantoria.neutrino.installFolder', 'cantoria.diffsinger.voicesFolder', 'cantoria.diffsinger.vocoderFolder', 'cantoria.voicevox.installFolder', 'cantoria.voicevox.address', 'cantoria.defaultFemaleVoice', 'cantoria.defaultMaleVoice', 'cantoria.useGPU', 'cantoria.neutrino.threads', 'cantoria.program', 'cantoria.cacheSizeMB']) {
             assert.ok(props[name], `${name} is contributed`);
             assert.equal(props[name].scope, 'machine-overridable', name);
         }
         assert.equal(props['cantoria.defaultFemaleVoice'].default, '');
         assert.equal(props['cantoria.defaultMaleVoice'].default, '');
-        assert.match(props['cantoria.neutrinoFolder'].markdownDescription, /command:cantoria\.chooseNeutrinoFolder/);
+        assert.match(props['cantoria.neutrino.installFolder'].markdownDescription, /command:cantoria\.chooseNeutrinoFolder/);
         assert.match(props['cantoria.defaultFemaleVoice'].markdownDescription, /command:cantoria\.chooseFemaleVoice/);
         assert.match(props['cantoria.defaultMaleVoice'].markdownDescription, /command:cantoria\.chooseMaleVoice/);
-        assert.match(props['cantoria.diffsingerVoicesFolder'].markdownDescription, /command:cantoria\.chooseVoicesFolder/);
-        assert.match(props['cantoria.diffsingerVocoderFolder'].markdownDescription, /command:cantoria\.chooseVocoderFolder/);
+        assert.match(props['cantoria.diffsinger.voicesFolder'].markdownDescription, /command:cantoria\.chooseVoicesFolder/);
+        assert.match(props['cantoria.diffsinger.vocoderFolder'].markdownDescription, /command:cantoria\.chooseVocoderFolder/);
     });
 
     it('contributes the eleven commands and starts on nothing but them and the API', () => {

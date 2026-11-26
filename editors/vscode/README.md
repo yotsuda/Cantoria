@@ -41,9 +41,9 @@ one folder for all:
 
 | Engine | Where its voices are | The setting |
 |---|---|---|
-| DiffSinger | the DiffSinger voices folder, one folder a voice | `cantoria.diffsingerVoicesFolder` |
-| NEUTRINO | NEUTRINO's own `model\` folder, as NEUTRINO installs them | `cantoria.neutrinoFolder` (NEUTRINO itself) |
-| VOICEVOX | inside VOICEVOX, which lists them | `cantoria.voicevoxFolder` (VOICEVOX itself) |
+| DiffSinger | the DiffSinger voices folder, one folder a voice | `cantoria.diffsinger.voicesFolder` |
+| NEUTRINO | NEUTRINO's own `model\` folder, as NEUTRINO installs them | `cantoria.neutrino.installFolder` (NEUTRINO itself) |
+| VOICEVOX | inside VOICEVOX, which lists them | `cantoria.voicevox.installFolder` (VOICEVOX itself) |
 
 A score names a voice `engine/name` — a name, not a path: `diffsinger/Qixuan`,
 `neutrino/MERROW`, `voicevox/ずんだもん-ノーマル`. A third part picks one of a voice's speakers
@@ -113,7 +113,7 @@ as a voice of its own, such as `diffsinger/TIGER/tiger_disco`.
    the engine keeps it in its user data, under `vvpp-engines`). Cantoria then starts the
    engine when one of its voices is needed, on a port of its own, and stops it when VS Code closes.
    A VOICEVOX you opened yourself is used and left alone. Without the folder, only a VOICEVOX you
-   have opened sings (`cantoria.voicevoxUrl` says where it answers).
+   have opened sings (`cantoria.voicevox.address` says where it answers).
 
 Then **Cantoria: Choose Default Female Voice…** and **Choose Default Male Voice…** if you want
 particular voices (empty: the first installed voice of that gender that sings the words' language),

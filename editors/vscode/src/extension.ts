@@ -82,14 +82,14 @@ let engine: Engine | undefined;
 let storage: string;
 
 function settings(): vscode.WorkspaceConfiguration { return vscode.workspace.getConfiguration('cantoria'); }
-function neutrinoFolder(): string { return settings().get<string>('neutrinoFolder', '').trim(); }
-function voicesFolder(): string { return settings().get<string>('diffsingerVoicesFolder', '').trim(); }
-function vocoderFolder(): string { return settings().get<string>('diffsingerVocoderFolder', '').trim(); }
-function voicevoxUrl(): string { return settings().get<string>('voicevoxUrl', VOICEVOX_URL).trim(); }
-function voicevoxFolder(): string { return settings().get<string>('voicevoxFolder', '').trim(); }
+function neutrinoFolder(): string { return settings().get<string>('neutrino.installFolder', '').trim(); }
+function voicesFolder(): string { return settings().get<string>('diffsinger.voicesFolder', '').trim(); }
+function vocoderFolder(): string { return settings().get<string>('diffsinger.vocoderFolder', '').trim(); }
+function voicevoxUrl(): string { return settings().get<string>('voicevox.address', VOICEVOX_URL).trim(); }
+function voicevoxFolder(): string { return settings().get<string>('voicevox.installFolder', '').trim(); }
 
 /** VOICEVOX: an engine that is a server has no folder to read, so its voices are asked for. */
-const voicevox = new VoicevoxServer(() => ({ url: voicevoxUrl(), folder: voicevoxFolder(), gpu: settings().get<boolean>('gpu', true) }), {
+const voicevox = new VoicevoxServer(() => ({ url: voicevoxUrl(), folder: voicevoxFolder(), gpu: settings().get<boolean>('useGPU', true) }), {
     fetchJson: async (url, timeoutMs) => {
         const answer = await fetch(url, { signal: AbortSignal.timeout(timeoutMs) });
         if (!answer.ok) { throw new Error(`HTTP ${answer.status}`); }
@@ -161,7 +161,7 @@ function setupNow(context: vscode.ExtensionContext): { setup?: EngineSetup; prob
     problems.push(...voicesFolderProblems(d, fs.existsSync));
     if (problems.length > 0) { return { problems, program: prog }; }
     return {
-        setup: { program: prog!, neutrinoFolder: n, voicesFolder: d, vocoderFolder: vocoderFolder(), gpu: settings().get<boolean>('gpu', true), threads: settings().get<number>('threads', 4), cacheSizeMB: settings().get<number>('cacheSizeMB', 1000) },
+        setup: { program: prog!, neutrinoFolder: n, voicesFolder: d, vocoderFolder: vocoderFolder(), gpu: settings().get<boolean>('useGPU', true), threads: settings().get<number>('neutrino.threads', 4), cacheSizeMB: settings().get<number>('cacheSizeMB', 1000) },
         problems, program: prog,
     };
 }
@@ -267,24 +267,24 @@ async function chooseFolder(title: string, setting: string, check: (folder: stri
 }
 
 function chooseNeutrinoFolder(): Promise<void> {
-    return chooseFolder('Cantoria: the NEUTRINO folder (holding bin, model and settings)', 'neutrinoFolder',
+    return chooseFolder('Cantoria: the NEUTRINO folder (holding bin, model and settings)', 'neutrino.installFolder',
         folder => neutrinoFolderProblems(folder, fs.existsSync, path.join), folder => `Cantoria: NEUTRINO is ${folder}`);
 }
 
 function chooseVoicesFolder(): Promise<void> {
-    return chooseFolder('Cantoria: the folder whose subfolders are DiffSinger voices (each with a dsconfig.yaml)', 'diffsingerVoicesFolder',
+    return chooseFolder('Cantoria: the folder whose subfolders are DiffSinger voices (each with a dsconfig.yaml)', 'diffsinger.voicesFolder',
         folder => diffSingerVoicesIn(folder, listDirs, fs.existsSync, path.join).length > 0 ? [] : [`no DiffSinger voice under ${folder} (a voice is a subfolder with dsconfig.yaml)`],
         folder => `Cantoria: the DiffSinger voices are under ${folder}`);
 }
 
 function chooseVoicevoxFolder(): Promise<void> {
-    return chooseFolder('Cantoria: the VOICEVOX folder (holding vv-engine)', 'voicevoxFolder',
+    return chooseFolder('Cantoria: the VOICEVOX folder (holding vv-engine)', 'voicevox.installFolder',
         folder => voicevoxRunIn(folder, fs.existsSync, path.join) ? [] : [`no VOICEVOX engine under ${folder} (it holds vv-engine\\run.exe)`],
         folder => `Cantoria: VOICEVOX is ${folder}`);
 }
 
 function chooseVocoderFolder(): Promise<void> {
-    return chooseFolder('Cantoria: the vocoder folder (holding vocoder.yaml and its model)', 'diffsingerVocoderFolder',
+    return chooseFolder('Cantoria: the vocoder folder (holding vocoder.yaml and its model)', 'diffsinger.vocoderFolder',
         folder => fs.existsSync(path.join(folder, 'vocoder.yaml')) ? [] : [`no vocoder.yaml in ${folder}`],
         folder => `Cantoria: the vocoder is ${folder}`);
 }
@@ -400,7 +400,7 @@ async function downloadVoice(context: vscode.ExtensionContext): Promise<void> {
         return;
     }
     output.appendLine(`download: ${done.installed} into ${folder}`);
-    if (!voicesFolder()) { await settings().update('diffsingerVoicesFolder', folder, vscode.ConfigurationTarget.Global); }
+    if (!voicesFolder()) { await settings().update('diffsinger.voicesFolder', folder, vscode.ConfigurationTarget.Global); }
     release();
     vscode.window.showInformationMessage(`Cantoria: ${done.installed} is installed in ${folder} and sings. Where you publish a song made with it, follow its terms: say it is synthesised with AI, and credit the voice and DiffSinger. Other voices you choose go beside it.`, read, OWN_VOICE)
         .then(c => {
@@ -431,7 +431,7 @@ async function addOwnVoice(): Promise<void> {
     if (choice === open) {
         try { fs.mkdirSync(folder, { recursive: true }); }
         catch (e) { vscode.window.showErrorMessage(`Cantoria: could not make ${folder}: ${(e as Error).message}`); return; }
-        if (!voicesFolder()) { await settings().update('diffsingerVoicesFolder', folder, vscode.ConfigurationTarget.Global); }
+        if (!voicesFolder()) { await settings().update('diffsinger.voicesFolder', folder, vscode.ConfigurationTarget.Global); }
         await vscode.env.openExternal(vscode.Uri.file(folder));
     } else if (choice === HOW_TO_INSTALL) { openInstallGuide(); }
 }
@@ -479,7 +479,9 @@ async function offerToMoveUp(): Promise<boolean> {
 async function findEnginesHere(): Promise<void> {
     const found = findEngines(process.platform, os.homedir(), process.env, listDirs, fs.existsSync, path.join);
     const names: Record<keyof typeof found, string> = { voicevoxFolder: 'VOICEVOX', diffsingerVoicesFolder: 'DiffSinger voices (OpenUtau\'s Singers)', diffsingerVocoderFolder: 'DiffSinger vocoder (among OpenUtau\'s Dependencies)' };
-    const fresh = (Object.keys(found) as (keyof typeof found)[]).filter(key => settings().get<string>(key, '').trim() !== found[key]);
+    // The setting each finding goes into.
+    const setting: Record<keyof typeof found, string> = { voicevoxFolder: 'voicevox.installFolder', diffsingerVoicesFolder: 'diffsinger.voicesFolder', diffsingerVocoderFolder: 'diffsinger.vocoderFolder' };
+    const fresh = (Object.keys(found) as (keyof typeof found)[]).filter(key => settings().get<string>(setting[key], '').trim() !== found[key]);
     output.appendLine(`find engines: ${(Object.keys(found) as (keyof typeof found)[]).map(key => `${key} ${found[key]}`).join('; ') || 'none where their programs put them'}`);
     if (fresh.length === 0) {
         const all = Object.keys(found).length;
@@ -493,7 +495,7 @@ async function findEnginesHere(): Promise<void> {
         fresh.map(key => ({ label: names[key], description: found[key], picked: true, key })),
         { canPickMany: true, title: 'Cantoria: Engines Found on This Computer', placeHolder: 'The ones to sing with' });
     for (const pick of picks ?? []) {
-        await settings().update(pick.key, found[pick.key], vscode.ConfigurationTarget.Global);
+        await settings().update(setting[pick.key], found[pick.key], vscode.ConfigurationTarget.Global);
     }
     if (picks?.length) { vscode.window.setStatusBarMessage(`Cantoria: ${picks.map(p => p.label).join(', ')} set`, 5000); }
 }
@@ -540,10 +542,10 @@ export function activate(context: vscode.ExtensionContext): CantoriaApi {
         }),
         // A changed engine setting lets the engine go; the next sing starts one for the new settings.
         vscode.workspace.onDidChangeConfiguration(e => {
-            if (['neutrinoFolder', 'diffsingerVoicesFolder', 'diffsingerVocoderFolder', 'program', 'gpu', 'threads', 'cacheSizeMB'].some(s => e.affectsConfiguration('cantoria.' + s))) {
+            if (['neutrino.installFolder', 'diffsinger.voicesFolder', 'diffsinger.vocoderFolder', 'program', 'useGPU', 'neutrino.threads', 'cacheSizeMB'].some(s => e.affectsConfiguration('cantoria.' + s))) {
                 release();
             }
-            if (['voicevoxUrl', 'voicevoxFolder', 'gpu'].some(s => e.affectsConfiguration('cantoria.' + s))) { voicevox.changed(); }
+            if (['voicevox.address', 'voicevox.installFolder', 'useGPU'].some(s => e.affectsConfiguration('cantoria.' + s))) { voicevox.changed(); }
         }),
         { dispose: release },
         { dispose: () => voicevox.dispose() },

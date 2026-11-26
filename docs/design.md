@@ -128,7 +128,7 @@ and where that fails (no entry point in a CPU build, no device) or the first ses
 cannot be created, the voice falls back to the CPU and says why
 (`DiffSingerVoice.ProviderNote`; `cantoria sing` prints "on DirectML" / "on the
 CPU (…)", `serve` answers `provider`). The CLI's `--cpu` (the extension's
-`cantoria.gpu` off) is `Cpu`. CUDA and CoreML are not wired: CUDA needs the
+`cantoria.useGPU` off) is `Cpu`. CUDA and CoreML are not wired: CUDA needs the
 user's CUDA and cuDNN and a package of hundreds of megabytes; CoreML comes in the
 standard package on macOS and can be appended the same way when a macOS build
 exists. On the CPU a 7 s phrase renders in 4–18 s at 10–20 steps; on DirectML
@@ -229,8 +229,8 @@ life of one process and talks **JSON lines** on stdin/stdout, UTF-8 both ways:
 
 The engine's home for editors (the owner's decision 2026-11-08, the shape the Lily#
 OMR reader took): it carries the `cantoria` program (under `bin/<rid>/`: one VSIX per
-platform target — win-x64, linux-x64, osx-arm64 — since 0.4.0, roadmap B5), holds the settings an engine needs — `cantoria.neutrinoFolder`,
-`cantoria.defaultFemaleVoice`, `cantoria.defaultMaleVoice`, `cantoria.gpu`, `cantoria.threads`, and `cantoria.program` for a
+platform target — win-x64, linux-x64, osx-arm64 — since 0.4.0, roadmap B5), holds the settings an engine needs — `cantoria.neutrino.installFolder`,
+`cantoria.defaultFemaleVoice`, `cantoria.defaultMaleVoice`, `cantoria.useGPU`, `cantoria.neutrino.threads`, and `cantoria.program` for a
 developer's build — with pickers (**Choose NEUTRINO Folder…**, **Choose Default Female Voice…**, **Choose Default Male Voice…**) and a
 **Check Setup**, and sings for other extensions through the API its `activate` returns:
 
