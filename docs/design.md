@@ -128,7 +128,7 @@ and where that fails (no entry point in a CPU build, no device) or the first ses
 cannot be created, the voice falls back to the CPU and says why
 (`DiffSingerVoice.ProviderNote`; `cantoria sing` prints "on DirectML" / "on the
 CPU (…)", `serve` answers `provider`). The CLI's `--cpu` (the extension's
-`cantoria.useGPU` off) is `Cpu`. CUDA and CoreML are not wired: CUDA needs the
+`cantoria.general.useGPU` off) is `Cpu`. CUDA and CoreML are not wired: CUDA needs the
 user's CUDA and cuDNN and a package of hundreds of megabytes; CoreML comes in the
 standard package on macOS and can be appended the same way when a macOS build
 exists. On the CPU a 7 s phrase renders in 4–18 s at 10–20 steps; on DirectML
@@ -163,7 +163,7 @@ With `serve --cache-mb <n>` the phrases are also kept on disk (`PhraseDisk`, und
 in a fresh process, the models' loading included, against 29 s before. One budget holds the rendered
 WAVs and the phrases together, the longest unused going first; a WAV removed is laid together again
 from its phrases in a tenth of a second, so the two need no limits of their own. The extension's
-`cantoria.cacheSizeMB` is that budget.
+`cantoria.general.cacheSizeMB` is that budget.
 
 ## 4. CLI
 
@@ -230,7 +230,7 @@ life of one process and talks **JSON lines** on stdin/stdout, UTF-8 both ways:
 The engine's home for editors (the owner's decision 2026-11-08, the shape the Lily#
 OMR reader took): it carries the `cantoria` program (under `bin/<rid>/`: one VSIX per
 platform target — win-x64, linux-x64, osx-arm64 — since 0.4.0, roadmap B5), holds the settings an engine needs — `cantoria.neutrino.installFolder`,
-`cantoria.defaultFemaleVoice`, `cantoria.defaultMaleVoice`, `cantoria.useGPU`, `cantoria.neutrino.threads`, and `cantoria.program` for a
+`cantoria.general.defaultFemaleVoice`, `cantoria.general.defaultMaleVoice`, `cantoria.general.useGPU`, `cantoria.neutrino.threads`, and `cantoria.developer.program` for a
 developer's build — with pickers (**Choose NEUTRINO Folder…**, **Choose Default Female Voice…**, **Choose Default Male Voice…**) and a
 **Check Setup**, and sings for other extensions through the API its `activate` returns:
 
@@ -302,7 +302,7 @@ alto: female, la -> no installed voice sings Latin (la); installed voices sing j
 - **The rule has one home**, `SingerResolver` (`src/Cantoria.Core/SingerPlan.cs`): a voice named
   and installed sings; else the default voice of the gender the line says (or the caller's
   `gender`, else female) — the one set (`--default-female-voice`, the extension's
-  `cantoria.defaultFemaleVoice`), else the first voice listed that says it is that gender and
+  `cantoria.general.defaultFemaleVoice`), else the first voice listed that says it is that gender and
   sings the language; with none, the other gender's, else any voice, and the `note` says so. A
   default that is set sings whatever the language, so it can be the `reason`. Then what `sing`
   refuses: a voice that says what it sings and does not sing these words (one that does not say

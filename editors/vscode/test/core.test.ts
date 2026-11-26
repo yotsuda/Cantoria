@@ -235,9 +235,9 @@ describe('where the program and the voices are', () => {
         assert.equal(vsixTarget('osx-arm64'), 'darwin-arm64');
         assert.equal(vsixTarget('linux-x64'), 'linux-x64');
         assert.equal(missingProgramNote('win32', 'x64', ['osx-arm64']),
-            'the cantoria program was not found: this machine is win32-x64 (win-x64), this VSIX bundles osx-arm64 — it is the package for another platform; install cantoria-win32-x64-<version>.vsix (developers set cantoria.program)');
+            'the cantoria program was not found: this machine is win32-x64 (win-x64), this VSIX bundles osx-arm64 — it is the package for another platform; install cantoria-win32-x64-<version>.vsix (developers set cantoria.developer.program)');
         assert.equal(missingProgramNote('linux', 'x64', []),
-            'the cantoria program was not found: this machine is linux-x64 (linux-x64), this VSIX bundles no program — install the linux-x64 package (developers set cantoria.program)');
+            'the cantoria program was not found: this machine is linux-x64 (linux-x64), this VSIX bundles no program — install the linux-x64 package (developers set cantoria.developer.program)');
         assert.match(missingProgramNote('freebsd', 'x64', ['win-x64']), /which no bundled build is made for/);
     });
 
@@ -410,11 +410,11 @@ describe('the manifest', () => {
     it('groups the settings by what they are for', () => {
         const groups = Object.fromEntries(manifest.contributes.configuration.map((c: { title: string; properties: object }) => [c.title, Object.keys(c.properties).map(k => k.replace('cantoria.', '')).sort()]));
         assert.deepEqual(groups, {
-            General: ['cacheSizeMB', 'defaultFemaleVoice', 'defaultMaleVoice', 'useGPU'],
+            General: ['general.cacheSizeMB', 'general.defaultFemaleVoice', 'general.defaultMaleVoice', 'general.useGPU'],
             NEUTRINO: ['neutrino.installFolder', 'neutrino.threads'],
             DiffSinger: ['diffsinger.vocoderFolder', 'diffsinger.voicesFolder'],
             VOICEVOX: ['voicevox.address', 'voicevox.installFolder'],
-            Developer: ['program'],
+            Developer: ['developer.program'],
         });
     });
 
@@ -434,15 +434,15 @@ describe('the manifest', () => {
     const commands = (manifest.contributes.commands as { command: string }[]).map(c => c.command);
 
     it('holds the settings, each engine setting machine-overridable', () => {
-        for (const name of ['cantoria.neutrino.installFolder', 'cantoria.diffsinger.voicesFolder', 'cantoria.diffsinger.vocoderFolder', 'cantoria.voicevox.installFolder', 'cantoria.voicevox.address', 'cantoria.defaultFemaleVoice', 'cantoria.defaultMaleVoice', 'cantoria.useGPU', 'cantoria.neutrino.threads', 'cantoria.program', 'cantoria.cacheSizeMB']) {
+        for (const name of ['cantoria.neutrino.installFolder', 'cantoria.diffsinger.voicesFolder', 'cantoria.diffsinger.vocoderFolder', 'cantoria.voicevox.installFolder', 'cantoria.voicevox.address', 'cantoria.general.defaultFemaleVoice', 'cantoria.general.defaultMaleVoice', 'cantoria.general.useGPU', 'cantoria.neutrino.threads', 'cantoria.developer.program', 'cantoria.general.cacheSizeMB']) {
             assert.ok(props[name], `${name} is contributed`);
             assert.equal(props[name].scope, 'machine-overridable', name);
         }
-        assert.equal(props['cantoria.defaultFemaleVoice'].default, '');
-        assert.equal(props['cantoria.defaultMaleVoice'].default, '');
+        assert.equal(props['cantoria.general.defaultFemaleVoice'].default, '');
+        assert.equal(props['cantoria.general.defaultMaleVoice'].default, '');
         assert.match(props['cantoria.neutrino.installFolder'].markdownDescription, /command:cantoria\.chooseNeutrinoFolder/);
-        assert.match(props['cantoria.defaultFemaleVoice'].markdownDescription, /command:cantoria\.chooseFemaleVoice/);
-        assert.match(props['cantoria.defaultMaleVoice'].markdownDescription, /command:cantoria\.chooseMaleVoice/);
+        assert.match(props['cantoria.general.defaultFemaleVoice'].markdownDescription, /command:cantoria\.chooseFemaleVoice/);
+        assert.match(props['cantoria.general.defaultMaleVoice'].markdownDescription, /command:cantoria\.chooseMaleVoice/);
         assert.match(props['cantoria.diffsinger.voicesFolder'].markdownDescription, /command:cantoria\.chooseVoicesFolder/);
         assert.match(props['cantoria.diffsinger.vocoderFolder'].markdownDescription, /command:cantoria\.chooseVocoderFolder/);
     });

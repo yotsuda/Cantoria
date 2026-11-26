@@ -10,7 +10,7 @@ editor of its own.
 Open source, Apache-2.0: [github.com/yotsuda/Cantoria](https://github.com/yotsuda/Cantoria).
 Published for Windows x64, Linux x64 and macOS arm64 with the program bundled. NEUTRINO runs on
 Windows only. DiffSinger voices are built to sing on all three, on the CPU outside Windows, but
-have been heard only on Windows so far. Other platforms can point `cantoria.program` at a build of
+have been heard only on Windows so far. Other platforms can point `cantoria.developer.program` at a build of
 their own.
 
 ## Setup
@@ -137,7 +137,7 @@ Several lines with the same words on one part sing it together, and they may com
 The first phrase takes a while: NEUTRINO loads its models for up to a minute, and a DiffSinger voice
 takes a couple of seconds on a DirectX 12 GPU through DirectML, or ten or more on the CPU where
 there is none. The same phrase is sung once and kept, even after VS Code closes, up to the disk
-`cantoria.cacheSizeMB` allows (**Cantoria: Forget Rendered Voices** clears them).
+`cantoria.general.cacheSizeMB` allows (**Cantoria: Forget Rendered Voices** clears them).
 
 ## For extension authors
 

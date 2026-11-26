@@ -89,7 +89,7 @@ function voicevoxUrl(): string { return settings().get<string>('voicevox.address
 function voicevoxFolder(): string { return settings().get<string>('voicevox.installFolder', '').trim(); }
 
 /** VOICEVOX: an engine that is a server has no folder to read, so its voices are asked for. */
-const voicevox = new VoicevoxServer(() => ({ url: voicevoxUrl(), folder: voicevoxFolder(), gpu: settings().get<boolean>('useGPU', true) }), {
+const voicevox = new VoicevoxServer(() => ({ url: voicevoxUrl(), folder: voicevoxFolder(), gpu: settings().get<boolean>('general.useGPU', true) }), {
     fetchJson: async (url, timeoutMs) => {
         const answer = await fetch(url, { signal: AbortSignal.timeout(timeoutMs) });
         if (!answer.ok) { throw new Error(`HTTP ${answer.status}`); }
@@ -113,7 +113,7 @@ function voiceOf(text: string | undefined): Voice {
 }
 /** The two default-voice settings; '' is not set. */
 function defaultVoices(): DefaultVoices {
-    return { female: settings().get<string>('defaultFemaleVoice', ''), male: settings().get<string>('defaultMaleVoice', '') };
+    return { female: settings().get<string>('general.defaultFemaleVoice', ''), male: settings().get<string>('general.defaultMaleVoice', '') };
 }
 /** The voice a caller who names none gets, and what `status().voice` says. */
 function voiceSetting(): Voice { return voiceOf(defaultVoiceFor(voices(), defaultVoices(), 'female').voice); }
@@ -132,7 +132,7 @@ function voices(): VoiceEntry[] {
 
 /** The `cantoria` program: the first candidate that exists (the bare name is trusted to the PATH). */
 function program(context: vscode.ExtensionContext): string | undefined {
-    const candidates = programCandidates(process.platform, process.arch, context.extensionPath, settings().get<string>('program', ''), path.join);
+    const candidates = programCandidates(process.platform, process.arch, context.extensionPath, settings().get<string>('developer.program', ''), path.join);
     for (const c of candidates) {
         if (!path.isAbsolute(c)) { return commandExists(c) ? c : undefined; }
         if (fs.existsSync(c)) { return c; }
@@ -161,7 +161,7 @@ function setupNow(context: vscode.ExtensionContext): { setup?: EngineSetup; prob
     problems.push(...voicesFolderProblems(d, fs.existsSync));
     if (problems.length > 0) { return { problems, program: prog }; }
     return {
-        setup: { program: prog!, neutrinoFolder: n, voicesFolder: d, vocoderFolder: vocoderFolder(), gpu: settings().get<boolean>('useGPU', true), threads: settings().get<number>('neutrino.threads', 4), cacheSizeMB: settings().get<number>('cacheSizeMB', 1000) },
+        setup: { program: prog!, neutrinoFolder: n, voicesFolder: d, vocoderFolder: vocoderFolder(), gpu: settings().get<boolean>('general.useGPU', true), threads: settings().get<number>('neutrino.threads', 4), cacheSizeMB: settings().get<number>('general.cacheSizeMB', 1000) },
         problems, program: prog,
     };
 }
@@ -320,7 +320,7 @@ async function chooseDefaultVoice(context: vscode.ExtensionContext, gender: Voic
         })),
         { title: `Cantoria: Default ${gender === 'male' ? 'Male' : 'Female'} Voice`, placeHolder: `The voice that sings a ${gender} part when the score names none` });
     if (!pick) { return; }
-    await settings().update(gender === 'male' ? 'defaultMaleVoice' : 'defaultFemaleVoice', pick.label, vscode.ConfigurationTarget.Global);
+    await settings().update(gender === 'male' ? 'general.defaultMaleVoice' : 'general.defaultFemaleVoice', pick.label, vscode.ConfigurationTarget.Global);
     vscode.window.setStatusBarMessage(`Cantoria: the default ${gender} voice is ${pick.label}`, 4000);
 }
 
@@ -542,10 +542,10 @@ export function activate(context: vscode.ExtensionContext): CantoriaApi {
         }),
         // A changed engine setting lets the engine go; the next sing starts one for the new settings.
         vscode.workspace.onDidChangeConfiguration(e => {
-            if (['neutrino.installFolder', 'diffsinger.voicesFolder', 'diffsinger.vocoderFolder', 'program', 'useGPU', 'neutrino.threads', 'cacheSizeMB'].some(s => e.affectsConfiguration('cantoria.' + s))) {
+            if (['neutrino.installFolder', 'diffsinger.voicesFolder', 'diffsinger.vocoderFolder', 'developer.program', 'general.useGPU', 'neutrino.threads', 'general.cacheSizeMB'].some(s => e.affectsConfiguration('cantoria.' + s))) {
                 release();
             }
-            if (['voicevox.address', 'voicevox.installFolder', 'useGPU'].some(s => e.affectsConfiguration('cantoria.' + s))) { voicevox.changed(); }
+            if (['voicevox.address', 'voicevox.installFolder', 'general.useGPU'].some(s => e.affectsConfiguration('cantoria.' + s))) { voicevox.changed(); }
         }),
         { dispose: release },
         { dispose: () => voicevox.dispose() },

@@ -44,25 +44,25 @@
         "title": "General",
         "order": 1,
         "properties": {
-            "cantoria.defaultFemaleVoice": {
+            "cantoria.general.defaultFemaleVoice": {
               "type": "string",
               "default": "",
               "scope": "machine-overridable",
               "markdownDescription": "The voice that sings a female part when the score names no voice, as `engine/name` (`neutrino/MERROW`, `diffsinger/TIGER`). Empty: the first installed voice that says it is female and sings the words' language.\n\n**[Choose a voice…](command:cantoria.chooseFemaleVoice)**"
             },
-            "cantoria.defaultMaleVoice": {
+            "cantoria.general.defaultMaleVoice": {
               "type": "string",
               "default": "",
               "scope": "machine-overridable",
               "markdownDescription": "The voice that sings a male part when the score names no voice, as `engine/name`. Empty: the first installed voice that says it is male and sings the words' language.\n\n**[Choose a voice…](command:cantoria.chooseMaleVoice)**"
             },
-            "cantoria.useGPU": {
+            "cantoria.general.useGPU": {
               "type": "boolean",
               "default": true,
               "scope": "machine-overridable",
               "markdownDescription": "Render on the GPU where the engine can: NEUTRINO through CUDA, a DiffSinger voice through DirectML (any DirectX 12 GPU; the CPU stands in where there is none). Off: the CPU, slower by an order of magnitude."
             },
-            "cantoria.cacheSizeMB": {
+            "cantoria.general.cacheSizeMB": {
               "type": "number",
               "default": 1000,
               "minimum": 100,
@@ -137,7 +137,7 @@
         "title": "Developer",
         "order": 5,
         "properties": {
-            "cantoria.program": {
+            "cantoria.developer.program": {
               "type": "string",
               "default": "",
               "scope": "machine-overridable",

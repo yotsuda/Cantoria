@@ -6,8 +6,8 @@ using System.Text.Json.Nodes;
 
 namespace Cantoria;
 
-/// <summary>The default voice of each gender (the extension's <c>cantoria.defaultFemaleVoice</c> and
-/// <c>cantoria.defaultMaleVoice</c>), as <c>engine/name</c>; empty is not set.</summary>
+/// <summary>The default voice of each gender (the extension's <c>cantoria.general.defaultFemaleVoice</c> and
+/// <c>cantoria.general.defaultMaleVoice</c>), as <c>engine/name</c>; empty is not set.</summary>
 public sealed record DefaultVoices(string Female = "", string Male = "")
 {
     public string Of(string gender) => (gender == "male" ? Male : Female) ?? "";

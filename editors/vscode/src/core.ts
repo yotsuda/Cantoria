@@ -97,7 +97,7 @@ export function firstOfGender(voices: readonly Listed[], gender: string, languag
 
 export type VoiceGender = 'female' | 'male';
 
-/** The settings `cantoria.defaultFemaleVoice` and `cantoria.defaultMaleVoice`; '' is not set. */
+/** The settings `cantoria.general.defaultFemaleVoice` and `cantoria.general.defaultMaleVoice`; '' is not set. */
 export type DefaultVoices = Readonly<Record<VoiceGender, string>>;
 
 type Listed = Pick<VoiceEntry, 'id' | 'gender' | 'language' | 'languages'>;
@@ -585,7 +585,7 @@ export function missingProgramNote(platform: string, arch: string, bundled: stri
     const fix = r && bundled.length > 0 && !bundled.includes(r)
         ? ` — it is the package for another platform; install cantoria-${vsixTarget(r)}-<version>.vsix`
         : r ? ` — install the ${vsixTarget(r)} package` : '';
-    return `the cantoria program was not found: ${machine}, ${has}${fix} (developers set cantoria.program)`;
+    return `the cantoria program was not found: ${machine}, ${has}${fix} (developers set cantoria.developer.program)`;
 }
 
 /** Where the `cantoria` program is looked for, in order: the setting (a developer's build), the
