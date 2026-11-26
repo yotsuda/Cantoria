@@ -203,6 +203,66 @@ export function diffSingerVoicesIn(folder: string, listDirs: (dir: string) => st
     return listDirs(folder).filter(name => exists(join(folder, name, 'dsconfig.yaml'))).sort();
 }
 
+/** A voice one folder too deep: `inner` (holding the `dsconfig.yaml`) inside `outer`, a subfolder of the voices folder. */
+export interface VoiceTooDeep { outer: string; inner: string }
+
+/**
+ * The voices one folder too deep under the voices folder: a subfolder with no `dsconfig.yaml` of
+ * its own whose own subfolders hold one. A voice's zip mostly holds a folder of its own, and
+ * Windows' "Extract All" unpacks it into a folder named after the zip: `voices\MyVoice_v1.0\MyVoice\dsconfig.yaml`,
+ * which is listed as no voice (2026-11-26). Not read where it is: `diffsinger/A/B` already names
+ * voice A's speaker B, so the voice is moved up instead (`moveVoiceUp`).
+ */
+export function voicesTooDeep(folder: string, listDirs: (dir: string) => string[], exists: (p: string) => boolean,
+    join: (...parts: string[]) => string): VoiceTooDeep[] {
+    if (!folder || !exists(folder)) { return []; }
+    return listDirs(folder).filter(outer => !outer.startsWith('.') && !exists(join(folder, outer, 'dsconfig.yaml'))).sort()
+        .flatMap(outer => diffSingerVoicesIn(join(folder, outer), listDirs, exists, join).map(inner => ({ outer, inner })));
+}
+
+/** The file operations `moveVoiceUp` needs (Node's fs, or a test's). */
+export interface MoveOps {
+    exists(p: string): boolean;
+    rename(from: string, to: string): void;
+    /** The names in a folder, files and folders. */
+    entries(dir: string): string[];
+    removeEmptyFolder(dir: string): void;
+}
+
+/**
+ * Moves a voice found one folder too deep up into the voices folder: `voices\outer\inner` becomes
+ * `voices\inner`, and `outer` is removed when nothing else is left in it (a readme beside the voice
+ * keeps it). Through a hidden name first, so that `MyVoice\MyVoice` comes out as `MyVoice`.
+ * Answers the voice's folder name, or throws, the voice left where it was, when that name is taken.
+ */
+export function moveVoiceUp(folder: string, deep: VoiceTooDeep, ops: MoveOps, join: (...parts: string[]) => string): string {
+    const from = join(folder, deep.outer, deep.inner);
+    const target = join(folder, deep.inner);
+    if (deep.outer !== deep.inner && ops.exists(target)) {
+        throw new Error(`${target} is there already: rename one of the two`);
+    }
+    const passing = join(folder, `.${deep.inner}.moving`);
+    ops.rename(from, passing);
+    if (ops.entries(join(folder, deep.outer)).length === 0) { ops.removeEmptyFolder(join(folder, deep.outer)); }
+    if (ops.exists(target)) {
+        ops.rename(passing, from);
+        throw new Error(`${target} holds other files beside the voice: move the voice out of it by hand, or rename it`);
+    }
+    ops.rename(passing, target);
+    return deep.inner;
+}
+
+/** The lines that show where a DiffSinger voice goes, for a message: the voices folder, two voices in it, and the mistake. */
+export function voicesFolderPicture(folder: string): string {
+    return [
+        `${folder}   ← the DiffSinger voices folder (only DiffSinger's: NEUTRINO and VOICEVOX keep their own voices)`,
+        '    Qixuan\\dsconfig.yaml   →   diffsinger/Qixuan',
+        '    MyVoice\\dsconfig.yaml   →   diffsinger/MyVoice',
+        'Not one folder deeper, as "Extract All" leaves a zip that holds a folder of its own:',
+        '    MyVoice_v1.0\\MyVoice\\dsconfig.yaml   (not found: Cantoria offers to move it up)',
+    ].join('\n');
+}
+
 /** What a DiffSinger voice's `character.yaml` calls it: its `name:` line, unquoted; undefined when there is none. */
 export function characterNameOf(yaml: string): string | undefined {
     const m = /^\s*name\s*:\s*(.+?)\s*$/m.exec(yaml);

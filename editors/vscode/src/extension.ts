@@ -17,7 +17,7 @@ import {
     PlanAsk, SingParameter, SingProgress, SingerPlan, planAsked, planOfNoOne,
     CantoriaScore, DefaultVoices, ENGINES, EngineName, VOICEVOX_URL, VoiceEntry, VoiceGender, defaultVoiceFor, diffSingerEntriesIn, diffSingerVoicesIn, findEngines, languageProblem, missingProgramNote, needsVoicevox, neutrinoFolderProblems, voicevoxRunIn, programCandidates,
     resolveSinger, scoreProblems, splitVoiceId, voiceEntriesIn, voiceId, voicesFolderProblems, voicesIn,
-    VoiceOffer, defaultVoicesFolder, fetchLine, offerDetail,
+    VoiceOffer, defaultVoicesFolder, fetchLine, offerDetail, moveVoiceUp, voicesFolderPicture, voicesTooDeep,
 } from './core';
 import { Engine, EngineSetup, RenderedVoice } from './engine';
 import { VoicevoxServer } from './voicevox';
@@ -299,6 +299,7 @@ function openInstallGuide(): void { if (readme) { void vscode.commands.executeCo
 
 /** A default voice from a list: every voice but those that say they are the other gender. */
 async function chooseDefaultVoice(context: vscode.ExtensionContext, gender: VoiceGender): Promise<void> {
+    if (await offerToMoveUp()) { return; }
     await voicevox.ensure();
     const s = await status(context);
     const all = voices();
@@ -343,7 +344,7 @@ async function downloadVoice(context: vscode.ExtensionContext): Promise<void> {
     const items: (vscode.QuickPickItem & { offer?: VoiceOffer })[] = [
         ...offers.map(o => ({ label: o.title, description: `${o.languages.join(', ')} · ${Math.round(o.size / 1048576)} MB${installed.has(o.voice) ? ' · installed' : ''}`, detail: 'Fetched for you from its author, once you agree to its terms', offer: o })),
         { label: '', kind: vscode.QuickPickItemKind.Separator },
-        { label: `$(folder-opened) ${OWN_VOICE}`, description: 'any DiffSinger voice in the OpenUtau format', detail: 'One you download from its author yourself: unpacked into the voices folder, it sings with nothing to set' },
+        { label: `$(folder-opened) ${OWN_VOICE}`, description: 'any DiffSinger voice in the OpenUtau format', detail: 'One you download from its author yourself: unpacked into the DiffSinger voices folder, it sings with nothing to set' },
     ];
     const pick = await vscode.window.showQuickPick(items, { title: 'Cantoria: Download a Voice', placeHolder: 'A voice Cantoria fetches for you, or one of your own' });
     if (!pick) { return; }
@@ -417,20 +418,57 @@ const OWN_VOICE = 'Add a Voice of Your Own…';
  * ~/Cantoria/voices, made and set as Download a Voice would — or the steps in this README.
  */
 async function addOwnVoice(): Promise<void> {
+    if (await offerToMoveUp()) { return; }
     const folder = voicesFolder() || defaultVoicesFolder(os.homedir(), path.join);
     const open = 'Open the Voices Folder';
     const detail = 'Download a DiffSinger voice in the OpenUtau format from its author, under the author\'s terms, and unpack it '
-        + `so that it is a folder of its own holding a dsconfig.yaml, in the voices folder:\n\n${folder}\n\n`
-        + 'It is listed as diffsinger/<its folder> at once, with nothing to set. A voice with no vocoder of its own sings with the one it names, '
-        + 'unpacked beside it (How to Install a Voice says where to get one). '
-        + 'NEUTRINO and VOICEVOX voices are installed in those programs: Cantoria finds them there.';
-    const choice = await vscode.window.showInformationMessage('Add a voice of your own', { modal: true, detail }, open, HOW_TO_INSTALL);
+        + 'into the DiffSinger voices folder so that its dsconfig.yaml is ONE folder down:\n\n'
+        + `${voicesFolderPicture(folder)}\n\n`
+        + 'The voice is listed at once, with nothing to set, and a score names it by that folder\'s name (diffsinger/MyVoice): a name, not a path. '
+        + 'A voice with no vocoder of its own sings with the one it names, unpacked beside it (How to Install a Voice says where to get one). '
+        + 'NEUTRINO voices go in NEUTRINO\'s own model folder, VOICEVOX voices come with VOICEVOX: Cantoria finds them there, not here.';
+    const choice = await vscode.window.showInformationMessage('Add a DiffSinger voice of your own', { modal: true, detail }, open, HOW_TO_INSTALL);
     if (choice === open) {
         try { fs.mkdirSync(folder, { recursive: true }); }
         catch (e) { vscode.window.showErrorMessage(`Cantoria: could not make ${folder}: ${(e as Error).message}`); return; }
         if (!voicesFolder()) { await settings().update('voicesFolder', folder, vscode.ConfigurationTarget.Global); }
         await vscode.env.openExternal(vscode.Uri.file(folder));
     } else if (choice === HOW_TO_INSTALL) { openInstallGuide(); }
+}
+
+/**
+ * Where a DiffSinger voice was unpacked one folder too deep (core's voicesTooDeep: mostly Windows'
+ * "Extract All"), says so and offers to move it up. Asked where a user looks for a voice they
+ * have just added: Add a Voice of Your Own, Check Setup, choosing a default voice. Answers whether
+ * it said anything, so that the caller can leave the user with the one message.
+ */
+async function offerToMoveUp(): Promise<boolean> {
+    const folder = voicesFolder();
+    const deep = voicesTooDeep(folder, listDirs, fs.existsSync, path.join);
+    if (deep.length === 0) { return false; }
+    const where = deep.map(d => `${d.outer}${path.sep}${d.inner}`).join(', ');
+    const move = 'Move It Up', open = 'Open the Voices Folder';
+    const choice = await vscode.window.showWarningMessage(
+        `Cantoria: ${deep.length === 1 ? 'a voice is' : `${deep.length} voices are`} one folder too deep, and not listed: ${where} in ${folder}. `
+        + 'A DiffSinger voice\'s dsconfig.yaml has to be one folder down in the DiffSinger voices folder (a zip unpacked with "Extract All" mostly comes out a folder deeper).',
+        move, open);
+    if (choice === open) { await vscode.env.openExternal(vscode.Uri.file(folder)); }
+    if (choice !== move) { return true; }
+    const ops = {
+        exists: fs.existsSync,
+        rename: (from: string, to: string) => fs.renameSync(from, to),
+        entries: (dir: string) => fs.readdirSync(dir),
+        removeEmptyFolder: (dir: string) => fs.rmdirSync(dir),
+    };
+    const moved: string[] = [], failed: string[] = [];
+    for (const d of deep) {
+        try { moved.push(voiceId('diffsinger', moveVoiceUp(folder, d, ops, path.join))); }
+        catch (e) { failed.push(`${d.outer}${path.sep}${d.inner}: ${(e as Error).message}`); }
+    }
+    output.appendLine(`move up: ${moved.join(', ') || 'none'}${failed.length ? `; not moved: ${failed.join('; ')}` : ''}`);
+    if (moved.length) { vscode.window.showInformationMessage(`Cantoria: ${moved.join(', ')} ${moved.length === 1 ? 'is' : 'are'} listed now.`); }
+    if (failed.length) { vscode.window.showErrorMessage(`Cantoria: not moved: ${failed.join('; ')}`, open).then(c => { if (c === open) { void vscode.env.openExternal(vscode.Uri.file(folder)); } }); }
+    return true;
 }
 
 /**
@@ -461,6 +499,7 @@ async function findEnginesHere(): Promise<void> {
 }
 
 async function checkSetup(context: vscode.ExtensionContext): Promise<void> {
+    if (await offerToMoveUp()) { return; }
     const s = await status(context);
     output.appendLine(`setup: program ${s.program ?? 'none'}; NEUTRINO ${s.neutrinoFolder || 'not set'}; DiffSinger voices ${s.voicesFolder || 'not set'}; voice ${s.voice}; installed ${s.voices.join(', ') || 'none'}; ${s.ready ? 'ready' : s.problems.join('; ')}`);
     if (s.ready) {

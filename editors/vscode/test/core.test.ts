@@ -6,6 +6,7 @@ import * as assert from 'node:assert/strict';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import {
+    MoveOps, moveVoiceUp, voicesTooDeep, voicesFolderPicture,
     ENGINES, characterNameOf, diffSingerEntriesIn, diffSingerSpeakersOf, diffSingerVoicesIn, languageProblem, languageTag, missingProgramNote, neutrinoFolderProblems, parseLine, programCandidates,
     planAsked, planLine, planOfNoOne,
     cancelLine, defaultVoiceFor, firstOfGender, genderOfWord, requestLine, resolveSinger, rid, scoreProblems, serveArgs, speakerOf, splitVoiceId, voiceEntriesIn, voiceId, voiceKey, voicesFolderProblems, voicesIn, voicevoxEntriesFrom, vsixTarget,
@@ -308,6 +309,55 @@ describe('where the program and the voices are', () => {
         assert.deepEqual(entries('Unlisted').map(e => e.gender), [undefined, undefined]);
         assert.equal(diffSingerGender('constructor'), undefined);
         assert.ok(Object.values(DIFFSINGER_GENDERS).every(g => g === 'female' || g === 'male'));
+    });
+
+    it('finds a voice one folder too deep, as "Extract All" leaves a zip holding a folder of its own', () => {
+        const tree = new Set(['V', 'V\\Qixuan\\dsconfig.yaml', 'V\\MyVoice_v1.0\\MyVoice\\dsconfig.yaml', 'V\\Pack\\A\\dsconfig.yaml', 'V\\Pack\\B\\dsconfig.yaml', 'V\\notes\\readme.txt',
+            'V\\.x.unpacking\\Y\\dsconfig.yaml', 'V\\Qixuan\\sub\\dsconfig.yaml']);
+        const dirs = (d: string) => [...new Set([...tree].filter(p => p.startsWith(d + '\\')).map(p => p.slice(d.length + 1).split('\\')).filter(s => s.length > 1).map(s => s[0]))];
+        const exists = (p: string) => [...tree].some(t => t === p || t.startsWith(p + '\\'));
+        assert.deepEqual(voicesTooDeep('V', dirs, exists, join), [
+            { outer: 'MyVoice_v1.0', inner: 'MyVoice' }, { outer: 'Pack', inner: 'A' }, { outer: 'Pack', inner: 'B' },
+        ]);
+        assert.deepEqual(voicesTooDeep('', dirs, exists, join), []);
+        assert.match(voicesFolderPicture('C:\\v'), /^C:\\v .*\n {4}Qixuan\\dsconfig\.yaml {3}→ {3}diffsinger\/Qixuan\n[\s\S]*MyVoice_v1\.0\\MyVoice\\dsconfig\.yaml/);
+    });
+
+    it('moves a voice up a folder, removing the folder it leaves when nothing else is in it', () => {
+        const fake = (paths: string[]) => {
+            const tree = new Set(paths);
+            const ops: MoveOps & { tree: Set<string> } = {
+                tree,
+                exists: p => [...tree].some(t => t === p || t.startsWith(p + '\\')),
+                rename: (from, to) => {
+                    if (ops.exists(to)) { throw new Error(`${to} exists`); }
+                    for (const t of [...tree].filter(t => t === from || t.startsWith(from + '\\'))) { tree.delete(t); tree.add(to + t.slice(from.length)); }
+                },
+                entries: d => [...new Set([...tree].filter(t => t.startsWith(d + '\\')).map(t => t.slice(d.length + 1).split('\\')[0]))],
+                removeEmptyFolder: d => { tree.delete(d); },
+            };
+            return ops;
+        };
+        // "Extract All": the zip's own folder inside one named after the zip.
+        let ops = fake(['V\\MyVoice_v1.0\\MyVoice\\dsconfig.yaml']);
+        assert.equal(moveVoiceUp('V', { outer: 'MyVoice_v1.0', inner: 'MyVoice' }, ops, join), 'MyVoice');
+        assert.deepEqual([...ops.tree], ['V\\MyVoice\\dsconfig.yaml']);
+        // The same name twice: it comes out as one.
+        ops = fake(['V\\MyVoice\\MyVoice\\dsconfig.yaml']);
+        assert.equal(moveVoiceUp('V', { outer: 'MyVoice', inner: 'MyVoice' }, ops, join), 'MyVoice');
+        assert.deepEqual([...ops.tree], ['V\\MyVoice\\dsconfig.yaml']);
+        // A readme beside the voice keeps the outer folder.
+        ops = fake(['V\\Pack\\A\\dsconfig.yaml', 'V\\Pack\\readme.txt']);
+        moveVoiceUp('V', { outer: 'Pack', inner: 'A' }, ops, join);
+        assert.deepEqual([...ops.tree].sort(), ['V\\A\\dsconfig.yaml', 'V\\Pack\\readme.txt']);
+        // The name taken: nothing moves.
+        ops = fake(['V\\Pack\\A\\dsconfig.yaml', 'V\\A\\dsconfig.yaml']);
+        assert.throws(() => moveVoiceUp('V', { outer: 'Pack', inner: 'A' }, ops, join), /V\\A is there already/);
+        assert.deepEqual([...ops.tree].sort(), ['V\\A\\dsconfig.yaml', 'V\\Pack\\A\\dsconfig.yaml']);
+        // The same name with a readme beside it: it goes back where it was.
+        ops = fake(['V\\MyVoice\\MyVoice\\dsconfig.yaml', 'V\\MyVoice\\readme.txt']);
+        assert.throws(() => moveVoiceUp('V', { outer: 'MyVoice', inner: 'MyVoice' }, ops, join), /holds other files/);
+        assert.deepEqual([...ops.tree].sort(), ['V\\MyVoice\\MyVoice\\dsconfig.yaml', 'V\\MyVoice\\readme.txt']);
     });
 
     it('lists the DiffSinger voices: the subfolders with a dsconfig.yaml, each named by its character.yaml', () => {

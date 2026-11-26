@@ -33,12 +33,22 @@ ships no voice.
 
 **Any other voice you like sings too.** Qixuan is only the voice Cantoria may fetch for you. Any
 DiffSinger voice in the OpenUtau format, downloaded from its author under the author's terms, sings
-once it is unpacked as a folder of its own in the voices folder, beside Qixuan: it is listed as
-`diffsinger/<its folder>` at once, with nothing to set. **Cantoria: Add a Voice of Your Own…** (also
-the last line of Download a Voice) opens that folder. NEUTRINO and VOICEVOX voices: see below.
+once it is unpacked beside Qixuan in the DiffSinger voices folder (step 1 of DiffSinger, below).
+**Cantoria: Add a Voice of Your Own…** (also the last line of Download a Voice) opens that folder.
 
-Three engines; set up any of them. A voice is named `engine/name`. The button **How to Install a
-Voice**, where Cantoria says it has no voice, opens this page inside VS Code.
+Three engines; set up any of them. **Each engine keeps its voices in its own place**; there is no
+one folder for all:
+
+| Engine | Where its voices are | The setting |
+|---|---|---|
+| DiffSinger | the DiffSinger voices folder, one folder a voice | `cantoria.voicesFolder` |
+| NEUTRINO | NEUTRINO's own `model\` folder, as NEUTRINO installs them | `cantoria.neutrinoFolder` (NEUTRINO itself) |
+| VOICEVOX | inside VOICEVOX, which lists them | `cantoria.voicevoxFolder` (VOICEVOX itself) |
+
+A score names a voice `engine/name` — a name, not a path: `diffsinger/Qixuan`,
+`neutrino/MERROW`, `voicevox/ずんだもん-ノーマル`. A third part picks one of a voice's speakers
+(`diffsinger/TIGER/tiger_disco`). The button **How to Install a Voice**, where Cantoria says it has
+no voice, opens this page inside VS Code.
 
 **Cantoria: Find Engines on This Computer** looks where the engines' own programs put them and
 offers what it finds, so that no folder has to be looked for: VOICEVOX as its installer leaves it
@@ -47,19 +57,35 @@ folder with a vocoder among its dependencies. NEUTRINO, and anything you unpacke
 own, is chosen by its folder as below.
 
 **DiffSinger** (voices in the OpenUtau format, each a folder with a `dsconfig.yaml`):
-1. Download a voice from its author, under the author's terms, and unpack it so that it is a
-   folder of its own holding a `dsconfig.yaml`. Put your voices side by side in one folder,
-   `C:\voices\TIGER\dsconfig.yaml` for one (OpenUtau's `Singers` folder is such a folder).
-2. **Cantoria: Choose Voices Folder… (DiffSinger)**: that folder (`C:\voices`).
+1. Download a voice from its author, under the author's terms, and unpack it into the DiffSinger
+   voices folder so that its `dsconfig.yaml` is **one folder down**, each voice a folder of its own
+   (OpenUtau's `Singers` folder is such a folder):
+
+   ```
+   C:\Users\you\Cantoria\voices\         ← the DiffSinger voices folder
+   ├─ Qixuan\
+   │  ├─ dsconfig.yaml                   → diffsinger/Qixuan
+   │  └─ …
+   ├─ pc_nsf_hifigan\                     (a vocoder, beside the voices: step 3)
+   └─ MyVoice\
+      └─ dsconfig.yaml                   → diffsinger/MyVoice
+   ```
+
+   Not a folder deeper. A voice's zip mostly holds a folder of its own, and Windows' **Extract
+   All** puts it in another named after the zip: `voices\MyVoice_v1.0\MyVoice\dsconfig.yaml` is
+   not listed. Cantoria notices this (in **Add a Voice of Your Own…**, **Check Setup** and the
+   default-voice lists) and offers **Move It Up**.
+2. **Cantoria: Choose Voices Folder… (DiffSinger)**: that folder, if it is not the one Download a
+   Voice set (`~/Cantoria/voices`).
 3. A voice with no `dsvocoder` folder of its own needs a vocoder, the part that turns what the
    voice computes into sound. Download the `.oudep` file of the one the voice's readme names (for
    `nsf_hifigan`, the usual one, `nsf_hifigan_44.1k_hop512_128bin_2024.02.oudep`) from the
    [DiffSinger community vocoders](https://github.com/openvpi/vocoders) (their releases), rename it to
-   `.zip`, and unpack it into a folder of its own beside your voices (`C:\voices\pc_nsf_hifigan`):
+   `.zip`, and unpack it into a folder of its own beside your voices (`voices\pc_nsf_hifigan`):
    each voice is sung with the vocoder its `dsconfig.yaml` names, found there, in or beside the
    folder chosen with **Cantoria: Choose Vocoder Folder…** (OpenUtau's `Dependencies` will do), or
    else the chosen one. The vocoders have terms of their own, in the `NOTICE.txt` they come with.
-4. Name the voice by its folder: `diffsinger/TIGER`.
+4. Name the voice by its folder's name: `diffsinger/MyVoice`.
 
 A voice sings Japanese through its dictionary, and English where it has a `dsdict-en.yaml`. An
 English word the dictionary lacks is sung from its spelling; the guess can be wrong, and the
