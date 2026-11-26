@@ -74,7 +74,7 @@ DiffSinger (プロセス内の ONNX)、NEUTRINO、VOICEVOX。主な呼び手は 
    表にない中国語の語 (どれも今は `phonemes` で楽譜側から直せる)。C・D はこれで区切り。次の大きな段は
    F (どの機械でも歌える: 配れる声の調査、ライセンスが先) か E (sinsy などの新しいエンジン) で、どちらもオーナーが選ぶ。
 3. **オーナーの耳を待っている**: `bend` の試行 (すくい上げと落とし) の聞こえ方。
-4. **F の仕上げ**: Download a Voice… を VS Code で試す (F5 の Extension Development Host、voicesFolder を空にして)。
+4. **F の仕上げ**: Download a Voice… を VS Code で試す (F5 の Extension Development Host、diffsingerVoicesFolder を空にして)。
    F の *done when* (何も入っていない機械で拡張を入れて 10 分で歌う) はそれで見る。リリースに入れるかはオーナー。
    - 終声と次の子音の音変化 (鼻音化・激音化・流音化・濃音化) は入れた (`KoreanPhonemizer.Meet`、標準発音法 12・17〜20・23 項)。
      友人の答えより前に入れたので、K9・K10 は今は「もう一方」と同じ読み。

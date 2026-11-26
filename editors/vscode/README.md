@@ -41,7 +41,7 @@ one folder for all:
 
 | Engine | Where its voices are | The setting |
 |---|---|---|
-| DiffSinger | the DiffSinger voices folder, one folder a voice | `cantoria.voicesFolder` |
+| DiffSinger | the DiffSinger voices folder, one folder a voice | `cantoria.diffsingerVoicesFolder` |
 | NEUTRINO | NEUTRINO's own `model\` folder, as NEUTRINO installs them | `cantoria.neutrinoFolder` (NEUTRINO itself) |
 | VOICEVOX | inside VOICEVOX, which lists them | `cantoria.voicevoxFolder` (VOICEVOX itself) |
 

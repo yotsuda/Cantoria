@@ -318,7 +318,7 @@ export function voicevoxRunIn(folder: string, exists: (p: string) => boolean, jo
 }
 
 /** What "Find Engines on This Computer" found: a folder for each setting it could fill. */
-export interface FoundEngines { voicevoxFolder?: string; voicesFolder?: string; vocoderFolder?: string }
+export interface FoundEngines { voicevoxFolder?: string; diffsingerVoicesFolder?: string; diffsingerVocoderFolder?: string }
 
 /**
  * The engines that stand where their own programs put them (owner's request 2026-11-18: one step
@@ -359,9 +359,9 @@ export function findEngines(platform: string, home: string, env: Record<string, 
     const openUtau = platform === 'win32' ? [...new Set(documents)].map(d => join(d, 'OpenUtau'))
         : platform === 'darwin' ? [join(home, 'Library', 'OpenUtau')]
         : [join(env.XDG_DATA_HOME ?? join(home, '.local', 'share'), 'OpenUtau')];
-    found.voicesFolder = openUtau.map(data => join(data, 'Singers'))
+    found.diffsingerVoicesFolder = openUtau.map(data => join(data, 'Singers'))
         .find(singers => diffSingerVoicesIn(singers, listDirs, exists, join).length > 0);
-    found.vocoderFolder = openUtau.flatMap(data => listDirs(join(data, 'Dependencies')).sort().map(name => join(data, 'Dependencies', name)))
+    found.diffsingerVocoderFolder = openUtau.flatMap(data => listDirs(join(data, 'Dependencies')).sort().map(name => join(data, 'Dependencies', name)))
         .find(folder => exists(join(folder, 'vocoder.yaml')));
     for (const key of Object.keys(found) as (keyof FoundEngines)[]) { if (found[key] === undefined) { delete found[key]; } }
     return found;

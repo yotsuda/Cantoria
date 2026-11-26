@@ -74,14 +74,14 @@
         "title": "DiffSinger",
         "order": 2,
         "properties": {
-            "cantoria.voicesFolder": {
+            "cantoria.diffsingerVoicesFolder": {
               "order": 1,
               "type": "string",
               "default": "",
               "scope": "machine-overridable",
               "markdownDescription": "The folder whose subfolders are DiffSinger voices in the OpenUtau format (each holding a `dsconfig.yaml`, as OpenUtau installs them). Each voice is its author's work under its author's terms; none is bundled. Empty: no DiffSinger voice can be sung.\n\n**[Choose the folder…](command:cantoria.chooseVoicesFolder)**"
             },
-            "cantoria.vocoderFolder": {
+            "cantoria.diffsingerVocoderFolder": {
               "order": 2,
               "type": "string",
               "default": "",

@@ -83,8 +83,8 @@ let storage: string;
 
 function settings(): vscode.WorkspaceConfiguration { return vscode.workspace.getConfiguration('cantoria'); }
 function neutrinoFolder(): string { return settings().get<string>('neutrinoFolder', '').trim(); }
-function voicesFolder(): string { return settings().get<string>('voicesFolder', '').trim(); }
-function vocoderFolder(): string { return settings().get<string>('vocoderFolder', '').trim(); }
+function voicesFolder(): string { return settings().get<string>('diffsingerVoicesFolder', '').trim(); }
+function vocoderFolder(): string { return settings().get<string>('diffsingerVocoderFolder', '').trim(); }
 function voicevoxUrl(): string { return settings().get<string>('voicevoxUrl', VOICEVOX_URL).trim(); }
 function voicevoxFolder(): string { return settings().get<string>('voicevoxFolder', '').trim(); }
 
@@ -272,7 +272,7 @@ function chooseNeutrinoFolder(): Promise<void> {
 }
 
 function chooseVoicesFolder(): Promise<void> {
-    return chooseFolder('Cantoria: the folder whose subfolders are DiffSinger voices (each with a dsconfig.yaml)', 'voicesFolder',
+    return chooseFolder('Cantoria: the folder whose subfolders are DiffSinger voices (each with a dsconfig.yaml)', 'diffsingerVoicesFolder',
         folder => diffSingerVoicesIn(folder, listDirs, fs.existsSync, path.join).length > 0 ? [] : [`no DiffSinger voice under ${folder} (a voice is a subfolder with dsconfig.yaml)`],
         folder => `Cantoria: the DiffSinger voices are under ${folder}`);
 }
@@ -284,7 +284,7 @@ function chooseVoicevoxFolder(): Promise<void> {
 }
 
 function chooseVocoderFolder(): Promise<void> {
-    return chooseFolder('Cantoria: the vocoder folder (holding vocoder.yaml and its model)', 'vocoderFolder',
+    return chooseFolder('Cantoria: the vocoder folder (holding vocoder.yaml and its model)', 'diffsingerVocoderFolder',
         folder => fs.existsSync(path.join(folder, 'vocoder.yaml')) ? [] : [`no vocoder.yaml in ${folder}`],
         folder => `Cantoria: the vocoder is ${folder}`);
 }
@@ -400,7 +400,7 @@ async function downloadVoice(context: vscode.ExtensionContext): Promise<void> {
         return;
     }
     output.appendLine(`download: ${done.installed} into ${folder}`);
-    if (!voicesFolder()) { await settings().update('voicesFolder', folder, vscode.ConfigurationTarget.Global); }
+    if (!voicesFolder()) { await settings().update('diffsingerVoicesFolder', folder, vscode.ConfigurationTarget.Global); }
     release();
     vscode.window.showInformationMessage(`Cantoria: ${done.installed} is installed in ${folder} and sings. Where you publish a song made with it, follow its terms: say it is synthesised with AI, and credit the voice and DiffSinger. Other voices you choose go beside it.`, read, OWN_VOICE)
         .then(c => {
@@ -431,7 +431,7 @@ async function addOwnVoice(): Promise<void> {
     if (choice === open) {
         try { fs.mkdirSync(folder, { recursive: true }); }
         catch (e) { vscode.window.showErrorMessage(`Cantoria: could not make ${folder}: ${(e as Error).message}`); return; }
-        if (!voicesFolder()) { await settings().update('voicesFolder', folder, vscode.ConfigurationTarget.Global); }
+        if (!voicesFolder()) { await settings().update('diffsingerVoicesFolder', folder, vscode.ConfigurationTarget.Global); }
         await vscode.env.openExternal(vscode.Uri.file(folder));
     } else if (choice === HOW_TO_INSTALL) { openInstallGuide(); }
 }
@@ -478,7 +478,7 @@ async function offerToMoveUp(): Promise<boolean> {
  */
 async function findEnginesHere(): Promise<void> {
     const found = findEngines(process.platform, os.homedir(), process.env, listDirs, fs.existsSync, path.join);
-    const names: Record<keyof typeof found, string> = { voicevoxFolder: 'VOICEVOX', voicesFolder: 'DiffSinger voices (OpenUtau\'s Singers)', vocoderFolder: 'DiffSinger vocoder (among OpenUtau\'s Dependencies)' };
+    const names: Record<keyof typeof found, string> = { voicevoxFolder: 'VOICEVOX', diffsingerVoicesFolder: 'DiffSinger voices (OpenUtau\'s Singers)', diffsingerVocoderFolder: 'DiffSinger vocoder (among OpenUtau\'s Dependencies)' };
     const fresh = (Object.keys(found) as (keyof typeof found)[]).filter(key => settings().get<string>(key, '').trim() !== found[key]);
     output.appendLine(`find engines: ${(Object.keys(found) as (keyof typeof found)[]).map(key => `${key} ${found[key]}`).join('; ') || 'none where their programs put them'}`);
     if (fresh.length === 0) {
@@ -540,7 +540,7 @@ export function activate(context: vscode.ExtensionContext): CantoriaApi {
         }),
         // A changed engine setting lets the engine go; the next sing starts one for the new settings.
         vscode.workspace.onDidChangeConfiguration(e => {
-            if (['neutrinoFolder', 'voicesFolder', 'vocoderFolder', 'program', 'gpu', 'threads', 'cacheSizeMB'].some(s => e.affectsConfiguration('cantoria.' + s))) {
+            if (['neutrinoFolder', 'diffsingerVoicesFolder', 'diffsingerVocoderFolder', 'program', 'gpu', 'threads', 'cacheSizeMB'].some(s => e.affectsConfiguration('cantoria.' + s))) {
                 release();
             }
             if (['voicevoxUrl', 'voicevoxFolder', 'gpu'].some(s => e.affectsConfiguration('cantoria.' + s))) { voicevox.changed(); }

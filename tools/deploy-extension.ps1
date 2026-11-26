@@ -90,7 +90,7 @@ $settings = "$env:APPDATA\Code\User\settings.json"
 if (Test-Path $settings) {
     $text = Get-Content $settings -Raw
     if ($text -match '"lilysharp\.playback\.singer"\s*:\s*"([^"]+)"') { Write-Warning "lilysharp.playback.singer = $($Matches[1]): Lily# runs that program instead of the installed extension" }
-    if ($text -notmatch '"cantoria\.(neutrinoFolder|voicesFolder)"\s*:\s*"[^"]+"') { "next: Cantoria: Choose NEUTRINO Folder… or Choose Voices Folder… (neither is set yet), then Cantoria: Check Setup" }
+    if ($text -notmatch '"cantoria\.(neutrinoFolder|diffsingerVoicesFolder)"\s*:\s*"[^"]+"') { "next: Cantoria: Choose NEUTRINO Folder… or Choose Voices Folder… (neither is set yet), then Cantoria: Check Setup" }
 }
 foreach ($scope in 'Process', 'User', 'Machine') {
     $v = [Environment]::GetEnvironmentVariable('CANTORIA_NEUTRINO_DIR', $scope)

@@ -412,7 +412,7 @@ describe('the manifest', () => {
         assert.deepEqual(groups, {
             General: ['cacheSizeMB', 'defaultFemaleVoice', 'defaultMaleVoice', 'gpu'],
             NEUTRINO: ['neutrinoFolder', 'threads'],
-            DiffSinger: ['vocoderFolder', 'voicesFolder'],
+            DiffSinger: ['diffsingerVocoderFolder', 'diffsingerVoicesFolder'],
             VOICEVOX: ['voicevoxFolder', 'voicevoxUrl'],
             Developer: ['program'],
         });
@@ -421,7 +421,7 @@ describe('the manifest', () => {
     const commands = (manifest.contributes.commands as { command: string }[]).map(c => c.command);
 
     it('holds the settings, each engine setting machine-overridable', () => {
-        for (const name of ['cantoria.neutrinoFolder', 'cantoria.voicesFolder', 'cantoria.vocoderFolder', 'cantoria.defaultFemaleVoice', 'cantoria.defaultMaleVoice', 'cantoria.gpu', 'cantoria.threads', 'cantoria.program', 'cantoria.cacheSizeMB']) {
+        for (const name of ['cantoria.neutrinoFolder', 'cantoria.diffsingerVoicesFolder', 'cantoria.diffsingerVocoderFolder', 'cantoria.defaultFemaleVoice', 'cantoria.defaultMaleVoice', 'cantoria.gpu', 'cantoria.threads', 'cantoria.program', 'cantoria.cacheSizeMB']) {
             assert.ok(props[name], `${name} is contributed`);
             assert.equal(props[name].scope, 'machine-overridable', name);
         }
@@ -430,8 +430,8 @@ describe('the manifest', () => {
         assert.match(props['cantoria.neutrinoFolder'].markdownDescription, /command:cantoria\.chooseNeutrinoFolder/);
         assert.match(props['cantoria.defaultFemaleVoice'].markdownDescription, /command:cantoria\.chooseFemaleVoice/);
         assert.match(props['cantoria.defaultMaleVoice'].markdownDescription, /command:cantoria\.chooseMaleVoice/);
-        assert.match(props['cantoria.voicesFolder'].markdownDescription, /command:cantoria\.chooseVoicesFolder/);
-        assert.match(props['cantoria.vocoderFolder'].markdownDescription, /command:cantoria\.chooseVocoderFolder/);
+        assert.match(props['cantoria.diffsingerVoicesFolder'].markdownDescription, /command:cantoria\.chooseVoicesFolder/);
+        assert.match(props['cantoria.diffsingerVocoderFolder'].markdownDescription, /command:cantoria\.chooseVocoderFolder/);
     });
 
     it('contributes the eleven commands and starts on nothing but them and the API', () => {
@@ -496,20 +496,20 @@ describe('finding the engines where their programs put them', () => {
     it('finds OpenUtau\'s DiffSinger voices and a vocoder among its dependencies', () => {
         const data = `${H}\\Documents\\OpenUtau`;
         assert.deepEqual(find([`${data}\\Singers\\TIGER\\dsconfig.yaml`, `${data}\\Dependencies\\nsf_hifigan\\vocoder.yaml`, `${data}\\Dependencies\\other\\readme.txt`]),
-            { voicesFolder: `${data}\\Singers`, vocoderFolder: `${data}\\Dependencies\\nsf_hifigan` });
+            { diffsingerVoicesFolder: `${data}\\Singers`, diffsingerVocoderFolder: `${data}\\Dependencies\\nsf_hifigan` });
         // Documents kept in OneDrive: the usual folder, or the one the environment names.
-        assert.deepEqual(find([`${H}\\OneDrive\\Documents\\OpenUtau\\Singers\\TIGER\\dsconfig.yaml`]), { voicesFolder: `${H}\\OneDrive\\Documents\\OpenUtau\\Singers` });
+        assert.deepEqual(find([`${H}\\OneDrive\\Documents\\OpenUtau\\Singers\\TIGER\\dsconfig.yaml`]), { diffsingerVoicesFolder: `${H}\\OneDrive\\Documents\\OpenUtau\\Singers` });
         assert.deepEqual(find(['D:\\OneDrive - Work\\Documents\\OpenUtau\\Singers\\TIGER\\dsconfig.yaml'], 'win32', H, { ...env, OneDriveCommercial: 'D:\\OneDrive - Work' }),
-            { voicesFolder: 'D:\\OneDrive - Work\\Documents\\OpenUtau\\Singers' });
+            { diffsingerVoicesFolder: 'D:\\OneDrive - Work\\Documents\\OpenUtau\\Singers' });
         // A voice of another kind there (UTAU: no dsconfig.yaml) does not make it a DiffSinger voices folder.
         assert.deepEqual(find([`${H}\\OneDrive\\Documents\\OpenUtau\\Singers\\Kura\\character.yaml`]), {});
     });
 
     it('looks in each system\'s own places', () => {
         assert.deepEqual(find(['/Applications/VOICEVOX.app/Contents/Resources/vv-engine/run', '/Users/u/Library/OpenUtau/Singers/T/dsconfig.yaml'], 'darwin', '/Users/u', {}),
-            { voicevoxFolder: '/Applications/VOICEVOX.app/Contents/Resources', voicesFolder: '/Users/u/Library/OpenUtau/Singers' });
+            { voicevoxFolder: '/Applications/VOICEVOX.app/Contents/Resources', diffsingerVoicesFolder: '/Users/u/Library/OpenUtau/Singers' });
         assert.deepEqual(find(['/home/u/.config/voicevox/vvpp-engines/e/run', '/home/u/.local/share/OpenUtau/Singers/T/dsconfig.yaml'], 'linux', '/home/u', {}),
-            { voicevoxFolder: '/home/u/.config/voicevox/vvpp-engines/e', voicesFolder: '/home/u/.local/share/OpenUtau/Singers' });
-        assert.deepEqual(find(['/data/OpenUtau/Singers/T/dsconfig.yaml'], 'linux', '/home/u', { XDG_DATA_HOME: '/data' }), { voicesFolder: '/data/OpenUtau/Singers' });
+            { voicevoxFolder: '/home/u/.config/voicevox/vvpp-engines/e', diffsingerVoicesFolder: '/home/u/.local/share/OpenUtau/Singers' });
+        assert.deepEqual(find(['/data/OpenUtau/Singers/T/dsconfig.yaml'], 'linux', '/home/u', { XDG_DATA_HOME: '/data' }), { diffsingerVoicesFolder: '/data/OpenUtau/Singers' });
     });
 });

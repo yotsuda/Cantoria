@@ -65,7 +65,7 @@ OpenUtau DiffSinger format — a folder the user installs, as a sound font is.
    and cuDNN, hundreds of megabytes); CoreML waits for a macOS build (B5), where the standard
    package already carries it.
 4. **B4 — `serve` and the extension**: *done 2026-11-08* (0.3.0): both engines resident in
-   `serve`; the extension's `cantoria.voicesFolder` (and **Choose Voices Folder…**) beside
+   `serve`; the extension's `cantoria.voicesFolder` (`cantoria.diffsingerVoicesFolder` since 0.6.0) (and **Choose Voices Folder…**) beside
    `neutrinoFolder`, the voices list and the picker show both engines, either engine alone is a
    complete setup.
 5. **B5 — platform builds**: *built 2026-11-08* (0.4.0; Lily# session 1140): `linux-x64` and
