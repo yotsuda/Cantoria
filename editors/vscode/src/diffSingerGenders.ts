@@ -13,6 +13,10 @@ export const DIFFSINGER_GENDERS: Readonly<Record<string, 'female' | 'male'>> = {
     // Its author's or the wiki's page says so.
     'TIGER': 'male',
 
+    // Its author does not say; the character is drawn and presented as a girl (owner's decision 2026-11-26).
+    // The voice Download a Voice offers: listed, a fresh computer's `singer female` comes to it without a note.
+    'Qixuan': 'female',
+
     // Not listed on purpose: Nishiren, a non-binary voice.
 };
 

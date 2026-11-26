@@ -50,7 +50,7 @@ DiffSinger (プロセス内の ONNX)、NEUTRINO、VOICEVOX。主な呼び手は 
 - **roadmap F (どの機械でも歌える) を始めた** (2026-11-21、オーナーの選択)。声の規約の調査は `docs/voices-2026-11-21.md`。
   配れて歌で稼ぐのも許し、Cantoria のような推論プログラムも明記して許すのは DiffSinger の **Qixuan 绮萱** + OpenVPI の
   **pc_nsf_hifigan 2025.02** だけ。`C:\Tools\voices\Qixuan` と `C:\Tools\voices\pc_nsf_hifigan` に入れた。Cantoria は手を入れずに
-  読み、ja・en・zh で歌い、`DiffSingerSingerTests` 7 件が通る。性別は作者が書いていないので表に入れていない。
+  読み、ja・en・zh で歌い、`DiffSingerSingerTests` 7 件が通る。性別は作者が書いていないが、女声として表に入れた (オーナーの決定 2026-11-26。`VoiceGenders.cs` と `diffSingerGenders.ts`)。
   - 見つかった穴と直したこと: vocoder を持たない声は、声が名指す vocoder に関係なく設定の 1 つで歌われていた。
     `DiffSingerOptions.Vocoder()` が名指しの vocoder を探す (設定の folder・その中・その隣・声の隣)。声と vocoder を
     voices folder に並べれば設定なしで歌う。
