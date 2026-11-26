@@ -2,7 +2,7 @@
   "name": "cantoria",
   "displayName": "Cantoria Singing Voice",
   "description": "Sings the lyrics of a score for notation extensions such as Lily#: notes with syllables in, a voice out, through DiffSinger voices in the OpenUtau format, or your own NEUTRINO or VOICEVOX. Voices from different engines can sing together. Open source (Apache-2.0); runs locally.",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "publisher": "yotsuda",
   "icon": "icon.png",
   "author": "Yoshifumi Tsuda",

@@ -7,6 +7,9 @@ DiffSinger (プロセス内の ONNX)、NEUTRINO、VOICEVOX。主な呼び手は 
 
 ## 現在地 (2026-11-21)
 
+- **0.6.0 を用意した** (2026-11-26、オーナーの選択で Unreleased を全部入れる)。きっかけは Lily# Studio への
+  `extensionDependencies` (Cantoria を入れると Lily# も入る)。試験 355 件と `npm test` が通り、VSIX 3 つが作れた。
+  **Download a Voice を VS Code の中で動かすのは、まだ** (下の「次の一手」4)。push・タグはオーナー。
 - **0.5.0 を出した** (2026-11-20〜21)。GitHub Release に VSIX 3 つ、Marketplace に 3 つのターゲットとも
   listed。中身は `editors/vscode/CHANGELOG.md` の 0.5.0 節。
 - **リリースの直前に直したこと**: CI が ubuntu と macOS で赤だった。`NoSoundForTests` が Windows の
