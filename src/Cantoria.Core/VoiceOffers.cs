@@ -124,7 +124,7 @@ public static class VoiceOffers
                 await DownloadAsync(file, part, http, progress, ct).ConfigureAwait(false);
                 ct.ThrowIfCancellationRequested();
                 Unpack(part, unpacking);
-                Directory.Move(unpacking, target);
+                MoveWhenLetGo(unpacking, target, ct);
                 made.Add(target);
             }
             finally
@@ -203,6 +203,28 @@ public static class VoiceOffers
             }
             Directory.CreateDirectory(Path.GetDirectoryName(to)!);
             entry.ExtractToFile(to, overwrite: false);
+        }
+    }
+
+    /// <summary>
+    /// Directory.Move, tried again for a few seconds while it is refused: on Windows a virus scanner
+    /// (Defender) opens the files just unpacked to look at them, and a folder with a file open in it
+    /// cannot be renamed ("Access to the path … is denied"). Seen once in the tests on 2026-11-26.
+    /// </summary>
+    private static void MoveWhenLetGo(string from, string to, CancellationToken ct)
+    {
+        for (int attempt = 1; ; attempt++)
+        {
+            try
+            {
+                Directory.Move(from, to);
+                return;
+            }
+            catch (Exception e) when ((e is IOException or UnauthorizedAccessException) && attempt < 20 && !Directory.Exists(to))
+            {
+                ct.WaitHandle.WaitOne(250);
+                ct.ThrowIfCancellationRequested();
+            }
         }
     }
 
