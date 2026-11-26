@@ -431,6 +431,16 @@ describe('the manifest', () => {
         }
     });
 
+    // Without an order the Settings editor lists a heading's settings by key (settingsTree.ts
+    // sortSettings): the optional VOICEVOX Address came above its Install Folder (owner's report
+    // 2026-11-26). With one, they show as written: what is needed first, what is optional after.
+    it('orders each heading\'s settings as they are written', () => {
+        for (const section of manifest.contributes.configuration as { title: string; properties: Record<string, { order?: number }> }[]) {
+            const orders = Object.values(section.properties).map(p => p.order);
+            assert.deepEqual(orders, orders.map((_, i) => i + 1), section.title);
+        }
+    });
+
     const commands = (manifest.contributes.commands as { command: string }[]).map(c => c.command);
 
     it('holds the settings, each engine setting machine-overridable', () => {

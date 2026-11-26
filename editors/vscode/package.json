@@ -45,24 +45,28 @@
         "order": 1,
         "properties": {
             "cantoria.general.defaultFemaleVoice": {
+              "order": 1,
               "type": "string",
               "default": "",
               "scope": "machine-overridable",
               "markdownDescription": "The voice that sings a female part when the score names no voice, as `engine/name` (`neutrino/MERROW`, `diffsinger/TIGER`). Empty: the first installed voice that says it is female and sings the words' language.\n\n**[Choose a voice…](command:cantoria.chooseFemaleVoice)**"
             },
             "cantoria.general.defaultMaleVoice": {
+              "order": 2,
               "type": "string",
               "default": "",
               "scope": "machine-overridable",
               "markdownDescription": "The voice that sings a male part when the score names no voice, as `engine/name`. Empty: the first installed voice that says it is male and sings the words' language.\n\n**[Choose a voice…](command:cantoria.chooseMaleVoice)**"
             },
             "cantoria.general.useGPU": {
+              "order": 3,
               "type": "boolean",
               "default": true,
               "scope": "machine-overridable",
               "markdownDescription": "Render on the GPU where the engine can: NEUTRINO through CUDA, a DiffSinger voice through DirectML (any DirectX 12 GPU; the CPU stands in where there is none). Off: the CPU, slower by an order of magnitude."
             },
             "cantoria.general.cacheSizeMB": {
+              "order": 4,
               "type": "number",
               "default": 1000,
               "minimum": 100,
@@ -98,12 +102,14 @@
         "order": 3,
         "properties": {
             "cantoria.neutrino.installFolder": {
+              "order": 1,
               "type": "string",
               "default": "",
               "scope": "machine-overridable",
               "markdownDescription": "The folder of your NEUTRINO installation (Tau, v3.2 or later): the one holding `bin\\`, `model\\` and `settings\\`. Either package sings; the one with the tuning tool (調声支援ツール同梱版) has a server and is the faster. NEUTRINO is not bundled — it is free software of STUDIO NEUTRINO under its own terms, from [studio-neutrino.com](https://studio-neutrino.com/). Empty: no NEUTRINO voice can be sung (a DiffSinger voices folder is the other engine).\n\n**[Choose the folder…](command:cantoria.chooseNeutrinoFolder)**"
             },
             "cantoria.neutrino.threads": {
+              "order": 2,
               "type": "number",
               "default": 4,
               "minimum": 1,
@@ -119,12 +125,14 @@
         "order": 4,
         "properties": {
             "cantoria.voicevox.installFolder": {
+              "order": 1,
               "type": "string",
               "default": "",
               "scope": "machine-overridable",
               "markdownDescription": "The folder of your VOICEVOX (holding `vv-engine\\run.exe`). Set: when a score or the list of voices needs a VOICEVOX voice and no VOICEVOX is running, Cantoria starts its engine on a port of its own and stops it when VS Code closes. A VOICEVOX you opened yourself is used and left alone. You use VOICEVOX under [its terms](https://voicevox.hiroshiba.jp/term/). Empty: Cantoria starts nothing, and only a VOICEVOX you have opened sings.\n\n**[Choose the folder…](command:cantoria.chooseVoicevoxFolder)**"
             },
             "cantoria.voicevox.address": {
+              "order": 2,
               "type": "string",
               "default": "http://127.0.0.1:50021",
               "scope": "machine-overridable",
@@ -138,6 +146,7 @@
         "order": 5,
         "properties": {
             "cantoria.developer.program": {
+              "order": 1,
               "type": "string",
               "default": "",
               "scope": "machine-overridable",
