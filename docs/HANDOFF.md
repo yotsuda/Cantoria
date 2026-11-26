@@ -119,6 +119,9 @@ DiffSinger (プロセス内の ONNX)、NEUTRINO、VOICEVOX。主な呼び手は 
 
 - **push もタグもユーザーがする。** こちらはコミットまで。
 - 試験: `dotnet test tests/Cantoria.Tests -c Release` と、`editors/vscode` で `npm test`。
+- 拡張を F5 で動かす: VS Code で `editors/vscode` を開く。`.vscode/` は `.gitignore` にあるので `launch.json` (type
+  `extensionHost`、preLaunchTask `npm: compile`) は手元にしかない。無ければ作る (2026-11-26 に初めて作った)。
+  同梱の program は `editors/vscode/bin/win-x64` (`tools/pack-extension.ps1` が作る)、無ければ設定 `cantoria.program`。
 - CI は Windows・Linux・macOS で走る。試験に Windows のパスを書くと Linux と macOS で落ちる (`/` で書く)。
 - 声は `C:\Tools\voices` (TIGER、Nishiren、vocoder の nsf_hifigan)。NEUTRINO と VOICEVOX の場所は VS Code の
   設定 `cantoria.*` にある。CLI で描いて確かめるとき:
