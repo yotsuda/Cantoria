@@ -37,6 +37,15 @@ that is the one thing this library adds.
   - `voicevox` — sings through a running
     [VOICEVOX](https://voicevox.hiroshiba.jp/) over its local API (Japanese
     voices); the user's own installation, never redistributed.
+  - `sinsy` — [Sinsy](http://sinsy.sourceforge.net/) and hts_engine API
+    (Modified BSD), built into the program as a small native library, so it
+    sings on any machine with no GPU and nothing else installed: Japanese from
+    kana, with an HTS voice (`.htsvoice`) in the Sinsy voices folder
+    (`--sinsy-dir`, default `~/Cantoria/Sinsy`). Plainer than the others, and
+    the voice that always sings: `cantoria fetch nitech-song070` (the
+    extension's **Download a Voice**) fetches NIT SONG070 F001 (CC BY 3.0, 5 MB).
+    An HMM voice sings only the range it was trained on; a phrase under it is
+    sung higher and moved back down.
 
   The program is published for win-x64, linux-x64 and osx-arm64, and has been
   heard only on Windows so far.
@@ -47,13 +56,14 @@ Cantoria at it, exactly as a score player is pointed at a sound font.
 
 ## Status
 
-Early. All three backends sing. A voice is named `engine/name`, one voice a sing: voices that
+Early. All four backends sing. A voice is named `engine/name`, one voice a sing: voices that
 sing together are each sung, and their sounds laid together by the caller.
 
 ```
 cantoria sing examples/yukiyakonko.json -o yuki.wav --voice neutrino/MERROW --neutrino-dir "C:\path\to\NEUTRINO"
 cantoria sing examples/yukiyakonko.json -o yuki.wav --voice diffsinger/TIGER --voices-dir "C:\path\to\voices"
 cantoria sing examples/yukiyakonko.json -o yuki.wav --voice voicevox/ずんだもん-ノーマル
+cantoria sing examples/yukiyakonko.json -o yuki.wav --voice sinsy/nitech_jp_song070_f001   # after `cantoria fetch nitech-song070`
 cantoria voices --neutrino-dir … --voices-dir …                    # each voice, its gender and languages; --language en for those that sing it
 cantoria plan score.json --gender female --neutrino-dir … --voices-dir …
 ```

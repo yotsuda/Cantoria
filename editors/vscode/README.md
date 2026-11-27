@@ -2,7 +2,8 @@
 
 Sings the lyrics of a score for notation extensions such as
 [Lily#](https://marketplace.visualstudio.com/items?itemName=yotsuda.lilysharp), through the singing
-engines you have installed: **DiffSinger** voices, **NEUTRINO** and **VOICEVOX**. Voices from
+engines you have installed: **DiffSinger** voices, **NEUTRINO** and **VOICEVOX**, and **Sinsy**,
+which is inside the extension and sings Japanese on any computer. Voices from
 different engines can sing in one score, each asked for by itself. The extension carries the
 `cantoria` program, holds the settings and sings for other extensions through its API. It has no
 editor of its own.
@@ -31,12 +32,18 @@ set. Where you publish a song made with it, its terms ask you to say that it is 
 AI and to credit "绮萱 (Qixuan)" and "DiffSinger"; read them before you use it. Cantoria itself
 ships no voice.
 
+**A voice that sings on any computer**: Download a Voice also offers NIT SONG070 F001, a Japanese
+voice for Sinsy (5 MB, CC BY 3.0, by Nagoya Institute of Technology). Sinsy is inside this extension:
+no GPU, nothing else to install, a phrase sung in well under a second. It is plainer than the
+others, an older kind of voice (HMM). Where you publish a song made with it, credit the voice as
+its licence asks.
+
 **Any other voice you like sings too.** Qixuan is only the voice Cantoria may fetch for you. Any
 DiffSinger voice in the OpenUtau format, downloaded from its author under the author's terms, sings
 once it is unpacked beside Qixuan in the DiffSinger voices folder (step 1 of DiffSinger, below).
 **Cantoria: Add a Voice of Your Own…** (also the last line of Download a Voice) opens that folder.
 
-Three engines; set up any of them. **Each engine keeps its voices in its own place**; there is no
+Four engines; set up any of them. **Each engine keeps its voices in its own place**; there is no
 one folder for all:
 
 | Engine | Where its voices are | The setting |
@@ -44,6 +51,7 @@ one folder for all:
 | DiffSinger | the DiffSinger voices folder, one folder a voice | `cantoria.diffsinger.voicesFolder` |
 | NEUTRINO | NEUTRINO's own `model\` folder, as NEUTRINO installs them | `cantoria.neutrino.installFolder` (NEUTRINO itself) |
 | VOICEVOX | inside VOICEVOX, which lists them | `cantoria.voicevox.installFolder` (VOICEVOX itself) |
+| Sinsy | the Sinsy voices folder, a `.htsvoice` in it or one folder down | `cantoria.sinsy.voicesFolder` (empty: `~/Cantoria/Sinsy`) |
 
 A score names a voice `engine/name` — a name, not a path: `diffsinger/Qixuan`,
 `neutrino/MERROW`, `voicevox/ずんだもん-ノーマル`. A third part picks one of a voice's speakers
@@ -209,5 +217,5 @@ const { wav, duration } = await api.sing({
 
 NEUTRINO and VOICEVOX are invoked as installed by the user and are not redistributed. NEUTRINO's
 agreement forbids use for voice conversion; Cantoria synthesizes from scores only. No voice is
-bundled. The bundled program is Cantoria's own code (Apache-2.0) published with the .NET runtime
+bundled. The bundled program is Cantoria's own code (Apache-2.0) with Sinsy and hts_engine API (Modified BSD; their licenses are in its `sinsy-dic` folder), published with the .NET runtime
 (MIT), ONNX Runtime and YamlDotNet (MIT) and, on Windows, DirectML; see THIRD-PARTY-NOTICES.md.

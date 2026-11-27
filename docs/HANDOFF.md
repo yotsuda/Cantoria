@@ -7,6 +7,21 @@ DiffSinger (プロセス内の ONNX)、NEUTRINO、VOICEVOX。主な呼び手は 
 
 ## 現在地 (2026-11-28)
 
+- **roadmap E: sinsy を入れた** (2026-11-28、オーナーの選択「E をやって」。Unreleased)。設計は `docs/design.md` §3.4。
+  - `native/sinsy/` (CMakeLists と `cantoria_sinsy.cpp`) を `tools/build-sinsy.ps1` が `native/out/<rid>/` へ作り、
+    Core の csproj が DLL と `sinsy-dic/` をプログラムの隣へ写す。`native/out` は git に入らない (`out/`)。
+    **ビルドしていない機械では sinsy は「この build にはない」と言うだけ**で、ほかは動く。
+  - shim は Sinsy にラベルだけ作らせ、hts_engine を自分で回す。理由は音域: f001 は G#3 より下を全部 G#3 で歌った。
+    `SinsySinger.Shift` で句を C4〜E5 に移して歌わせ、half tone で戻す。
+  - 声は `C:\Tools\sinsy` に置いた (テストは `CANTORIA_SINSY_VOICE` に .htsvoice)。`cantoria fetch nitech-song070` で入る。
+  - 拡張: `cantoria.sinsy.voicesFolder` (空なら `~/Cantoria/Sinsy`)、声の一覧、Download a Voice に 2 つ目の申し出。
+  - **CI はまだ回っていない** (push 待ち)。Linux・macOS での sinsy のビルド (gcc/clang) と、SourceForge からの声の取得、
+    published のプログラムが歌うことを CI が初めて見る。赤ならそこを直す。WSL はこの機械にない (ディストリビューションなし)。
+  - **オーナーの耳はまだ**: 聞き比べ用 `sinsy-sakura.wav`・`sinsy-yukiyakonko.wav` (scratchpad、消えうる。作り直しは
+    `cantoria sing examples/yukiyakonko.json --voice sinsy/nitech_jp_song070_f001 --sinsy-dir C:\Tools\sinsy -o x.wav`)。
+  - **⚠️ build-sinsy.ps1 を共有のコンソールで動かすとき**: vcvars64 の環境は終わりに戻すようにした。戻す前の版で
+    `Platform=x64` が残り、以後の `dotnet build` が `bin\x64\` に出て古い DLL を走らせた (2026-11-28)。
+
 - **0.6.0 を出した** (2026-11-27。GitHub Release、Marketplace に 3 ターゲットとも listed。HEAD `d7a0fe3` = v0.6.0、
   その後のコミットはない)。以下はその用意の記録。
 - **0.6.0 を用意した** (2026-11-26、オーナーの選択で Unreleased を全部入れる)。きっかけは Lily# Studio への
@@ -70,6 +85,9 @@ DiffSinger (プロセス内の ONNX)、NEUTRINO、VOICEVOX。主な呼び手は 
     CLI で GitHub から空の folder へ 15 秒、vocoder 設定なしで歌えた。**VS Code の中ではまだ動かしていない**。
 
 **次の一手**:
+0. **sinsy の仕上げ**: push 後の CI (3 OS) を見る。オーナーに sinsy の声を聞いてもらう。拡張を F5 で動かし、
+   Download a Voice に 2 つの申し出が出て NIT SONG070 が入り、Lily# から `sinsy/nitech_jp_song070_f001` で歌うことを見る
+   (まだ画面で見ていない)。E の残り (cevio、guide) はどちらもオーナーの求めがあれば。
 1. **韓国語の友人の答えを待っている** (ユーザーは韓国語も中国語も話せない)。聞き取りのページと答えの読み方は
    `docs/listening-2026-11-21.md`。答えが届いたら、そこの表で「今」が選ばれたかを見る。K1・K8〜K11 は調査の後に読みを変えた。
    **中国語の答えは届いた (2026-11-27)**: Z2・Z3・Z5 は「今」が選ばれた。Z1・Z4・Z6・Z7 は区別がつかなかった。
@@ -118,6 +136,8 @@ DiffSinger (プロセス内の ONNX)、NEUTRINO、VOICEVOX。主な呼び手は 
    該当行だけを置き換える。
 2. CHANGELOG の `## Unreleased` を `## X.Y.Z` に。節の中に空行を入れない。
 3. 試験 (下)。`tools/pack-extension.ps1 -Out <scratch>` で 3 つの VSIX が作れることを見る。
+   **sinsy 以後 (2026-11-28)**、手元では win-x64 しか作れない (Linux・macOS の `cantoria_sinsy` はその OS でしか
+   ビルドできず、pack-extension.ps1 はそれがない VSIX を断る)。3 つは `release.yml` を手で (workflow_dispatch) 動かして見る。
 4. ユーザーが push する。**CI が 3 つの OS で緑になってから**ユーザーがタグを push する (`release.yml` が動く)。
 5. **Marketplace は同じ版を二度と受け付けない。** ジョブの途中で止まったら `release.yml` を手で
    `publish_targets` 付きで動かし、残りのターゲットだけを出す。VSCE_PAT は 2027-10-16 に切れる。
@@ -132,7 +152,8 @@ DiffSinger (プロセス内の ONNX)、NEUTRINO、VOICEVOX。主な呼び手は 
   `extensionHost`、preLaunchTask `npm: compile`) は手元にしかない。無ければ作る (2026-11-26 に初めて作った)。
   同梱の program は `editors/vscode/bin/win-x64` (`tools/pack-extension.ps1` が作る)、無ければ設定 `cantoria.developer.program`。
 - CI は Windows・Linux・macOS で走る。試験に Windows のパスを書くと Linux と macOS で落ちる (`/` で書く)。
-- 声は `C:\Tools\voices` (TIGER、Nishiren、vocoder の nsf_hifigan)。NEUTRINO と VOICEVOX の場所は VS Code の
+- 試験で sinsy を歌わせるには先に `tools/build-sinsy.ps1` (Visual Studio の C++ が要る) と `CANTORIA_SINSY_VOICE`。
+- 声は `C:\Tools\voices` (TIGER、Nishiren、vocoder の nsf_hifigan)、sinsy の声は `C:\Tools\sinsy`。NEUTRINO と VOICEVOX の場所は VS Code の
   設定 `cantoria.*` にある。CLI で描いて確かめるとき:
   `src/Cantoria.Cli/bin/Release/net10.0/cantoria.exe sing score.json --voice diffsinger/Nishiren --voices-dir C:\Tools\voices --output x.wav`
   (この Release ビルドは DirectML なしで CPU で歌う)。

@@ -165,6 +165,42 @@ WAVs and the phrases together, the longest unused going first; a WAV removed is 
 from its phrases in a tenth of a second, so the two need no limits of their own. The extension's
 `cantoria.general.cacheSizeMB` is that budget.
 
+### 3.4 `sinsy` backend (fourth; sings since 2026-11-28)
+
+[Sinsy](http://sinsy.sourceforge.net/) 0.92 and hts_engine API 1.10 (Modified BSD; r9y9's git
+forks, fetched at pinned commits by SHA-256) compiled with a C entry point of Cantoria's into one
+shared library, `cantoria_sinsy` (`native/sinsy`; `tools/build-sinsy.ps1` builds it for the machine
+it runs on into `native/out/<rid>/`, which `Cantoria.Core`'s project copies beside the program with
+Sinsy's Japanese dictionary in `sinsy-dic/`). 666 KB on Windows. Called in process through
+`LibraryImport` (`SinsyNative`). Roadmap E's "fallback that always sings": no GPU, no other program,
+a voice of a few MB (`VoiceOffers`: NIT SONG070 F001, CC BY 3.0).
+
+- **The score goes in note by note** (`Sinsy::addNote`/`addRest`, no MusicXML): 60 to the quarter
+  and Sinsy's 960 ticks a quarter, so a tick is 1/960 s; each note starts and ends on the tick
+  nearest its time, so rounding does not add up. A second's rest leads in (a first consonant may
+  start before its note) and is cut, as is the rest Sinsy fills the last 4/4 bar with (0.5 s of
+  release kept). Melisma is `ー` (the dictionary's MACRON), a breath or an inhale a breath mark,
+  the pitch the nearest semitone (Sinsy's pitch is MIDI − 12). Kana only (`NotKanaProblem`, shared
+  with NEUTRINO). Level, vibrato, bend and voice settings are not Sinsy's.
+- **The shim drives hts_engine itself**: Sinsy only turns the score into full-context labels
+  (`createLabelData(false, 1, 2)`, what its own synthesize uses) and the shim's `HTS_Engine`, with
+  the voice loaded once, sings them with phoneme alignment. This is for the range: an HMM voice
+  sings only what it was trained on, and NIT SONG070 F001 sang every note under G#3 at G#3 (C3 and
+  F3 alike, 2026-11-28), A#3 a little flat. `SinsySinger.Shift` moves a phrase whose lowest note is
+  under C4 (`SinsyOptions.Low`) up to it, or one over E5 down, and hts_engine's additional half tone
+  moves the pitch back: the spectrum is sung where the voice knows it, the excitation where the
+  score is. A bass line from E2 is sung in tune. A phrase wider than the range (16 semitones) is
+  centred on it and its ends are not reached; through `PhrasedSinger` each phrase has its own shift.
+- **Sinsy's log goes to `std::cout`**, which `serve` speaks JSON on: the shim takes `cout` and `cerr`
+  for the length of each call and returns the text as the error (one call at a time in the process).
+  hts_engine's own warnings are C `stderr` and stay there.
+- Voices: every `.htsvoice` in the Sinsy voices folder or one folder down (a release unpacked as it
+  comes), named by the file; female or male by the Nitech name (`_f001`). Measured: the 8-second
+  example in 0.4 s, the process's start included.
+- One build per platform: the CI builds the library on each and fetches the voice as a user does,
+  so the Sinsy tests and the published program sing on all three; the release builds Linux's and
+  macOS's on their runners for the Windows job that packs.
+
 ## 4. CLI
 
 ```

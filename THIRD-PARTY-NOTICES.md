@@ -157,6 +157,40 @@ Referenced by `Cantoria.Core` as the NuGet package `YamlDotNet`, to read the
 voices' `dsconfig.yaml`, `vocoder.yaml` and dictionaries. Not copied. Its
 license is in the package.
 
+### Sinsy and hts_engine API — Modified BSD (compiled into the program)
+
+http://sinsy.sourceforge.net/ (r9y9's git fork https://github.com/r9y9/sinsy at
+6a5be094), http://hts-engine.sourceforge.net/ (https://github.com/r9y9/hts_engine_API
+at 214e26df)
+
+The `sinsy` backend's library (`cantoria_sinsy`, built from `native/sinsy`) is Sinsy
+0.92 and hts_engine API 1.10, compiled as they are (the sources are fetched at those
+commits, checked by SHA-256) with a small C entry point of Cantoria's. Sinsy's
+Japanese dictionary (`japanese.*`) ships beside it in `sinsy-dic/`, with both
+licenses in full (`COPYING.sinsy`, `COPYING.hts_engine_API`), so every copy of the
+program and the extension carries them:
+
+    Sinsy: Copyright (c) 2009-2015 Nagoya Institute of Technology,
+    Department of Computer Science. All rights reserved.
+
+    hts_engine API: Copyright (c) 2001-2014 Nagoya Institute of Technology,
+    Department of Computer Science; 2001-2008 Tokyo Institute of Technology,
+    Interdisciplinary Graduate School of Science and Engineering.
+    All rights reserved.
+
+    Redistribution and use in source and binary forms, with or without
+    modification, are permitted provided that the following conditions are
+    met: redistributions of source code must retain the above copyright
+    notice, this list of conditions and the following disclaimer;
+    redistributions in binary form must reproduce the above copyright notice,
+    this list of conditions and the following disclaimer in the documentation
+    and/or other materials provided with the distribution; neither the name of
+    the Sinsy working group (the HTS working group) nor the names of its
+    contributors may be used to endorse or promote products derived from this
+    software without specific prior written permission. THIS SOFTWARE IS
+    PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS
+    OR IMPLIED WARRANTIES ARE DISCLAIMED (the full text is in the COPYING files).
+
 ### DiffSinger (OpenVPI) — Apache-2.0 (format only)
 
 https://github.com/openvpi/DiffSinger
@@ -211,6 +245,10 @@ release, into the user's voices folder; nothing is copied into Cantoria:
 - OpenVPI pc_nsf_hifigan 44.1k hop512 128bin 2025.02, the vocoder it names,
   https://github.com/openvpi/vocoders — CC BY-NC-SA 4.0 (its `NOTICE.txt`
   comes with it); what it synthesises is not restricted.
+- HTS Voice "NIT SONG070 F001" 0.90, by the Sinsy Working Group, Nagoya
+  Institute of Technology, https://sourceforge.net/projects/sinsy/ — CC BY 3.0
+  (its `COPYING` comes with it): works made with it credit the voice and do not
+  suggest its authors' endorsement.
 
 ## The icon
 

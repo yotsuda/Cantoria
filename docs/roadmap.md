@@ -130,7 +130,7 @@ In the order their value against their cost looks today:
 | Backend | How | Languages | Notes |
 |---|---|---|---|
 | `voicevox` | invoked (local HTTP server, song mode) | ja | free, popular; verify the song endpoints and the terms |
-| `sinsy` | in-process (thin native shim) or invoked | ja | BSD, HMM/DNN, no GPU; a candidate for a fallback that always sings |
+| `sinsy` | in-process (thin native shim) | ja | **done 2026-11-28** (design §3.4): BSD, HMM, no GPU, the fallback that always sings; its voice NIT SONG070 F001 offered for download |
 | `cevio` | COM, Windows | ja, en | commercial; on request |
 | `guide` | in-process, no model (vowel/formant synthesis) | any (vowels) | zero setup; a pitch guide for rehearsal; worth shipping only if it sounds acceptable |
 
