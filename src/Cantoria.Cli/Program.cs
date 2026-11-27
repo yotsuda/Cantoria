@@ -64,8 +64,8 @@ static int Help(int code)
                                                           who would sing it here, without singing
           cantoria providers                             where DiffSinger models can run on this machine
           cantoria offers [--json]                        the voices Cantoria can fetch from their authors, with their terms
-          cantoria fetch <offer> [--voices-dir <folder>] [--json]
-                                                          fetch an offered voice into the voices folder (what is there
+          cantoria fetch <offer> [--voices-dir <folder>] [--sinsy-dir <folder>] [--json]
+                                                          fetch an offered voice into its engine's voices folder (what is there
                                                           already is kept); --json: a {"progress":…} line a MB, then
                                                           {"installed":"engine/name","folders":[…]}
           cantoria serve [options]                        sing scores sent on stdin, one JSON line each
@@ -239,7 +239,7 @@ static int Offers(string[] rest)
     }
     if (json)
     {
-        Console.WriteLine(JsonSerializer.Serialize(VoiceOffers.All.Select(o => new { id = o.Id, voice = o.Voice, title = o.Title, languages = o.Languages, size = o.Size, terms = o.Terms, termsUrl = o.TermsUrl }), Wire()));
+        Console.WriteLine(JsonSerializer.Serialize(VoiceOffers.All.Select(o => new { id = o.Id, voice = o.Voice, engine = o.Engine, title = o.Title, languages = o.Languages, size = o.Size, terms = o.Terms, termsUrl = o.TermsUrl }), Wire()));
         return 0;
     }
     foreach (var o in VoiceOffers.All)
@@ -257,13 +257,14 @@ static int Offers(string[] rest)
 /// <summary>Fetches an offered voice into the voices folder (the option, else as `sing` finds it).</summary>
 static async Task<int> Fetch(string[] rest)
 {
-    string? id = null, voicesDir = null;
+    string? id = null, voicesDir = null, sinsyDir = null;
     bool json = false;
     for (int i = 0; i < rest.Length; i++)
     {
         switch (rest[i])
         {
             case "--voices-dir" when i + 1 < rest.Length: voicesDir = rest[++i]; break;
+            case "--sinsy-dir" when i + 1 < rest.Length: sinsyDir = rest[++i]; break;
             case "--json": json = true; break;
             case var s when !s.StartsWith('-') && id is null: id = s; break;
             default:
@@ -277,7 +278,10 @@ static async Task<int> Fetch(string[] rest)
         Console.Error.WriteLine($"cantoria: {(id is null ? "name the voice to fetch" : $"no voice offered as \"{id}\"")} (offered: {string.Join(", ", VoiceOffers.All.Select(o => o.Id))})");
         return 2;
     }
-    string? folder = voicesDir ?? Engines.Configure(null, null, null, OnnxProvider.Auto, 4, 20, false).VoicesFolder;
+    // Each engine's voices folder: a Sinsy voice's always has one (~/Cantoria/Sinsy when nothing says).
+    string? folder = offer.Engine == "sinsy"
+        ? sinsyDir ?? Engines.Configure(null, null, null, OnnxProvider.Auto, 4, 20, false).SinsyFolder
+        : voicesDir ?? Engines.Configure(null, null, null, OnnxProvider.Auto, 4, 20, false).VoicesFolder;
     if (folder is null)
     {
         Console.Error.WriteLine("cantoria: name the voices folder to fetch into (--voices-dir)");

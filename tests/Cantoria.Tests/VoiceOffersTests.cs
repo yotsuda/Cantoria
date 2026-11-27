@@ -101,14 +101,64 @@ public sealed class VoiceOffersTests : IDisposable
         Assert.False(System.IO.File.Exists(Path.Combine(Path.GetDirectoryName(_voices)!, "evil.txt")));
     }
 
+    private static byte[] TarGz(params (string Name, string Text)[] entries)
+    {
+        using var memory = new MemoryStream();
+        using (var gz = new GZipStream(memory, CompressionLevel.Fastest, true))
+        using (var tar = new System.Formats.Tar.TarWriter(gz))
+        {
+            foreach (var (name, text) in entries)
+            {
+                tar.WriteEntry(new System.Formats.Tar.PaxTarEntry(System.Formats.Tar.TarEntryType.RegularFile, name)
+                {
+                    DataStream = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(text)),
+                });
+            }
+        }
+        return memory.ToArray();
+    }
+
+    // A Sinsy voice comes as a .tar.gz from an address that ends in /download: told by its first bytes,
+    // unpacked from inside its one folder, installed when its .htsvoice is there.
+    [Fact]
+    public async Task AGzippedTar_IsUnpacked_FromInsideItsOneFolder_AndItsMarkerSaysItIsThere()
+    {
+        var voice = TarGz(("v-0.90/v_f001.htsvoice", "[GLOBAL]"), ("v-0.90/COPYING", "CC BY 3.0"));
+        var serve = new Serve(new() { ["https://a/v.tar.gz/download"] = voice });
+        var file = File("https://a/v.tar.gz/download", voice, "v-0.90") with { Marker = "v_f001.htsvoice" };
+        var offer = new VoiceOffer("v", "sinsy/v_f001", "V", ["ja"], ["free"], "https://t", [file]);
+        Assert.Equal("sinsy", offer.Engine);
+        Assert.Equal([Path.Combine(_voices, "v-0.90")], await VoiceOffers.FetchAsync(offer, _voices, new HttpClient(serve)));
+        Assert.Equal("CC BY 3.0", System.IO.File.ReadAllText(Path.Combine(_voices, "v-0.90", "COPYING")));
+        Assert.True(VoiceOffers.IsThere(file, _voices));
+        Assert.Empty(await VoiceOffers.FetchAsync(offer, _voices, new HttpClient(serve)));
+        Assert.Equal(1, serve.Asked);
+    }
+
+    [Fact]
+    public async Task AnEntryOfATarThatWouldLandOutside_IsRefused_AndNothingIsLeft()
+    {
+        var evil = TarGz(("a.htsvoice", "a"), ("../evil.txt", "x"));
+        var serve = new Serve(new() { ["https://a/v.tgz"] = evil });
+        var offer = new VoiceOffer("v", "sinsy/a", "V", ["ja"], ["free"], "https://t", [File("https://a/v.tgz", evil, "V") with { Marker = "a.htsvoice" }]);
+        var e = await Assert.ThrowsAsync<IOException>(() => VoiceOffers.FetchAsync(offer, _voices, new HttpClient(serve)));
+        Assert.Contains("outside its folder", e.Message);
+        Assert.Empty(Directory.EnumerateFileSystemEntries(_voices));
+    }
+
     [Fact]
     public void TheOffers_AreWhatTheResearchFound()
     {
-        var qixuan = Assert.Single(VoiceOffers.All);
+        Assert.Equal(["qixuan", "nitech-song070"], VoiceOffers.All.Select(o => o.Id));
+        var qixuan = VoiceOffers.All[0];
         Assert.Same(qixuan, VoiceOffers.Find("QIXUAN"));
         Assert.Equal("diffsinger/Qixuan", qixuan.Voice);
         Assert.Contains(qixuan.Terms, t => t.Contains("synthesised with AI"));
         Assert.All(qixuan.Files, f => Assert.StartsWith("https://github.com/", f.Url));
-        Assert.All(qixuan.Files, f => Assert.Matches("^[0-9a-f]{64}$", f.Sha256));
+        var sinsy = VoiceOffers.All[1];
+        Assert.Equal("sinsy/nitech_jp_song070_f001", sinsy.Voice);
+        Assert.Contains(sinsy.Terms, t => t.Contains("Nagoya Institute of Technology"));
+        Assert.Equal("nitech_jp_song070_f001.htsvoice", Assert.Single(sinsy.Files).Marker);
+        Assert.All(VoiceOffers.All.SelectMany(o => o.Files), f => Assert.Matches("^[0-9a-f]{64}$", f.Sha256));
     }
 }
