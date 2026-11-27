@@ -33,7 +33,8 @@ public class OnnxProvidersTests
             Assert.Contains(name, new[] { "CPU", "DirectML" });
             if (OperatingSystem.IsWindows() && name == "CPU")
             {
-                Assert.Contains("DirectML is not available", note);     // the CPU package, or no device
+                // the CPU package, or no device; or no GPU but Windows' software adapter
+                Assert.True(note!.Contains("DirectML is not available") || note == OnnxProviders.NoGpuNote, note);
             }
             if (!OperatingSystem.IsWindows())
             {
@@ -69,10 +70,33 @@ public class OnnxProvidersTests
     public void Describe_NamesEveryProvider_AndWhatAutoPicks()
     {
         var lines = OnnxProviders.Describe().ToList();
+        if (OperatingSystem.IsWindows())
+        {
+            Assert.StartsWith("GPU: ", lines[0]);
+            lines.RemoveAt(0);
+        }
         Assert.Equal(4, lines.Count);
         Assert.StartsWith("CPU: available (ONNX Runtime ", lines[0]);
         Assert.StartsWith("DirectML: ", lines[1]);
         Assert.StartsWith("CoreML: ", lines[2]);
         Assert.StartsWith("auto: ", lines[3]);
+    }
+
+    [Fact]
+    public void TheGpus_AreHardwareOnly_AndNoneOffWindows()
+    {
+        var gpus = Gpus.Hardware();
+        if (!OperatingSystem.IsWindows())
+        {
+            Assert.Empty(gpus);
+            return;
+        }
+        // The software adapter every Windows has is never one (a GitHub runner has only it).
+        Assert.DoesNotContain(gpus, g => g.Contains("Microsoft Basic", StringComparison.OrdinalIgnoreCase));
+        Assert.All(gpus, g => Assert.False(string.IsNullOrWhiteSpace(g)));
+        if (gpus.Count == 0)
+        {
+            Assert.Equal("CPU", OnnxProviders.Auto().Name);   // not DirectML on the software adapter
+        }
     }
 }

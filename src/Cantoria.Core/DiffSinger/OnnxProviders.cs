@@ -36,6 +36,9 @@ public static class OnnxProviders
     public const string CoreMLName = "CoreML";
     public const string CpuName = "CPU";
 
+    /// <summary>Why <see cref="OnnxProvider.Auto"/> took the CPU on Windows with the DirectML build.</summary>
+    public const string NoGpuNote = "this computer has no GPU, only Windows' software adapter; the CPU sings";
+
     /// <summary>
     /// Session options for <paramref name="wanted"/>: the provider's name, and — when something
     /// other than the one asked for came out — why, in a sentence. A GPU provider asked for by name
@@ -53,6 +56,11 @@ public static class OnnxProviders
         if (gpu is null)
         {
             return (new SessionOptions(), CpuName, null);
+        }
+        if (wanted == OnnxProvider.Auto && Gpus.Hardware().Count == 0)
+        {
+            // DirectML would run on Microsoft's software adapter: the CPU, slower.
+            return (new SessionOptions(), CpuName, NoGpuNote);
         }
         var options = new SessionOptions();
         try
@@ -92,6 +100,11 @@ public static class OnnxProviders
     /// <summary>One line per provider, for <c>cantoria providers</c>: what this build on this machine can do.</summary>
     public static IEnumerable<string> Describe()
     {
+        if (OperatingSystem.IsWindows())
+        {
+            var gpus = Gpus.Hardware();
+            yield return $"GPU: {(gpus.Count == 0 ? "none (only Windows' software adapter)" : string.Join(", ", gpus))}";
+        }
         yield return $"CPU: available (ONNX Runtime {OrtEnv.Instance().GetVersionString()})";
         foreach (var (provider, name) in new[] { (OnnxProvider.DirectML, DirectMLName), (OnnxProvider.CoreML, CoreMLName) })
         {
@@ -111,6 +124,15 @@ public static class OnnxProviders
         var (auto, autoName, note) = Create(OnnxProvider.Auto);
         auto.Dispose();
         yield return $"auto: {autoName}" + (note is null ? "" : $" ({note})");
+    }
+
+    /// <summary>Where <see cref="OnnxProvider.Auto"/> runs DiffSinger's models on this machine with this
+    /// build — <c>DirectML</c> or <c>CPU</c> — and why the CPU, when a GPU was looked for.</summary>
+    public static (string Name, string? Note) Auto()
+    {
+        var (options, name, note) = Create(OnnxProvider.Auto);
+        options.Dispose();
+        return (name, note);
     }
 
     private static string Why(Exception e, string gpu) => e switch

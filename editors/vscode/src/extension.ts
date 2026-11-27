@@ -17,7 +17,7 @@ import {
     PlanAsk, SingParameter, SingProgress, SingerPlan, planAsked, planOfNoOne,
     CantoriaScore, DefaultVoices, ENGINES, EngineName, VOICEVOX_URL, VoiceEntry, VoiceGender, defaultVoiceFor, diffSingerEntriesIn, diffSingerVoicesIn, findEngines, languageProblem, missingProgramNote, needsVoicevox, neutrinoFolderProblems, voicevoxRunIn, programCandidates,
     resolveSinger, scoreProblems, splitVoiceId, voiceEntriesIn, voiceId, voicesFolderProblems, voicesIn,
-    VoiceOffer, defaultSinsyFolder, defaultVoicesFolder, fetchLine, sinsyEntriesIn, sinsyVoicesIn, offerDetail, moveVoiceUp, voicesFolderPicture, voicesTooDeep,
+    VoiceOffer, ProvidersHere, offerRows, defaultSinsyFolder, defaultVoicesFolder, fetchLine, sinsyEntriesIn, sinsyVoicesIn, offerDetail, moveVoiceUp, voicesFolderPicture, voicesTooDeep,
 } from './core';
 import { Engine, EngineSetup, RenderedVoice } from './engine';
 import { VoicevoxServer } from './voicevox';
@@ -343,16 +343,21 @@ const DOWNLOAD_VOICE = 'Download a Voice…';
  * else ~/Cantoria/DiffSinger, which is then set. The program checks each file against the SHA-256 it
  * was published with and leaves nothing half there; stopped, what it was fetching is removed.
  */
-async function downloadVoice(context: vscode.ExtensionContext): Promise<void> {
+async function downloadVoice(context: vscode.ExtensionContext, language?: string): Promise<void> {
     const prog = program(context);
     if (!prog) { vscode.window.showErrorMessage(`Cantoria: ${missingProgramNote(process.platform, process.arch, bundledBuilds(context))}`); return; }
     let offers: VoiceOffer[];
     try { offers = JSON.parse(cp.execFileSync(prog, ['offers', '--json'], { encoding: 'utf8', windowsHide: true })); }
     catch (e) { vscode.window.showErrorMessage(`Cantoria: could not list the voices to download: ${(e as Error).message}`); return; }
     const installed = new Set(voices().map(v => v.id));
+    // Where DiffSinger would sing here, so that the list says which voice is quick on this machine (2026-11-28); not known, nothing is said.
+    let here: ProvidersHere | undefined;
+    try { here = JSON.parse(cp.execFileSync(prog, ['providers', '--json'], { encoding: 'utf8', windowsHide: true })); }
+    catch (e) { output.appendLine(`download: where DiffSinger sings here is not known: ${(e as Error).message}`); }
+    if (here) { output.appendLine(`download: GPU ${here.gpus.join(', ') || 'none'}; DiffSinger on ${here.auto}${here.note ? ` (${here.note})` : ''}`); }
     // Always a list, even of one offer: its last line says that the voices offered are not the only ones (the owner asked, 2026-11-26).
     const items: (vscode.QuickPickItem & { offer?: VoiceOffer })[] = [
-        ...offers.map(o => ({ label: o.title, description: `${o.languages.join(', ')} · ${Math.round(o.size / 1048576)} MB${installed.has(o.voice) ? ' · installed' : ''}`, detail: 'Fetched for you from its author, once you agree to its terms', offer: o })),
+        ...offerRows(offers, installed, here, language).map(r => ({ label: r.label, description: r.description, detail: r.detail, offer: r.offer })),
         { label: '', kind: vscode.QuickPickItemKind.Separator },
         { label: `$(folder-opened) ${OWN_VOICE}`, description: 'any DiffSinger voice in the OpenUtau format', detail: 'One you download from its author yourself: unpacked into the DiffSinger voices folder, it sings with nothing to set' },
     ];
@@ -548,7 +553,8 @@ export function activate(context: vscode.ExtensionContext): CantoriaApi {
         vscode.commands.registerCommand('cantoria.chooseMaleVoice', () => chooseDefaultVoice(context, 'male')),
         vscode.commands.registerCommand('cantoria.checkSetup', () => checkSetup(context)),
         vscode.commands.registerCommand('cantoria.findEngines', () => findEnginesHere()),
-        vscode.commands.registerCommand('cantoria.downloadVoice', () => downloadVoice(context)),
+        // A caller that knows the score may name its language ({ language: 'ja' }), so that the voice recommended sings it.
+        vscode.commands.registerCommand('cantoria.downloadVoice', (arg?: { language?: unknown }) => downloadVoice(context, typeof arg?.language === 'string' ? arg.language : undefined)),
         vscode.commands.registerCommand('cantoria.addOwnVoice', () => addOwnVoice()),
         vscode.commands.registerCommand('cantoria.forgetVoices', () => {
             release();      // the engine holds phrases in memory too

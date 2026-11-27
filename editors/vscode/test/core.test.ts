@@ -10,7 +10,7 @@ import {
     ENGINES, characterNameOf, diffSingerEntriesIn, diffSingerSpeakersOf, diffSingerVoicesIn, languageProblem, languageTag, missingProgramNote, neutrinoFolderProblems, parseLine, programCandidates,
     planAsked, planLine, planOfNoOne,
     cancelLine, defaultVoiceFor, firstOfGender, genderOfWord, requestLine, resolveSinger, rid, scoreProblems, serveArgs, speakerOf, splitVoiceId, voiceEntriesIn, voiceId, voiceKey, voicesFolderProblems, voicesIn, voicevoxEntriesFrom, vsixTarget,
-    findEngines, VoiceOffer, defaultVoicesFolder, fetchLine, offerDetail, defaultSinsyFolder, sinsyEntriesIn, sinsyVoicesIn,
+    findEngines, VoiceOffer, defaultVoicesFolder, fetchLine, offerDetail, offerRows, defaultSinsyFolder, sinsyEntriesIn, sinsyVoicesIn,
 } from '../src/core';
 import { DIFFSINGER_GENDERS, diffSingerGender } from '../src/diffSingerGenders';
 import { VOICEVOX_GENDERS, voicevoxGender } from '../src/voicevoxGenders';
@@ -493,6 +493,27 @@ describe('downloading an offered voice', () => {
     it('tells what it is, how much, where to, and every point of its terms', () => {
         assert.equal(offerDetail(offer, 'C:\\v'), 'Q 1.0 sings zh, ja. 3 MB from its authors\' own pages, into C:\\v.\n\n• It is free.\n• Say it is AI.');
         assert.equal(defaultVoicesFolder('C:\\Users\\u', join), 'C:\\Users\\u\\Cantoria\\DiffSinger');
+    });
+
+    // The owner asked (2026-11-28): with no GPU for DiffSinger, the voice that sings quickly on the CPU is recommended.
+    const qixuan: VoiceOffer = { ...offer, id: 'qixuan', voice: 'diffsinger/Qixuan', engine: 'diffsinger', title: 'Qixuan', languages: ['ja', 'en', 'zh'], size: 300 * 1048576 };
+    const sinsy: VoiceOffer = { ...offer, id: 'nitech', voice: 'sinsy/nitech', engine: 'sinsy', title: 'NIT', languages: ['ja'], size: 5 * 1048576 };
+    const noGpu = { gpus: [], auto: 'CPU', note: 'no GPU' };
+
+    it('recommends the voice quick on the CPU, first, where DiffSinger has no GPU', () => {
+        const rows = offerRows([qixuan, sinsy], new Set(), noGpu);
+        assert.deepEqual(rows.map(r => [r.label, r.recommended]), [['$(star-full) NIT', true], ['Qixuan', false]]);
+        assert.equal(rows[0].description, 'ja · 5 MB · quick on any computer');
+        assert.match(rows[0].detail, /^Recommended here: this computer has no GPU for DiffSinger, and it sings Japanese quickly on the CPU\. Fetched/);
+        assert.equal(rows[1].description, 'ja, en, zh · 300 MB · slow here: no GPU');
+    });
+
+    it('recommends nothing for a score in a language the quick voice does not sing, nor on a GPU, nor where the machine is not known', () => {
+        assert.ok(offerRows([qixuan, sinsy], new Set(), noGpu, 'en').every(r => !r.recommended));
+        assert.equal(offerRows([qixuan, sinsy], new Set(), noGpu, 'ja')[0].offer, sinsy);
+        const gpu = offerRows([qixuan, sinsy], new Set(['diffsinger/Qixuan']), { gpus: ['RTX'], auto: 'DirectML' });
+        assert.deepEqual(gpu.map(r => [r.label, r.description]), [['Qixuan', 'ja, en, zh · 300 MB · on your GPU (RTX) · installed'], ['NIT', 'ja · 5 MB · quick on any computer']]);
+        assert.deepEqual(offerRows([qixuan, sinsy], new Set(), undefined).map(r => [r.label, r.description, r.recommended]), [['Qixuan', 'ja, en, zh · 300 MB', false], ['NIT', 'ja · 5 MB', false]]);
     });
 
     it('adds up what each file has received, and reads what was installed', () => {

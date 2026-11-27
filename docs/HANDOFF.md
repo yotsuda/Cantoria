@@ -26,6 +26,15 @@ DiffSinger (プロセス内の ONNX)、NEUTRINO、VOICEVOX。主な呼び手は 
   - **⚠️ build-sinsy.ps1 を共有のコンソールで動かすとき**: vcvars64 の環境は終わりに戻すようにした。戻す前の版で
     `Platform=x64` が残り、以後の `dotnet build` が `bin\x64\` に出て古い DLL を走らせた (2026-11-28)。
 
+- **GPU のない機械で Download a Voice が sinsy を勧める** (2026-11-28、オーナーの求め。Unreleased)。
+  - Core `Gpus.Hardware()` が DXGI でハードウェアのアダプターを数える (software の flag と Microsoft の vendor 0x1414 を除く。
+    Basic Render Driver、ドライバーのない GPU の Basic Display Adapter、Remote Display Adapter)。Windows 以外は空。
+  - `OnnxProvider.Auto` はハードウェアの GPU がなければ DirectML を試さず CPU (`NoGpuNote`)。software adapter の DirectML は CPU より遅いはず
+    (**GPU のない機械では測っていない**。この機械は RTX 5070 Ti と Intel Graphics)。
+  - `cantoria providers --json` = `{gpus, auto, note}`。拡張の `offerRows` (core.ts) が auto が CPU なら CPU で速いエンジン (sinsy) を
+    ★ で先頭に、各行に速さを一言。`cantoria.downloadVoice` は `{ language }` を受け、その言語を歌う声だけを勧める。
+    **Lily# からはまだ渡していない** (声がないと Lily# が知ったときに language 付きで呼ぶのが自然。Lily# 側の仕事)。
+  - **画面ではまだ見ていない** (F5 の確かめと一緒に)。
 - **0.6.0 を出した** (2026-11-27。GitHub Release、Marketplace に 3 ターゲットとも listed。HEAD `d7a0fe3` = v0.6.0、
   その後のコミットはない)。以下はその用意の記録。
 - **0.6.0 を用意した** (2026-11-26、オーナーの選択で Unreleased を全部入れる)。きっかけは Lily# Studio への

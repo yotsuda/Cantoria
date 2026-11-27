@@ -210,7 +210,7 @@ cantoria sing score.json -o out.wav --voice C:\voices\TIGER        # a path hold
 cantoria voices [--neutrino-dir …] [--voices-dir …]                 # what is installed, as engine/name, with each voice's gender and languages
 cantoria voices --language en [--json]                              # those that sing it; as the API's entries
 cantoria plan score.json [--voice …] [--gender …] [--json]          # who would sing it here, without singing (§4.3)
-cantoria providers                                                  # where DiffSinger models can run here (CPU, DirectML, CoreML; what auto picks)
+cantoria providers [--json]                                         # where DiffSinger models can run here (CPU, DirectML, CoreML; what auto picks), the hardware GPUs; --json: {gpus, auto, note}
 cantoria serve [the same]                                           # a resident singer for an editor (below)
 cantoria --version
 ```

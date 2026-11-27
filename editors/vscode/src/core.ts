@@ -402,6 +402,46 @@ export function defaultVoicesFolder(home: string, join: (...parts: string[]) => 
     return join(home, 'Cantoria', 'DiffSinger');
 }
 
+/** Where this machine runs DiffSinger (`cantoria providers --json`): its hardware GPUs (Windows), `DirectML` or `CPU`, and why the CPU. */
+export interface ProvidersHere { gpus: string[]; auto: string; note?: string }
+
+/** The engines that sing quickly on any CPU (Sinsy: an HMM voice, 7 s of song in 0.5 s); a DiffSinger voice is quick on a GPU only. */
+const QUICK_ON_CPU = new Set(['sinsy']);
+const LANGUAGE_NAMES: Record<string, string> = { ja: 'Japanese', en: 'English', zh: 'Chinese', ko: 'Korean' };
+
+/** A line of Download a Voice's list: what it says of the offer, and whether it is the one recommended here. */
+export interface OfferRow { offer: VoiceOffer; label: string; description: string; detail: string; recommended: boolean }
+
+/**
+ * Download a Voice's lines, the recommended one first (the owner asked, 2026-11-28): on a machine
+ * where DiffSinger would sing on the CPU, a voice whose engine is quick there and sings the score's
+ * language (`language`, when the caller knows it; Japanese is what Sinsy sings) is recommended, and
+ * each line says how quickly it sings here. Where the machine is not known (`here` undefined), the
+ * offers as they come, with nothing said of speed.
+ */
+export function offerRows(offers: VoiceOffer[], installed: Set<string>, here: ProvidersHere | undefined, language?: string): OfferRow[] {
+    const engineOf = (o: VoiceOffer) => o.engine ?? o.voice.split('/')[0];
+    const onCpu = here !== undefined && here.auto === 'CPU';
+    const sings = (o: VoiceOffer) => !language || o.languages.includes(language);
+    const recommended = onCpu ? offers.find(o => QUICK_ON_CPU.has(engineOf(o)) && sings(o)) : undefined;
+    const speed = (o: VoiceOffer): string => {
+        if (!here) { return ''; }
+        if (QUICK_ON_CPU.has(engineOf(o))) { return 'quick on any computer'; }
+        return onCpu ? 'slow here: no GPU' : `on your GPU${here.gpus[0] ? ` (${here.gpus[0]})` : ''}`;
+    };
+    const fetched = 'Fetched for you from its author, once you agree to its terms';
+    const rows = offers.map(o => ({
+        offer: o,
+        label: o === recommended ? `$(star-full) ${o.title}` : o.title,
+        description: [o.languages.join(', '), `${Math.round(o.size / 1048576)} MB`, speed(o), installed.has(o.voice) ? 'installed' : ''].filter(Boolean).join(' · '),
+        detail: o === recommended
+            ? `Recommended here: this computer has no GPU for DiffSinger, and it sings ${(language ? [language] : o.languages).map(l => LANGUAGE_NAMES[l] ?? l).join(', ')} quickly on the CPU. ${fetched}`
+            : fetched,
+        recommended: o === recommended,
+    }));
+    return [...rows.filter(r => r.recommended), ...rows.filter(r => !r.recommended)];
+}
+
 /** What the user reads before an offered voice is fetched: what it is, how much, where to, and its terms. */
 export function offerDetail(offer: VoiceOffer, folder: string): string {
     return [

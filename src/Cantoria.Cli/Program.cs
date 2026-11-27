@@ -34,6 +34,7 @@ return args switch
     ["voices", ..] => Voices(args[1..]),
     ["plan", ..] => Plan(args[1..]),
     ["providers"] => Providers(),
+    ["providers", "--json"] => ProvidersJson(),
     ["offers", ..] => Offers(args[1..]),
     ["fetch", ..] => await Fetch(args[1..]),
     ["sing", ..] => await Sing(args[1..]),
@@ -62,7 +63,7 @@ static int Help(int code)
                                                           and the languages each says
           cantoria plan [<score.json>] [plan options] [options]
                                                           who would sing it here, without singing
-          cantoria providers                             where DiffSinger models can run on this machine
+          cantoria providers [--json]                    where DiffSinger models can run on this machine, and its GPUs
           cantoria offers [--json]                        the voices Cantoria can fetch from their authors, with their terms
           cantoria fetch <offer> [--voices-dir <folder>] [--sinsy-dir <folder>] [--json]
                                                           fetch an offered voice into its engine's voices folder (what is there
@@ -387,6 +388,15 @@ static int Providers()
     {
         Console.WriteLine(line);
     }
+    return 0;
+}
+
+/// <summary>`providers --json`: the hardware GPUs (Windows), where `auto` runs DiffSinger here and why
+/// the CPU when it is; Download a Voice reads it to say which voices sing quickly on this machine.</summary>
+static int ProvidersJson()
+{
+    var (auto, note) = Cantoria.DiffSinger.OnnxProviders.Auto();
+    Console.WriteLine(JsonSerializer.Serialize(new { gpus = Cantoria.DiffSinger.Gpus.Hardware(), auto, note }, Wire()));
     return 0;
 }
 
