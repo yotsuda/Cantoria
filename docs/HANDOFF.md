@@ -17,8 +17,12 @@ DiffSinger (プロセス内の ONNX)、NEUTRINO、VOICEVOX。主な呼び手は 
   - 拡張: `cantoria.sinsy.voicesFolder` (空なら `~/Cantoria/Sinsy`)、声の一覧、Download a Voice に 2 つ目の申し出。
   - **CI はまだ回っていない** (push 待ち)。Linux・macOS での sinsy のビルド (gcc/clang) と、SourceForge からの声の取得、
     published のプログラムが歌うことを CI が初めて見る。赤ならそこを直す。WSL はこの機械にない (ディストリビューションなし)。
-  - **オーナーの耳はまだ**: 聞き比べ用 `sinsy-sakura.wav`・`sinsy-yukiyakonko.wav` (scratchpad、消えうる。作り直しは
+  - **オーナーの耳はまだ**: 聞き比べ用 `sinsy-yukiyakonko.wav` (2026-11-28 に作り直した。scratchpad、消えうる。作り直しは
     `cantoria sing examples/yukiyakonko.json --voice sinsy/nitech_jp_song070_f001 --sinsy-dir C:\Tools\sinsy -o x.wav`)。
+  - この例では stderr に hts_engine の `HTS_set_specified_duration: Specified frame length is too short.` が 1 行出る
+    (11 番目の音符「こん」を足すと出る。1 句目の同じ「やこん」では出ない)。HMM が出した長さがその音素の状態の数
+    (5 フレーム = 25 ms) より短く、hts_engine が各状態を 1 フレームに切り上げただけで、歌は続く。ずれは数 ms。
+    hts_engine の HTS_error が stderr へ直に書くので、黙らせるには第三者のソースに手を入れることになる。今は放っておく。
   - **⚠️ build-sinsy.ps1 を共有のコンソールで動かすとき**: vcvars64 の環境は終わりに戻すようにした。戻す前の版で
     `Platform=x64` が残り、以後の `dotnet build` が `bin\x64\` に出て古い DLL を走らせた (2026-11-28)。
 
