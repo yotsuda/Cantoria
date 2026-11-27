@@ -10,7 +10,8 @@ name: Release
 # proven before a version is spent: THE MARKETPLACE NEVER ACCEPTS A VERSION TWICE.
 #
 # One Windows job packs all three: pack-extension.ps1 cross-publishes, and the Windows program
-# needs the DirectML package. The three are published one after another, each only once the one
+# needs the DirectML package. The Sinsy engine is native: Linux's and macOS's libraries are built
+# on their own runners first (the sinsy job) and laid where the publish takes them from. The three are published one after another, each only once the one
 # before it is listed (tools/publish-marketplace.ps1): Lily#'s 0.4.0 lost targets to parallel legs,
 # and Cantoria's 0.4.0, sent ten seconds apart, had two accepted and never listed.
 #
@@ -40,8 +41,32 @@ permissions:
   contents: write   # create the GitHub Release + upload the VSIX
 
 jobs:
+  sinsy:
+    # The Sinsy engine is native code: each platform's library is built on that platform and handed
+    # to the Windows job that packs all three (the Windows one is built there).
+    if: github.event.inputs.publish_targets == ''
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            rid: linux-x64
+          - os: macos-latest
+            rid: osx-arm64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the Sinsy engine
+        shell: pwsh
+        run: ./tools/build-sinsy.ps1 -Out native/out/${{ matrix.rid }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sinsy-${{ matrix.rid }}
+          path: native/out/${{ matrix.rid }}
+          if-no-files-found: error
+
   vsix:
     if: github.event.inputs.publish_targets == ''
+    needs: sinsy
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -72,6 +97,20 @@ jobs:
           $publisher = (Get-Content editors/vscode/package.json -Raw | ConvertFrom-Json).publisher
           npx --yes @vscode/vsce verify-pat $publisher
           if ($LASTEXITCODE -ne 0) { throw "verify-pat failed for '$publisher': nothing was published" }
+
+      - name: The Sinsy engine for each platform
+        # Windows' built here; Linux's and macOS's from the sinsy job, where the projects take them from.
+        run: |
+          ./tools/build-sinsy.ps1
+          if ($LASTEXITCODE -ne 0) { throw "the Sinsy build failed" }
+      - uses: actions/download-artifact@v4
+        with:
+          name: sinsy-linux-x64
+          path: native/out/linux-x64
+      - uses: actions/download-artifact@v4
+        with:
+          name: sinsy-osx-arm64
+          path: native/out/osx-arm64
 
       - name: Test the program
         run: dotnet test tests/Cantoria.Tests -c Release

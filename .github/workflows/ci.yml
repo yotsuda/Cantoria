@@ -1,10 +1,12 @@
 name: CI
 
-# The library, the CLI and the extension on the three platforms the extension ships for. No voice
-# is installed here (every voice is its author's, under its author's terms), so the singer tests
-# pass without singing (they are gated on CANTORIA_DIFFSINGER_VOICE); what is proven per platform
-# is that the self-contained program starts, reads a score, and that ONNX Runtime loads and names
-# its providers (`cantoria providers`).
+# The library, the CLI and the extension on the three platforms the extension ships for. The
+# Sinsy engine (native/sinsy) is built on each, and its voice NIT SONG070 F001 (CC BY 3.0) is
+# fetched as a user fetches it (`cantoria fetch nitech-song070`, checked by its SHA-256, kept in
+# the cache), so the Sinsy tests and the published program sing on every platform. No other voice
+# is installed (those are their authors', under their terms): the DiffSinger tests pass without
+# singing (gated on CANTORIA_DIFFSINGER_VOICE); ONNX Runtime is proven to load and name its
+# providers (`cantoria providers`).
 on:
   push:
     branches: [main]
@@ -34,6 +36,22 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 10.0.x
+      - name: Build the Sinsy engine
+        shell: pwsh
+        run: ./tools/build-sinsy.ps1
+      - name: Keep the Sinsy voice between runs
+        uses: actions/cache@v4
+        with:
+          path: ~/sinsy-voices
+          key: sinsy-voice-461c94d2
+      - name: Fetch the Sinsy voice as a user does
+        # pwsh: the path written for the next steps is the system's own (bash on Windows writes /c/…).
+        shell: pwsh
+        run: |
+          $voices = Join-Path $HOME 'sinsy-voices'
+          dotnet run --project src/Cantoria.Cli -c Release -- fetch nitech-song070 --sinsy-dir $voices
+          if ($LASTEXITCODE -ne 0) { throw "fetch failed" }
+          "CANTORIA_SINSY_VOICE=$(Join-Path $voices 'hts_voice_nitech_jp_song070_f001-0.90' 'nitech_jp_song070_f001.htsvoice')" >> $env:GITHUB_ENV
       - name: Test (the CPU package)
         run: dotnet test tests/Cantoria.Tests -c Release
       - name: Publish ${{ matrix.rid }}
@@ -44,6 +62,11 @@ jobs:
           out/${{ matrix.rid }}/${{ matrix.exe }} --version
           out/${{ matrix.rid }}/${{ matrix.exe }} check examples/yukiyakonko.json
           out/${{ matrix.rid }}/${{ matrix.exe }} providers
+      - name: The published program sings with Sinsy
+        shell: bash
+        run: |
+          out/${{ matrix.rid }}/${{ matrix.exe }} sing examples/yukiyakonko.json --voice sinsy/nitech_jp_song070_f001 --sinsy-dir ~/sinsy-voices -o sung.wav
+          test -s sung.wav
       - name: DirectML.dll ships with the Windows program
         if: matrix.rid == 'win-x64'
         shell: bash
