@@ -67,6 +67,18 @@ public class OnnxProvidersTests
     }
 
     [Fact]
+    public void TheCoreMLOptions_AreTheDefaults_WithTheVariablesPairsPutOver()
+    {
+        Assert.Equal(OnnxProviders.CoreMLDefaults, OnnxProviders.CoreMLOptions(null));
+        var o = OnnxProviders.CoreMLOptions(" MLComputeUnits=CPUAndGPU ; ModelFormat= ;RequireStaticInputShapes=1;");
+        Assert.Equal("CPUAndGPU", o["MLComputeUnits"]);
+        Assert.False(o.ContainsKey("ModelFormat"));             // an empty value takes the default away
+        Assert.Equal("1", o["RequireStaticInputShapes"]);
+        var e = Assert.Throws<SingerException>(() => OnnxProviders.CoreMLOptions("MLProgram"));
+        Assert.Contains("CANTORIA_COREML", e.Message);
+    }
+
+    [Fact]
     public void Describe_NamesEveryProvider_AndWhatAutoPicks()
     {
         var lines = OnnxProviders.Describe().ToList();

@@ -1,0 +1,70 @@
+name: macOS singing
+
+# DiffSinger sung on macOS, where nobody working on Cantoria has a machine: the published osx-arm64
+# program fetches Qixuan as a user does (`cantoria fetch qixuan`; its terms allow it, its files are
+# pinned by SHA-256 and kept in the cache) and sings one score on the CPU and on CoreML in several
+# settings (tools/bench-providers.ps1). The job summary has the seconds; the artifact has the WAVs
+# to listen to and each run's stderr.
+#
+# GitHub's macOS runners are virtual machines on Apple silicon, and Apple's virtualization gives
+# them no Metal (GPU): CoreML here shows that the models compile and sing right through it, and on
+# what the VM has (CPU, perhaps the Neural Engine), not how fast a real Mac's GPU is.
+on:
+  workflow_dispatch:
+    inputs:
+      runs:
+        description: "Runs, comma-separated (cpu, coreml, coreml:Key=Value;Key=Value)"
+        required: false
+        default: ""
+  push:
+    branches: [main]
+    paths:
+      - src/Cantoria.Core/DiffSinger/OnnxProviders.cs
+      - src/Cantoria.Core/DiffSinger/DiffSingerVoice.cs
+      - tools/bench-providers.ps1
+      - .github/workflows/mac.yml
+
+jobs:
+  sing:
+    runs-on: macos-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - name: Publish osx-arm64
+        run: dotnet publish src/Cantoria.Cli -c Release -r osx-arm64 --self-contained -o out/osx-arm64
+      - name: Keep Qixuan between runs
+        uses: actions/cache@v4
+        with:
+          path: ~/ds-voices
+          key: qixuan-2.7.0-pc_nsf_hifigan-2025.02
+      - name: Fetch Qixuan as a user does
+        run: |
+          out/osx-arm64/cantoria fetch qixuan --voices-dir ~/ds-voices
+          out/osx-arm64/cantoria voices --voices-dir ~/ds-voices
+          out/osx-arm64/cantoria providers
+      - name: Sing on the CPU and on CoreML
+        shell: pwsh
+        env:
+          RUNS: ${{ github.event.inputs.runs }}
+        run: |
+          $runs = if ($env:RUNS) { $env:RUNS -split ',' | ForEach-Object { $_.Trim() } } else { @(
+            'cpu',
+            'coreml',
+            'coreml:MLComputeUnits=CPUAndGPU',
+            'coreml:MLComputeUnits=CPUAndNeuralEngine',
+            'coreml:ModelFormat=NeuralNetwork'
+          ) }
+          ./tools/bench-providers.ps1 -Program out/osx-arm64/cantoria -VoicesDir (Join-Path $HOME 'ds-voices') -Voice diffsinger/Qixuan -Out bench -Runs $runs
+          "## DiffSinger (Qixuan) on macOS`n" >> $env:GITHUB_STEP_SUMMARY
+          "``$(sysctl -n machdep.cpu.brand_string)``, $(sysctl -n hw.ncpu) cores`n" >> $env:GITHUB_STEP_SUMMARY
+          Get-Content bench/bench.md >> $env:GITHUB_STEP_SUMMARY
+          Get-ChildItem bench -Directory -Filter 'tmp-*' | Remove-Item -Recurse -Force
+      - name: The WAVs and what each run said
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-singing
+          path: bench/

@@ -75,7 +75,7 @@ public static class OnnxProviders
             }
             else
             {
-                options.AppendExecutionProvider_CoreML(CoreMLFlags.COREML_FLAG_USE_NONE);
+                options.AppendExecutionProvider(CoreMLName, CoreMLOptions(Environment.GetEnvironmentVariable(CoreMLVariable)));
             }
             return (options, gpu, null);
         }
@@ -89,6 +89,47 @@ public static class OnnxProviders
             }
             return (new SessionOptions(), CpuName, $"{gpu} is not available ({why}); the CPU sings");
         }
+    }
+
+    /// <summary>The environment variable whose <c>key=value;…</c> pairs replace or add to
+    /// <see cref="CoreMLDefaults"/>: how the macOS runs are measured (tools/bench-providers.ps1).</summary>
+    public const string CoreMLVariable = "CANTORIA_COREML";
+
+    /// <summary>
+    /// The CoreML provider's options when nothing else is said: an ML Program (the newer format,
+    /// which takes more of ONNX's operators than NeuralNetwork) on every compute unit (CPU, GPU,
+    /// Neural Engine; CoreML chooses). Not yet measured against the others; the macOS workflow
+    /// (.github/workflows/mac.yml) is where they are compared.
+    /// </summary>
+    public static readonly IReadOnlyDictionary<string, string> CoreMLDefaults = new Dictionary<string, string>
+    {
+        ["ModelFormat"] = "MLProgram",
+        ["MLComputeUnits"] = "ALL",
+    };
+
+    /// <summary><see cref="CoreMLDefaults"/> with <paramref name="spec"/>'s <c>key=value</c> pairs
+    /// (separated by <c>;</c>) put over them; an empty value removes the key.</summary>
+    public static Dictionary<string, string> CoreMLOptions(string? spec)
+    {
+        var options = new Dictionary<string, string>(CoreMLDefaults);
+        foreach (var pair in (spec ?? "").Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            int eq = pair.IndexOf('=');
+            if (eq <= 0)
+            {
+                throw new SingerException($"{CoreMLVariable}: \"{pair}\" is not key=value");
+            }
+            string key = pair[..eq].Trim(), value = pair[(eq + 1)..].Trim();
+            if (value.Length == 0)
+            {
+                options.Remove(key);
+            }
+            else
+            {
+                options[key] = value;
+            }
+        }
+        return options;
     }
 
     /// <summary>True for the ways a GPU provider fails to be there, as against a bug.</summary>

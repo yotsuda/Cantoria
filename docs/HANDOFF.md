@@ -97,8 +97,17 @@ DiffSinger (プロセス内の ONNX)、NEUTRINO、VOICEVOX。主な呼び手は 
     `~/Cantoria/DiffSinger` にして設定する (2026-11-26 までは `~/Cantoria/voices`)。`checkSetup` と「no voice to list」の警告の先頭ボタン)。
     CLI で GitHub から空の folder へ 15 秒、vocoder 設定なしで歌えた。**VS Code の中ではまだ動かしていない**。
 
+- **Mac で最適に歌う準備** (2026-11-28、オーナーの求め「mac はないが、可能な限り最適な実行を mac でも」。Unreleased)。
+  - `OnnxProviders.CoreMLDefaults` (MLProgram、全演算装置) に、環境変数 `CANTORIA_COREML` (`key=value;…`) を上書きして CoreML に渡す。
+    auto はまだ CoreML を選ばない。
+  - `tools/bench-providers.ps1`: `cantoria serve` で同じ楽譜を 1 回目 (読み込み・コンパイル込み) と半音上げて warm で歌い、秒の表と WAV。
+    この機械で Qixuan 7 秒: CPU 15.4 / 17.1 s、DirectML 8.0 / 2.4 s (1 回目 / warm)。
+  - `.github/workflows/mac.yml`: macOS ランナーで `cantoria fetch qixuan` し、cpu と CoreML の 4 設定を測る。job summary に表、
+    artifact `macos-singing` に WAV。**push 後に初めて走る**。ランナーは VM で Metal がないので、GPU の速さは測れない。
+    結果を見て: 正しく歌い速い設定を `CoreMLDefaults` に、CPU より遅くなければ auto を macOS で CoreML に (roadmap B5)。WAV はオーナーの耳で。
+
 **次の一手**:
-0. **sinsy の仕上げ**: push 後の CI (3 OS) を見る。オーナーに sinsy の声を聞いてもらう。拡張を F5 で動かし、
+0. **sinsy の仕上げ**: push 後の CI (3 OS) と `macOS singing` (mac.yml、上の「Mac で最適に歌う準備」) を見る。オーナーに sinsy の声を聞いてもらう。拡張を F5 で動かし、
    Download a Voice に 2 つの申し出が出て NIT SONG070 が入り、Lily# から `sinsy/nitech_jp_song070_f001` で歌うことを見る
    (まだ画面で見ていない)。E の残り (cevio、acestudio、guide) はどれもオーナーの求めがあれば。
    ACE Studio は外から呼べる手段 (実験版の MCP・CLI) を出したので計画外から外した。NNSVS は計画外、

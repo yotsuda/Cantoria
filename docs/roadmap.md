@@ -76,6 +76,12 @@ OpenUtau DiffSinger format — a folder the user installs, as a sound font is.
    machine is Windows, and CI has no voice to sing with (every voice is its author's) — the
    first Linux or macOS phrase is the owner's, or whoever runs the VSIX there. CoreML is
    appended on request (`--provider coreml`), not by `auto`, until it has been heard.
+   **Since 2026-11-28** CI can sing on macOS: Qixuan is fetchable, so `mac.yml` sings it on the
+   runner on the CPU and through CoreML in several settings and keeps the WAVs (the owner has
+   no Mac; the aim is the best run a Mac allows). Next from its results: which CoreML settings
+   sing right and fastest become `CoreMLDefaults`, and `auto` takes CoreML on macOS if it sings
+   right and is not slower than the CPU there. The runner has no Metal, so the GPU's speed is
+   still a real Mac's to show.
 
 *Done when* the same score sings through `neutrino/…` and `diffsinger/…` by changing the voice
 setting (done), and through `diffsinger/…` on Linux or macOS with no GPU (the build ships; the

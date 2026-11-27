@@ -128,10 +128,15 @@ and where that fails (no entry point in a CPU build, no device) or the first ses
 cannot be created, the voice falls back to the CPU and says why
 (`DiffSingerVoice.ProviderNote`; `cantoria sing` prints "on DirectML" / "on the
 CPU (…)", `serve` answers `provider`). The CLI's `--cpu` (the extension's
-`cantoria.general.useGPU` off) is `Cpu`. CUDA and CoreML are not wired: CUDA needs the
-user's CUDA and cuDNN and a package of hundreds of megabytes; CoreML comes in the
-standard package on macOS and can be appended the same way when a macOS build
-exists. On the CPU a 7 s phrase renders in 4–18 s at 10–20 steps; on DirectML
+`cantoria.general.useGPU` off) is `Cpu`. CUDA is not wired: it needs the user's CUDA
+and cuDNN and a package of hundreds of megabytes. CoreML comes in the standard package
+on macOS and is appended when asked for by name (`--provider coreml`), not by `Auto`,
+until it has been measured: with `OnnxProviders.CoreMLDefaults` (an ML Program on all
+compute units), each pair of `CANTORIA_COREML` (`key=value;…`, ONNX Runtime's CoreML
+provider options) put over them. Nobody here has a Mac; `.github/workflows/mac.yml`
+sings Qixuan on GitHub's macOS runner through `tools/bench-providers.ps1` (the CPU and
+CoreML settings; first and warm seconds, the WAVs as an artifact). That runner is a VM
+with no Metal, so it proves CoreML sings right, not how fast a real Mac's GPU is. On the CPU a 7 s phrase renders in 4–18 s at 10–20 steps; on DirectML
 the acoustic model takes 0.3 s and the phrase under a second once the models are
 resident. The variance path is written after OpenUtau but untested (the voice at
 hand has no `dsvariance`).
