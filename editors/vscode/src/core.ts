@@ -56,7 +56,7 @@ export interface CantoriaScore {
 }
 
 /** The engines this extension sings through; the first is what a bare voice name means. */
-export const ENGINES = ['neutrino', 'diffsinger', 'voicevox'] as const;
+export const ENGINES = ['neutrino', 'diffsinger', 'voicevox', 'sinsy'] as const;
 export type EngineName = typeof ENGINES[number];
 
 /** A voice as the API names it: `engine/name`, e.g. `neutrino/MERROW` — the form `sing`'s
@@ -305,6 +305,33 @@ export function diffSingerEntriesIn(folder: string, listDirs: (dir: string) => s
     });
 }
 
+/** Where the Sinsy voices are when the setting is empty, as the program has it: `~/Cantoria/Sinsy`. */
+export function defaultSinsyFolder(home: string, join: (...parts: string[]) => string): string {
+    return join(home, 'Cantoria', 'Sinsy');
+}
+
+/** The Sinsy voices in a folder, by name, as the program lists them (SinsyOptions.Voices): each
+ *  `.htsvoice` in it or one folder down, by its file's name; the one in the folder itself, else the
+ *  first folder's, of two of a name; sorted by UTF-16 code unit. */
+export function sinsyVoicesIn(folder: string, listDirs: (dir: string) => string[], listFiles: (dir: string) => string[],
+    exists: (p: string) => boolean, join: (...parts: string[]) => string): string[] {
+    if (!folder || !exists(folder)) { return []; }
+    const voices = (dir: string) => listFiles(dir).filter(f => f.endsWith('.htsvoice')).sort().map(f => f.slice(0, -'.htsvoice'.length));
+    const names = new Set<string>(voices(folder));
+    for (const dir of listDirs(folder).sort()) { for (const name of voices(join(folder, dir))) { names.add(name); } }
+    return [...names].sort();
+}
+
+/** The Sinsy voices as the API lists them: Japanese, and male or female where the name says by the
+ *  Nitech custom (`nitech_jp_song070_f001`: `_f` and a number, `_m` for a male singer). */
+export function sinsyEntriesIn(folder: string, listDirs: (dir: string) => string[], listFiles: (dir: string) => string[],
+    exists: (p: string) => boolean, join: (...parts: string[]) => string): VoiceEntry[] {
+    return sinsyVoicesIn(folder, listDirs, listFiles, exists, join).map(name => {
+        const g = /_([fm])\d+$/.exec(name)?.[1];
+        return { id: voiceId('sinsy', name), engine: 'sinsy' as const, name, label: name, language: 'ja', ...(g ? { gender: g === 'f' ? 'female' : 'male' } : {}) };
+    });
+}
+
 /** Where VOICEVOX answers unless the setting says otherwise. */
 export const VOICEVOX_URL = 'http://127.0.0.1:50021';
 
@@ -368,7 +395,7 @@ export function findEngines(platform: string, home: string, env: Record<string, 
 }
 
 /** A voice the program can fetch from its authors (`cantoria offers --json`; roadmap F). */
-export interface VoiceOffer { id: string; voice: string; title: string; languages: string[]; size: number; terms: string[]; termsUrl: string }
+export interface VoiceOffer { id: string; voice: string; engine?: string; title: string; languages: string[]; size: number; terms: string[]; termsUrl: string }
 
 /** Where an offered voice goes when no DiffSinger voices folder is set: one of the user's own, easy to find, named for the engine (the owner's choice 2026-11-26: `~/Cantoria/voices` read as every engine's). Its vocoders go in it too, beside the voices. */
 export function defaultVoicesFolder(home: string, join: (...parts: string[]) => string): string {
@@ -554,12 +581,13 @@ export function cancelLine(id: string): string {
 export const SHUTDOWN_LINE = '{"command":"shutdown"}\n';
 
 /** The arguments of the resident engine: where the WAVs go, the GPU or not, the threads, the DiffSinger folders when set, the disk its renders may take. */
-export function serveArgs(outDir: string, gpu: boolean, threads: number, voicesFolder = '', vocoderFolder = '', cacheSizeMB = 0): string[] {
+export function serveArgs(outDir: string, gpu: boolean, threads: number, voicesFolder = '', vocoderFolder = '', cacheSizeMB = 0, sinsyFolder = ''): string[] {
     const args = ['serve', '--out-dir', outDir, '--threads', String(Math.max(1, Math.floor(threads) || 1))];
     if (!gpu) { args.push('--cpu'); }
     if (voicesFolder.trim()) { args.push('--voices-dir', voicesFolder.trim()); }
     if (vocoderFolder.trim()) { args.push('--vocoder-dir', vocoderFolder.trim()); }
     if (cacheSizeMB > 0) { args.push('--cache-mb', String(Math.floor(cacheSizeMB))); }
+    if (sinsyFolder.trim()) { args.push('--sinsy-dir', sinsyFolder.trim()); }
     return args;
 }
 

@@ -122,7 +122,7 @@
       {
         "id": "cantoria.voicevox",
         "title": "VOICEVOX",
-        "order": 4,
+        "order": 5,
         "properties": {
             "cantoria.voicevox.installFolder": {
               "order": 1,
@@ -141,9 +141,23 @@
         }
       },
       {
+        "id": "cantoria.sinsy",
+        "title": "Sinsy",
+        "order": 4,
+        "properties": {
+            "cantoria.sinsy.voicesFolder": {
+              "order": 1,
+              "type": "string",
+              "default": "",
+              "scope": "machine-overridable",
+              "markdownDescription": "The folder of Sinsy voices: each `.htsvoice` in it or one folder down (a voice's release unpacked as it comes). Sinsy is inside this extension and sings Japanese on any computer, with no GPU and nothing else to install; **[Download a Voice…](command:cantoria.downloadVoice)** fetches NIT SONG070 F001 (CC BY 3.0) into this folder. Empty: `~/Cantoria/Sinsy`."
+            }
+        }
+      },
+      {
         "id": "cantoria.developer",
         "title": "Developer",
-        "order": 5,
+        "order": 6,
         "properties": {
             "cantoria.developer.program": {
               "order": 1,
