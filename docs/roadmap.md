@@ -132,10 +132,26 @@ In the order their value against their cost looks today:
 | `voicevox` | invoked (local HTTP server, song mode) | ja | free, popular; verify the song endpoints and the terms |
 | `sinsy` | in-process (thin native shim) | ja | **done 2026-11-28** (design §3.4): BSD, HMM, no GPU, the fallback that always sings; its voice NIT SONG070 F001 offered for download |
 | `cevio` | COM, Windows | ja, en | commercial; on request |
+| `acestudio` | invoked (its local MCP server / `acestudio-cli`, the app running) | 8 | commercial (subscription, renders mostly in the cloud on credits); on request, and not before its agent access leaves "experimental" |
 | `guide` | in-process, no model (vowel/formant synthesis) | any (vowels) | zero setup; a pitch guide for rehearsal; worth shipping only if it sounds acceptable |
 
-Not planned: engines with no external API (Synthesizer V, VOCALOID, ACE Studio); engines that
-need a Python runtime as a product dependency; any voice conversion.
+ACE Studio was "no external API" until it shipped *External Agent Access* (seen 2026-11-28,
+[docs](https://docs.acestudio.ai/ai-tools/ace-studio-mcp-server)): a local MCP server and
+`acestudio-cli` through which an agent edits tracks, notes and lyrics in the open app and exports
+WAV. It drives the GUI rather than taking a score and returning audio, and its docs warn that
+commands may change between updates.
+
+Not planned:
+
+- Engines with no external API (Synthesizer V, VOCALOID).
+- Engines that need a Python runtime as a product dependency. NNSVS (looked at 2026-11-28) is one:
+  PyTorch at inference, no ONNX export; its only published models (trained on NIT SONG070) are
+  "only permitted for research purpose"; no commit since 2023-10. Its one opening, Sinsy-style
+  labels, Cantoria already makes in the sinsy shim; exporting its models to ONNX ourselves would
+  pay only for a voice that exists solely as an NNSVS/ENUNU model.
+- Any voice conversion.
+- Instruments. Cantoria sings; neural instruments (MIDI to a played performance) are a different
+  product. What exists, for if that changes: [instruments-2026-11-28.md](instruments-2026-11-28.md).
 
 ## F. A voice on every machine
 
