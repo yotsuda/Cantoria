@@ -4,6 +4,7 @@
 using System.Text.Json;
 using Cantoria.DiffSinger;
 using Cantoria.Neutrino;
+using Cantoria.Sinsy;
 using Cantoria.Voicevox;
 
 namespace Cantoria.Cli;
@@ -12,13 +13,20 @@ namespace Cantoria.Cli;
 /// The engines the command line makes singers of, and where their voices are. A voice is named
 /// <c>engine/name</c>: <c>neutrino/MERROW</c> (a folder under NEUTRINO's <c>model\</c>),
 /// <c>diffsinger/TIGER</c> (a folder under the voices folder, or a path holding <c>dsconfig.yaml</c>; <c>diffsinger/TIGER/tiger_disco</c> one of its speakers),
-/// <c>voicevox/ずんだもん-ノーマル</c> (a singing style of the running VOICEVOX).
+/// <c>voicevox/ずんだもん-ノーマル</c> (a singing style of the running VOICEVOX),
+/// <c>sinsy/nitech_jp_song070_f001</c> (a <c>.htsvoice</c> in the Sinsy voices folder or one folder down).
 /// A bare name is NEUTRINO's, unless it is such a path.
 /// </summary>
 sealed class Engines
 {
     public const string DefaultNeutrinoVoice = "MERROW";
-    public static readonly string[] Names = ["neutrino", "diffsinger", "voicevox"];
+    public static readonly string[] Names = ["neutrino", "diffsinger", "voicevox", "sinsy"];
+
+    /// <summary>Where the Sinsy voices are when nothing says: <c>~/Cantoria/Sinsy</c>.</summary>
+    public static string DefaultSinsyFolder => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Cantoria", "Sinsy");
+
+    /// <summary>The folder whose <c>.htsvoice</c> files (or its subfolders') are Sinsy voices.</summary>
+    public string SinsyFolder { get; init; } = DefaultSinsyFolder;
 
     /// <summary>NEUTRINO's folder (<c>bin\</c>, <c>model\</c>, <c>settings\</c>).</summary>
     public string? NeutrinoFolder { get; init; }
@@ -40,17 +48,19 @@ sealed class Engines
 
     /// <summary>
     /// The folders from the options, else the environment (<c>CANTORIA_NEUTRINO_DIR</c>,
-    /// <c>CANTORIA_VOICES_DIR</c>, <c>CANTORIA_VOCODER_DIR</c>), else <c>cantoria.json</c> in the
-    /// user's config folder (<c>neutrino.folder</c>, <c>diffsinger.voices</c>, <c>diffsinger.vocoder</c>;
+    /// <c>CANTORIA_VOICES_DIR</c>, <c>CANTORIA_VOCODER_DIR</c>, <c>CANTORIA_SINSY_DIR</c>), else <c>cantoria.json</c> in the
+    /// user's config folder (<c>neutrino.folder</c>, <c>diffsinger.voices</c>, <c>diffsinger.vocoder</c>, <c>sinsy.voices</c>;
     /// <c>%APPDATA%\cantoria</c> on Windows, <c>~/.config/cantoria</c> elsewhere). NEUTRINO runs on
-    /// Windows only: elsewhere its folder is read as not set, whatever says it.
+    /// Windows only: elsewhere its folder is read as not set, whatever says it. The Sinsy folder is
+    /// <see cref="DefaultSinsyFolder"/> when nothing says.
     /// </summary>
     public static Engines Configure(string? neutrinoDir, string? voicesDir, string? vocoderDir, OnnxProvider provider, int threads, int steps, bool keep, string? voicevoxUrl = null,
-        string? defaultFemale = null, string? defaultMale = null)
+        string? defaultFemale = null, string? defaultMale = null, string? sinsyDir = null)
     {
         var settings = Settings();
         return new Engines
         {
+            SinsyFolder = First(sinsyDir, Environment.GetEnvironmentVariable("CANTORIA_SINSY_DIR"), settings("sinsy", "voices")) ?? DefaultSinsyFolder,
             NeutrinoFolder = OperatingSystem.IsWindows()
                 ? First(neutrinoDir, Environment.GetEnvironmentVariable("CANTORIA_NEUTRINO_DIR"), settings("neutrino", "folder"))
                 : null,
@@ -155,6 +165,13 @@ sealed class Engines
                     return [$"the VOICEVOX at {VoicevoxUrl} has no singing style: it needs a version that sings"];
                 }
                 return singers.Voices.Any(v => v.Name == name) ? [] : [$"VOICEVOX has no voice {name} (there is: {string.Join(", ", singers.Voices.Select(v => v.Name).DefaultIfEmpty("none"))})"];
+            case "sinsy":
+                if (SinsyOptions.Find(SinsyFolder, name) is not { } file)
+                {
+                    return [$"the Sinsy voice {name} is not in {SinsyFolder} (installed: {string.Join(", ", SinsyOptions.Voices(SinsyFolder).DefaultIfEmpty("none"))};"
+                        + " give --sinsy-dir, set CANTORIA_SINSY_DIR, or write sinsy.voices in cantoria.json)"];
+                }
+                return new SinsyOptions(file).Validate();
             default:
                 return [$"no engine named {engine} in {voice} (there is: {string.Join(", ", Names)})"];
         }
@@ -189,8 +206,30 @@ sealed class Engines
             "diffsinger" => DiffSingerOf(name),
             // The revision: phrases sung before low notes were brought down are not to be found again.
             "voicevox" => Phrased(Voicevox(name), score => VoicevoxScore.Notes(score.Notes), "@2"),
+            "sinsy" => Phrased(SinsyOf(name), RefuseWhatSinsyCannotRead),
             _ => throw new SingerException($"no engine named {engine}"),
         };
+    }
+
+    /// <summary>One singer a Sinsy voice: its library handle holds the voice.</summary>
+    private readonly Dictionary<string, SinsySinger> _sinsySingers = new(StringComparer.OrdinalIgnoreCase);
+
+    private SinsySinger SinsyOf(string name)
+    {
+        var file = SinsyOptions.Find(SinsyFolder, name)!;
+        if (!_sinsySingers.TryGetValue(file, out var singer))
+        {
+            _sinsySingers[file] = singer = new SinsySinger(new SinsyOptions(file));
+        }
+        return singer;
+    }
+
+    private static void RefuseWhatSinsyCannotRead(SungScore score)
+    {
+        if (NeutrinoMusicXml.NotKanaProblem(score, "Sinsy") is { } problem)
+        {
+            throw new SingerException(problem);
+        }
     }
 
     private PhrasedSinger Phrased(ISinger inner, Action<SungScore> check, string revision = "")
@@ -269,6 +308,7 @@ sealed class Engines
         {
             voices.AddRange(singers.Voices.Select(v => "voicevox/" + v.Name));
         }
+        voices.AddRange(SinsyOptions.Voices(SinsyFolder).Select(v => "sinsy/" + v));
         return voices;
     }
 
@@ -293,6 +333,10 @@ sealed class Engines
         {
             voices.AddRange(VoiceEntries.Voicevox(singers));
         }
+        if (only?.Contains("sinsy") != false)
+        {
+            voices.AddRange(VoiceEntries.Sinsy(SinsyFolder));
+        }
         return voices;
     }
 
@@ -314,6 +358,10 @@ sealed class Engines
         {
             why["voicevox"] = $"VOICEVOX is not running or not installed: nothing answers at {VoicevoxUrl}";
         }
+        if (voices.All(v => v.Engine != "sinsy"))
+        {
+            why["sinsy"] = SinsyOptions.Built ? $"the Sinsy voices folder holds no voice ({SinsyFolder})" : "this build of Cantoria has no Sinsy engine";
+        }
         return why;
     }
 
@@ -325,7 +373,7 @@ sealed class Engines
     /// not asked again (two seconds, when nothing is there).</param>
     public SingerPlan Plan(IEnumerable<PlanAsk> asked, DefaultVoices? defaults = null, bool voicevox = true)
     {
-        var voices = Entries(voicevox ? null : ["neutrino", "diffsinger"]);
+        var voices = Entries(voicevox ? null : ["neutrino", "diffsinger", "sinsy"]);
         return SingerPlan.For(asked, voices, defaults ?? Defaults, Problems, Missing(voices));
     }
 
@@ -352,5 +400,6 @@ sealed class Engines
     /// <summary>What is configured, for the <c>ready</c> line and messages.</summary>
     public string Describe() =>
         $"neutrino {(OperatingSystem.IsWindows() ? NeutrinoFolder ?? "(not set)" : "(Windows only)")}; diffsinger voices {VoicesFolder ?? "(not set)"}"
-        + (VocoderFolder is null ? "" : $", vocoder {VocoderFolder}") + $", provider {Provider.ToString().ToLowerInvariant()}";
+        + (VocoderFolder is null ? "" : $", vocoder {VocoderFolder}") + $", provider {Provider.ToString().ToLowerInvariant()}"
+        + $"; sinsy voices {(SinsyOptions.Built ? SinsyFolder : "(not in this build)")}";
 }

@@ -3,6 +3,7 @@
 
 using System.Text.RegularExpressions;
 using Cantoria.DiffSinger;
+using Cantoria.Sinsy;
 using Cantoria.Voicevox;
 
 namespace Cantoria;
@@ -12,7 +13,7 @@ namespace Cantoria;
 /// <c>engine/name</c>, what it calls itself, and what it says of itself where it says.
 /// </summary>
 /// <param name="Id"><c>engine/name</c>.</param>
-/// <param name="Engine"><c>neutrino</c>, <c>diffsinger</c> or <c>voicevox</c>.</param>
+/// <param name="Engine"><c>neutrino</c>, <c>diffsinger</c>, <c>voicevox</c> or <c>sinsy</c>.</param>
 /// <param name="Name">The engine's own name for the voice: a folder, a singing style.</param>
 /// <param name="Label">What the voice calls itself, else <paramref name="Name"/>.</param>
 public sealed record VoiceEntry(string Id, string Engine, string Name, string Label)
@@ -101,6 +102,16 @@ public static partial class VoiceEntries
             Language = "ja",
             Gender = VoiceGenders.Voicevox.GetValueOrDefault(v.Speaker),
             Licence = $"Credit \"VOICEVOX:{v.Speaker}\" and follow the character's terms",
+        }).ToList();
+
+    /// <summary>The Sinsy voices in a folder (<see cref="SinsyOptions.Voices"/>), all Japanese. An HTS voice
+    /// says nothing of its singer but its name does, by the Nitech custom: <c>nitech_jp_song070_f001</c>
+    /// ends in <c>_f</c> and a number for a female singer, <c>_m</c> for a male one.</summary>
+    public static IReadOnlyList<VoiceEntry> Sinsy(string folder)
+        => SinsyOptions.Voices(folder).Select(name => new VoiceEntry("sinsy/" + name, "sinsy", name, name)
+        {
+            Language = "ja",
+            Gender = SinsyGender().Match(name) is { Success: true } m ? (m.Groups[1].Value == "f" ? "female" : "male") : null,
         }).ToList();
 
     /// <summary>What a NEUTRINO voice's <c>info.toml</c> says of its speaker: <c>[speaker] name = "Merrow"</c>,
@@ -211,4 +222,7 @@ public static partial class VoiceEntries
 
     [GeneratedRegex(@"^\d+\s+")]
     private static partial Regex LeadingNumber();
+
+    [GeneratedRegex(@"_([fm])\d+$")]
+    private static partial Regex SinsyGender();
 }

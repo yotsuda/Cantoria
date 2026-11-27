@@ -49,6 +49,20 @@
     <EmbeddedResource Include="DiffSinger\g2p-arpabet.zip" LogicalName="Cantoria.DiffSinger.g2p-arpabet.zip" />
   </ItemGroup>
 
+  <!-- The sinsy backend: cantoria_sinsy (Sinsy and hts_engine_API, Modified BSD; native/sinsy) and
+       Sinsy's Japanese dictionary, built per platform by tools/build-sinsy.ps1 into native/out/<rid>/
+       and copied beside the program. The rid is the publish's, else this machine's. A build for a rid
+       with nothing there has no sinsy engine (SinsyOptions.Validate says so); the CI builds them. -->
+  <PropertyGroup>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <SinsyRid>$(RuntimeIdentifier)</SinsyRid>
+    <SinsyRid Condition="'$(SinsyRid)' == ''">$(NETCoreSdkRuntimeIdentifier)</SinsyRid>
+    <SinsyNative>$(MSBuildThisFileDirectory)..\..\native\out\$(SinsyRid)\</SinsyNative>
+  </PropertyGroup>
+  <ItemGroup Condition="Exists('$(SinsyNative)')">
+    <None Include="$(SinsyNative)**\*" Exclude="$(SinsyNative)**\*.lib;$(SinsyNative)**\*.exp" Link="%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" Pack="false" />
+  </ItemGroup>
+
   <ItemGroup>
     <None Include="..\..\README.md" Pack="true" PackagePath="\" />
     <None Include="..\..\LICENSE" Pack="true" PackagePath="\" />
