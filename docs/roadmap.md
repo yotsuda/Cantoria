@@ -114,7 +114,8 @@ a pitch-bend curve. The contract stays small; nothing here is required.
 Where it stands (2026-11-21): loudness is `level`/`levelEnd`, applied to what was sung;
 vibrato is `vibrato`/`vibratoRate` (a trial, DiffSinger); a voice's own inputs are `sing` and
 `singTo`; the pitch bend is `bend`, points of (seconds from the note's start, cents), smooth
-between them and nothing outside the note (a trial, DiffSinger; `Bend.cs`). Not done: legato
+between them and nothing outside the note (a trial, DiffSinger; `Bend.cs`; the owner heard it
+sing smoothly, 2026-11-28). Not done: legato
 from slurs. Looked into 2026-11-21 and left: the voices have no input for it (TIGER's and
 Nishiren's pitch models take `expr` and `note_rest`, no glide; `expr` is already `sing`), so it
 could only be shorter consonants into the next note (as OpenUtau's velocity) and no gap - the
