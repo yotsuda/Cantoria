@@ -100,7 +100,9 @@ DiffSinger (プロセス内の ONNX)、NEUTRINO、VOICEVOX。主な呼び手は 
 **次の一手**:
 0. **sinsy の仕上げ**: push 後の CI (3 OS) を見る。オーナーに sinsy の声を聞いてもらう。拡張を F5 で動かし、
    Download a Voice に 2 つの申し出が出て NIT SONG070 が入り、Lily# から `sinsy/nitech_jp_song070_f001` で歌うことを見る
-   (まだ画面で見ていない)。E の残り (cevio、guide) はどちらもオーナーの求めがあれば。
+   (まだ画面で見ていない)。E の残り (cevio、acestudio、guide) はどれもオーナーの求めがあれば。
+   ACE Studio は外から呼べる手段 (実験版の MCP・CLI) を出したので計画外から外した。NNSVS は計画外、
+   楽器は Cantoria の範囲外 (調べたものは `docs/instruments-2026-11-28.md`) (どれも 2026-11-28、roadmap E)。
 1. **韓国語の友人の答えを待っている** (ユーザーは韓国語も中国語も話せない)。聞き取りのページと答えの読み方は
    `docs/listening-2026-11-21.md`。答えが届いたら、そこの表で「今」が選ばれたかを見る。K1・K8〜K11 は調査の後に読みを変えた。
    **中国語の答えは届いた (2026-11-27)**: Z2・Z3・Z5 は「今」が選ばれた。Z1・Z4・Z6・Z7 は区別がつかなかった。
