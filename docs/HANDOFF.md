@@ -5,8 +5,10 @@ DiffSinger (プロセス内の ONNX)、NEUTRINO、VOICEVOX。主な呼び手は 
 リポジトリは `C:\MyProj\Cantoria` (GitHub: yotsuda/Cantoria)。下のパスはリポジトリの根から。
 2026-11-21 に作った (それまで引き継ぎのファイルはなかった)。
 
-## 現在地 (2026-11-21)
+## 現在地 (2026-11-28)
 
+- **0.6.0 を出した** (2026-11-27。GitHub Release、Marketplace に 3 ターゲットとも listed。HEAD `d7a0fe3` = v0.6.0、
+  その後のコミットはない)。以下はその用意の記録。
 - **0.6.0 を用意した** (2026-11-26、オーナーの選択で Unreleased を全部入れる)。きっかけは Lily# Studio への
   `extensionDependencies` (Cantoria を入れると Lily# も入る)。試験 355 件と `npm test` が通り、VSIX 3 つが作れた。
   Download a Voice は VS Code の中でオーナーが試し、通った (2026-11-26)。push・タグはオーナー。
@@ -77,8 +79,8 @@ DiffSinger (プロセス内の ONNX)、NEUTRINO、VOICEVOX。主な呼び手は 
    表にない中国語の語 (どれも今は `phonemes` で楽譜側から直せる)。C・D はこれで区切り。次の大きな段は
    F (どの機械でも歌える: 配れる声の調査、ライセンスが先) か E (sinsy などの新しいエンジン) で、どちらもオーナーが選ぶ。
 3. **オーナーの耳を待っている**: `bend` の試行 (すくい上げと落とし) の聞こえ方。
-4. **F の仕上げ**: Download a Voice… を VS Code で試す (F5 の Extension Development Host、diffsinger.voicesFolder を空にして)。
-   F の *done when* (何も入っていない機械で拡張を入れて 10 分で歌う) はそれで見る。リリースに入れるかはオーナー。
+4. **F の仕上げ**: Download a Voice… は VS Code の中でオーナーが試して通り (2026-11-26)、0.6.0 に入って出た。
+   残るのは F の *done when* (何も入っていない機械で Marketplace から拡張を入れて 10 分で歌う) をまっさらな機械で見ることだけ。
    - 終声と次の子音の音変化 (鼻音化・激音化・流音化・濃音化) は入れた (`KoreanPhonemizer.Meet`、標準発音法 12・17〜20・23 項)。
      友人の答えより前に入れたので、K9・K10 は今は「もう一方」と同じ読み。
 

@@ -152,8 +152,10 @@ The owner heard it sing all three languages well (2026-11-21). Built the same da
 (Core: the offer, its terms in points, its files pinned by SHA-256; fetched whole or not at all),
 `cantoria offers` / `cantoria fetch`, and the extension's **Download a Voice…**, the first button
 where it cannot sing. A voice and the vocoder it names unpacked side by side sing with nothing
-set (`DiffSingerOptions.Vocoder()`). The fetch from GitHub and unpacking took 15 s here. Not yet
-seen: the command run inside VS Code on a machine with nothing set up (the *done when*).
+set (`DiffSingerOptions.Vocoder()`). The fetch from GitHub and unpacking took 15 s here. The owner
+ran the command inside VS Code and it worked (2026-11-26); it shipped in 0.6.0 (2026-11-27).
+Not yet seen: the extension installed from the Marketplace on a machine with nothing set up
+(the *done when*).
 
 ## G. For other callers
 
