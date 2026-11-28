@@ -7,6 +7,11 @@ DiffSinger (プロセス内の ONNX)、NEUTRINO、VOICEVOX。主な呼び手は 
 
 ## 現在地 (2026-11-28)
 
+- **次のエンジンの候補に UTAU 音源 (`utau`) を挙げ、配れる音源の規約を調べた** (2026-11-28、オーナーの求め)。
+  `docs/utau-voices-2026-11-28.md`、roadmap E に行を足した。日本語は波音リツ (商用可、直リンクの zip)・足立レイ、
+  英中韓は筆音クミ (OneDrive)。重音テトは再配布禁止で、公式からの取得をどう読むかは TWINDRILL に聞くのが先。
+  作るかはオーナーが決める。
+
 - **roadmap E: sinsy を入れた** (2026-11-28、オーナーの選択「E をやって」。Unreleased)。設計は `docs/design.md` §3.4。
   - `native/sinsy/` (CMakeLists と `cantoria_sinsy.cpp`) を `tools/build-sinsy.ps1` が `native/out/<rid>/` へ作り、
     Core の csproj が DLL と `sinsy-dic/` をプログラムの隣へ写す。`native/out` は git に入らない (`out/`)。
