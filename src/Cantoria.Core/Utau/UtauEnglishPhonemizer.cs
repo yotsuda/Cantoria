@@ -156,8 +156,8 @@ public static class UtauEnglishPhonemizer
         for (int k = 0; k < units.Count; k++)
         {
             var u = units[k];
-            var pieces = new List<Oto>();
-            Oto cv;
+            var pieces = new List<Piece>();
+            Piece cv;
             double room;
             int pieceNote;
             if (k == 0)
@@ -176,32 +176,36 @@ public static class UtauEnglishPhonemizer
                 }
                 if (coda.Count > 0 && Find(bank, p.Vowel + " " + coda[0], p.Midi) is { } vc)
                 {
-                    pieces.Add(vc);
+                    pieces.Add(new Piece(vc, null, coda[0]));
                 }
                 for (int j = 1; j < coda.Count; j++)
                 {
-                    if ((Find(bank, coda[j - 1] + " " + coda[j], p.Midi) ?? Find(bank, coda[j], p.Midi)) is { } c)
+                    if (Find(bank, coda[j - 1] + " " + coda[j], p.Midi) is { } pair)
                     {
-                        pieces.Add(c);
+                        pieces.Add(new Piece(pair, coda[j - 1], coda[j]));
+                    }
+                    else if (Find(bank, coda[j], p.Midi) is { } single)
+                    {
+                        pieces.Add(new Piece(single, coda[j], coda[j]));
                     }
                 }
                 if (coda.Count == 0 && onset.Count > 0 && Find(bank, p.Vowel + " " + onset[0], p.Midi) is { } bridge)
                 {
-                    pieces.Add(bridge);
+                    pieces.Add(new Piece(bridge, null, onset[0]));
                 }
                 cv = Onset(pieces, u, onset, coda.Count == 0 ? p.Vowel : null, false, bank, voice, score);
-                room = (u.Start - segments[^1].Start) / 2;
+                room = (u.Start - segments[^1].Start) * RoomShare;
                 pieceNote = p.Note;
             }
             LayBefore(segments, pieces, cv, u.Start, room, pieceNote);
-            segments.Add(new UtauSegment(cv, u.Start, u.End, u.Note));
+            segments.Add(new UtauSegment(cv.Oto, u.Start, u.End, u.Note));
         }
         End(segments, units[^1], bank, after);
     }
 
     /// <summary>The recording the vowel is sung on, the cluster recordings before it added to <paramref name="pieces"/>.
     /// <paramref name="vowelBefore"/>: the vowel sounding just before, with no consonant between; null after silence or a consonant.</summary>
-    private static Oto Onset(List<Oto> pieces, Unit u, List<string> onset, string? vowelBefore, bool start, UtauVoicebank bank, string voice, SungScore score)
+    private static Piece Onset(List<Piece> pieces, Unit u, List<string> onset, string? vowelBefore, bool start, UtauVoicebank bank, string voice, SungScore score)
     {
         var tried = new List<string>();
         Oto? Try(string alias)
@@ -244,26 +248,51 @@ public static class UtauEnglishPhonemizer
                 }
                 if (found is not null)
                 {
-                    pieces.Add(found);
+                    pieces.Add(new Piece(found, q[at], q[to]));
                     at = to;   // (one past where the loop stopped: the cluster's last consonant)
                 }
                 else
                 {
                     if (((first ? Find(bank, "- " + q[at], u.Midi) : null) ?? Find(bank, q[at], u.Midi)) is { } single)
                     {
-                        pieces.Add(single);
+                        pieces.Add(new Piece(single, q[at], q[at]));
                     }
                     at++;
                 }
                 first = false;
             }
         }
-        return cv;
+        return new Piece(cv, used > 0 ? onset[onset.Count - used] : null, null);
     }
 
-    /// <summary>The pieces laid before <paramref name="beat"/>, each as long as the recording after it has as its
-    /// preutterance (0.03–0.25 s), all within <paramref name="room"/>; the sound before cut where they begin.</summary>
-    private static void LayBefore(List<UtauSegment> segments, List<Oto> pieces, Oto cv, double beat, double room, int note)
+    /// <summary>The share of the sound before that the consonants between it and the next vowel may take.</summary>
+    public const double RoomShare = 0.6;
+
+    /// <summary>A recording and the consonants it begins and ends on (null: a vowel, or silence).</summary>
+    private sealed record Piece(Oto Oto, string? First, string? Last);
+
+    /// <summary>
+    /// How long a piece lasts before the next one's beat. Where the next one begins on the consonant this one ends
+    /// on (<c>A k</c> then <c>kA</c>, <c>str</c> then <c>rI</c>), the next one's preutterance sounds that consonant
+    /// again: this one lasts that preutterance (0.03–0.25 s). Else (<c>@ l</c> then <c>tw</c>, <c>I N</c> then
+    /// <c>k@</c>) its own consonant must sound first: as much of its recording as there is after its
+    /// preutterance (0.03–0.2 s), then the next one's preutterance less its overlap. Owner's report 2026-11-28:
+    /// laid the first way throughout, "twinkle twinkle little star" was heard as "we-ketz we-ketz we- testou",
+    /// the N of twin and the l of kle and tle each cut off within 30 ms by the consonant after.
+    /// </summary>
+    private static double Before(Piece piece, Piece next)
+    {
+        double pre = next.Oto.Preutter / 1000;
+        if (piece.Last is not null && piece.Last == next.First)
+        {
+            return Math.Clamp(pre, 0.03, UtauPhonemizer.BridgeSeconds);
+        }
+        return Math.Clamp(After(piece.Oto), 0.03, 0.2) + Math.Clamp(pre - next.Oto.Overlap / 1000, 0.03, UtauPhonemizer.BridgeSeconds);
+    }
+
+    /// <summary>The pieces laid before <paramref name="beat"/>, each as long as <see cref="Before"/> says, all within
+    /// <paramref name="room"/>; the sound before cut where they begin.</summary>
+    private static void LayBefore(List<UtauSegment> segments, List<Piece> pieces, Piece cv, double beat, double room, int note)
     {
         if (pieces.Count == 0)
         {
@@ -272,8 +301,7 @@ public static class UtauEnglishPhonemizer
         var lengths = new double[pieces.Count];
         for (int k = 0; k < pieces.Count; k++)
         {
-            var next = k + 1 < pieces.Count ? pieces[k + 1] : cv;
-            lengths[k] = Math.Clamp(next.Preutter / 1000, 0.03, UtauPhonemizer.BridgeSeconds);
+            lengths[k] = Before(pieces[k], k + 1 < pieces.Count ? pieces[k + 1] : cv);
         }
         double total = lengths.Sum(), scale = total > room && room > 0 ? room / total : 1;
         double at = beat - total * scale;
@@ -284,7 +312,7 @@ public static class UtauEnglishPhonemizer
         for (int k = 0; k < pieces.Count; k++)
         {
             double to = at + lengths[k] * scale;
-            segments.Add(new UtauSegment(pieces[k], at, to, note));
+            segments.Add(new UtauSegment(pieces[k].Oto, at, to, note, Bridge: true));
             at = to;
         }
     }
@@ -302,32 +330,36 @@ public static class UtauEnglishPhonemizer
             return;
         }
         var k = u.Coda;
-        var pieces = new List<Oto>();
+        var pieces = new List<Piece>();
         if (k.Count == 1)
         {
             if ((Find(bank, u.Vowel + " " + k[0] + "-", u.Midi) ?? Find(bank, u.Vowel + " " + k[0], u.Midi)) is { } vc)
             {
-                pieces.Add(vc);
+                pieces.Add(new Piece(vc, null, k[0]));
             }
         }
         else
         {
             if (Find(bank, u.Vowel + " " + k[0], u.Midi) is { } vc)
             {
-                pieces.Add(vc);
+                pieces.Add(new Piece(vc, null, k[0]));
             }
             if (Find(bank, k[0] + " " + string.Concat(k.Skip(1)) + "-", u.Midi) is { } rest)
             {
-                pieces.Add(rest);
+                pieces.Add(new Piece(rest, k[0], k[^1]));
             }
             else
             {
                 for (int j = 1; j < k.Count; j++)
                 {
                     bool last = j == k.Count - 1;
-                    if (((last ? Find(bank, k[j - 1] + " " + k[j] + "-", u.Midi) : null) ?? Find(bank, k[j - 1] + " " + k[j], u.Midi) ?? Find(bank, k[j], u.Midi)) is { } c)
+                    if (((last ? Find(bank, k[j - 1] + " " + k[j] + "-", u.Midi) : null) ?? Find(bank, k[j - 1] + " " + k[j], u.Midi)) is { } pair)
                     {
-                        pieces.Add(c);
+                        pieces.Add(new Piece(pair, k[j - 1], k[j]));
+                    }
+                    else if (Find(bank, k[j], u.Midi) is { } single)
+                    {
+                        pieces.Add(new Piece(single, k[j], k[j]));
                     }
                 }
             }
@@ -336,9 +368,10 @@ public static class UtauEnglishPhonemizer
         {
             return;
         }
-        // Each as long as its recording has after its preutterance (0.05–0.25 s), ending a little into the rest,
-        // and beginning no sooner than halfway through the vowel.
-        var lengths = pieces.Select(o => Math.Clamp(Sounding(o) - o.Preutter / 1000, 0.05, UtauPhonemizer.BridgeSeconds)).ToArray();
+        // Each before the next as Before says, the last as long as its recording has after its preutterance
+        // (0.05–0.25 s); ending a little into the rest, and beginning no sooner than halfway through the vowel.
+        var lengths = pieces.Select((p, j) => j + 1 < pieces.Count ? Before(p, pieces[j + 1])
+            : Math.Clamp(After(p.Oto), 0.05, UtauPhonemizer.BridgeSeconds)).ToArray();
         double total = lengths.Sum();
         double endAt = u.End + Math.Min(Math.Min(ReleaseSeconds, total / 2), Math.Max(0, after - UtauPhonemizer.EndingRoom / 4));
         var vowel = segments[^1];
@@ -349,14 +382,14 @@ public static class UtauEnglishPhonemizer
         foreach (var (piece, length) in pieces.Zip(lengths))
         {
             double to = at + length * scale;
-            segments.Add(new UtauSegment(piece, at, to, u.Note));
+            segments.Add(new UtauSegment(piece.Oto, at, to, u.Note, Bridge: true));
             at = to;
         }
     }
 
-    /// <summary>How long an alias's recording sounds, in seconds: its length where <c>oto.ini</c> gives it
-    /// (a negative cutoff), else a guess.</summary>
-    private static double Sounding(Oto oto) => oto.Cutoff < 0 ? -oto.Cutoff / 1000 : oto.Preutter / 1000 + 0.15;
+    /// <summary>How long an alias's recording sounds after its preutterance (its consonant, for a VC), in seconds:
+    /// from its length where <c>oto.ini</c> gives it (a negative cutoff), else a guess.</summary>
+    private static double After(Oto oto) => oto.Cutoff < 0 ? (-oto.Cutoff - oto.Preutter) / 1000 : 0.15;
 
     private static Oto? Find(UtauVoicebank bank, string alias, int midi) => bank.Find(alias, midi);
 }

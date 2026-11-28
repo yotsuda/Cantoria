@@ -111,40 +111,14 @@ public sealed class UtauSinger : ISinger, IDisposable
         Vibrato.Apply(curve, FrameMs, -lead * 1000, Vibrato.Of(score.Notes));
         Bend.Apply(curve, FrameMs, -lead * 1000, Bend.Of(score.Notes));
 
-        // Each sound's preutterance and overlap, cut to fit a short note before it.
+        var timings = Timings(segments);
         int count = segments.Count;
-        var pre = new double[count];
-        var over = new double[count];
-        var joined = new bool[count];   // the sound follows the one before without silence
-        for (int k = 0; k < count; k++)
-        {
-            var s = segments[k];
-            double p = Math.Max(0, s.Oto.Preutter / 1000), o = Math.Clamp(s.Oto.Overlap / 1000, 0, Math.Max(0, s.Oto.Preutter / 1000));
-            joined[k] = k > 0 && s.Start - segments[k - 1].End < UtauPhonemizer.Touching;
-            if (joined[k])
-            {
-                double room = (s.Start - segments[k - 1].Start) / 2;
-                if (p - o > room && p - o > 0)
-                {
-                    double cut = room / (p - o);
-                    p *= cut;
-                    o *= cut;
-                }
-            }
-            pre[k] = p;
-            over[k] = o;
-        }
         for (int k = 0; k < count; k++)
         {
             ct.ThrowIfCancellationRequested();
             var s = segments[k];
-            double from = s.Start - pre[k];
-            bool next = k + 1 < count && joined[k + 1];
-            double to = next ? segments[k + 1].Start - pre[k + 1] + over[k + 1] : s.End + ReleaseSeconds;
-            to = Math.Max(to, from + 2 * FrameMs / 1000);
+            var (from, to, fadeIn, fadeOut) = timings[k];
             var y = Render(s.Oto, fs, from, to, curve, lead);
-            double fadeIn = joined[k] ? Math.Max(over[k], AttackSeconds) : AttackSeconds;
-            double fadeOut = next ? Math.Max(over[k + 1], AttackSeconds) : ReleaseSeconds;
             int at = (int)Math.Round((from + lead) * fs);
             int inLen = Math.Max(1, (int)(fadeIn * fs)), outLen = Math.Max(1, (int)(fadeOut * fs));
             for (int i = 0; i < y.Length; i++)
@@ -160,6 +134,53 @@ public sealed class UtauSinger : ISinger, IDisposable
         }
         int start = (int)Math.Round(lead * fs);
         return new SungAudio(output[start..], fs);
+    }
+
+    /// <summary>
+    /// When each recording sounds, in seconds on the score's clock: from its preutterance before its beat to where
+    /// the next one's overlap ends (or 30 ms past its end, with silence after), and the fades in and out. Where a
+    /// recording's preutterance minus its overlap is more than half the sound before, both are cut to fit, as UTAU
+    /// does; after a bridge (<see cref="UtauSegment.Bridge"/>), laid for that preutterance to sound over it, more
+    /// than nine tenths.
+    /// </summary>
+    public static (double From, double To, double FadeIn, double FadeOut)[] Timings(IReadOnlyList<UtauSegment> segments)
+    {
+        int count = segments.Count;
+        var pre = new double[count];
+        var over = new double[count];
+        var joined = new bool[count];   // the sound follows the one before without silence
+        for (int k = 0; k < count; k++)
+        {
+            var s = segments[k];
+            double p = Math.Max(0, s.Oto.Preutter / 1000), o = Math.Clamp(s.Oto.Overlap / 1000, 0, Math.Max(0, s.Oto.Preutter / 1000));
+            joined[k] = k > 0 && s.Start - segments[k - 1].End < UtauPhonemizer.Touching;
+            if (joined[k])
+            {
+                var b = segments[k - 1];
+                double room = (s.Start - b.Start) * (b.Bridge ? 0.9 : 0.5);
+                if (p - o > room && p - o > 0)
+                {
+                    double cut = room / (p - o);
+                    p *= cut;
+                    o *= cut;
+                }
+            }
+            pre[k] = p;
+            over[k] = o;
+        }
+        var timings = new (double, double, double, double)[count];
+        for (int k = 0; k < count; k++)
+        {
+            var s = segments[k];
+            double from = s.Start - pre[k];
+            bool next = k + 1 < count && joined[k + 1];
+            double to = next ? segments[k + 1].Start - pre[k + 1] + over[k + 1] : s.End + ReleaseSeconds;
+            to = Math.Max(to, from + 2 * FrameMs / 1000);
+            double fadeIn = joined[k] ? Math.Max(over[k], AttackSeconds) : AttackSeconds;
+            double fadeOut = next ? Math.Max(over[k + 1], AttackSeconds) : ReleaseSeconds;
+            timings[k] = (from, to, fadeIn, fadeOut);
+        }
+        return timings;
     }
 
     /// <summary>

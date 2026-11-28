@@ -260,9 +260,16 @@ none is offered yet (the owner's choice: a voicebank the user installs needs no 
   through to it (`- tw` before `wI`, `st` before `tA`), else single ones. Between two vowels: from
   the vowel into the first consonant (`I N`, `@ l`), one consonant into the next where there is one
   (`r d`), a word's last consonant beginning the next word where that has none of its own ("hand
-  out": `daU`). These pieces are laid before the vowel's beat, each as long as the recording after
-  it has as its preutterance (0.03-0.25 s), within half the sound before, or 0.4 s of the rest
-  before a phrase. A phrase ends on `A -` where it ends on a vowel and has a rest; else on its last
+  out": `daU`). These pieces are laid before the vowel's beat. A piece the next one begins on the
+  same consonant as (`A k` then `kA`, `str` then `rI`) lasts the next one's preutterance, which
+  sounds that consonant again; one followed by another consonant (`@ l` then `tw`, `I N` then
+  `k@`) first sounds its own (as much of its recording as follows its preutterance, 0.03-0.2 s),
+  then the next one's preutterance less its overlap. All within 0.6 of the sound before, or 0.4 s
+  of the rest before a phrase. Laid the first way throughout, the owner heard "twinkle twinkle
+  little star" as "we-ketz we-ketz we- testou" (2026-11-28): the N of twin and the l of kle and tle
+  were cut off within 30 ms by the consonant after. A recording after such a bridge (`Bridge`, the
+  Japanese CVVC `a k` too) may take nine tenths of it with its preutterance, not half
+  (`UtauSinger.Timings`). A phrase ends on `A -` where it ends on a vowel and has a rest; else on its last
   consonants (`A r-`; `{ l` then `l mz-`, else pair by pair), each as long as its recording after its
   preutterance, ending up to 0.15 s into the rest and beginning no sooner than halfway through the
   vowel, so a breath with no rest still has them. A consonant the bank lacks is passed over; a vowel

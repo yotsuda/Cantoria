@@ -195,6 +195,11 @@ public sealed class UtauTests : IDisposable
         // The cluster leads into the beat by the next recording's preutterance (60 ms).
         Assert.Equal((-0.06, 0.0), (Math.Round(segments[0].Start, 9), segments[0].End));
         Assert.Equal(0.0, segments[1].Start);
+        // "I N" before "k@": the N sounds as long as its recording has after its preutterance (0.44 s, at most
+        // 0.2), then k@'s preutterance less its overlap (0.04 s), before kle's beat. Laid only as long as k@'s
+        // preutterance, the N was cut off by the k (owner's report 2026-11-28: "twin" heard as "we").
+        Assert.Equal((0.26, 0.5), (Math.Round(segments[2].Start, 9), segments[2].End));
+        Assert.Equal(0.26, segments[1].End, 9);
         // The last consonant ends a little into the rest after the note.
         Assert.True(segments[7].Start < 2.0 && segments[7].End > 2.0, $"{segments[7].Start}..{segments[7].End}");
         Assert.Equal(["en"], English().Languages);
@@ -375,9 +380,14 @@ public sealed class UtauTests : IDisposable
             return;
         }
         var score = Twinkle();
-        foreach (var s in UtauPhonemizer.Segments(score, UtauVoicebank.Load(voice), "utau/en"))
+        // Each recording: its beat and end, when it sounds, and how long of it after its beat is heard before the next.
+        var segments = UtauPhonemizer.Segments(score, UtauVoicebank.Load(voice), "utau/en");
+        var timings = UtauSinger.Timings(segments);
+        for (int k = 0; k < segments.Count; k++)
         {
-            _output.WriteLine($"{s.Note,3} {s.Start,7:0.000} {s.End,7:0.000}  {s.Oto.Alias}");
+            var s = segments[k];
+            double heard = (k + 1 < segments.Count ? timings[k + 1].From : timings[k].To) - s.Start;
+            _output.WriteLine($"{s.Note,3} {s.Start,7:0.000} {s.End,7:0.000}  sounds {timings[k].From,7:0.000}..{timings[k].To,7:0.000}  after beat {heard * 1000,4:0} ms  {s.Oto.Alias}");
         }
         using var singer = new UtauSinger(new UtauOptions(voice));
         var audio = await singer.SingAsync(score);
