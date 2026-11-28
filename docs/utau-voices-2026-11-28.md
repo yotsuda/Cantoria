@@ -60,6 +60,12 @@ Not offerable or unclear:
 
 ## What it means
 
+The table matters only for Download a Voice. Cantoria bundles no bank, so a `utau` backend that
+reads whatever bank the user installed (as `diffsinger` does) is free of every redistribution
+clause, and no terms read forbid other programs; what the user may do with the songs is between
+the user and the bank's author. For a bank whose terms leave a tool's fetch unclear (Teto), the
+offer can open the official page instead and let the user download it (owner, 2026-11-28).
+
 Unlike DiffSinger, UTAU has banks whose terms fit an offer, and some sit at stable direct URLs
 that `VoiceOffers` can pin by SHA-256:
 
