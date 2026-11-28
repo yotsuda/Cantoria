@@ -271,21 +271,24 @@ none is offered yet (the owner's choice: a voicebank the user installs needs no 
   Japanese CVVC `a k` too) may take nine tenths of it with its preutterance, not half
   (`UtauSinger.Timings`); a recording that begins on a vowel (`a k`, `@ l`, `FromVowel`) whose
   preutterance is cut loses the front of that vowel, so its consonant still begins on its beat.
-- **Syllabic consonants**: a schwa before `l`, `n` or `m` that ends its syllable (twinkle, little,
-  button) takes at most 0.1 s (0.35 of the syllable) and the consonant's piece holds the rest,
-  its recording stretched; before `l` the vowel is the bank's `U` where it has `U l` (`kU`, `U l`).
-  The held l (twinkle) is sung on the word-final recording (`U l-`), which has it held: Teto's `U l` has 17 ms of l, and stretched it was
-  heard as a muffled, rolled "kru". Mid-phrase it is `Held`: used only to the end of its
-  unstretched part (`oto.ini`'s consonant), the l after its preutterance stretched to fill, for
-  with its release into silence the voice broke off after the l.
-  Held as Teto sings `@`, the owner heard "win-kEtz", "littEl", and asked for "twin-kULe"
-  (2026-11-28).
-- The sung audio starts at the score's 0 s, so a consonant before a first note at 0 (`- tw`) is
-  cut off: the test's Twinkle starts at 0.5 s. A phrase ends on `A -` where it ends on a vowel and has a rest; else on its last
+  A phrase ends on `A -` where it ends on a vowel and has a rest; else on its last
   consonants (`A r-`; `{ l` then `l mz-`, else pair by pair), each as long as its recording after its
   preutterance, ending up to 0.15 s into the rest and beginning no sooner than halfway through the
   vowel, so a breath with no rest still has them. A consonant the bank lacks is passed over; a vowel
   is refused with the note named. Not yet: VCCV (Hitsune Kumi), ARPAsing, a note's `phonemes`.
+- **A schwa before l** that ends its syllable (twinkle, little) is the bank's `U` where it has
+  `U l` (`kU`, then `U l` short at its end as any last consonant). The owner's ears, 2026-11-28:
+  held as Teto sings `@` it was "win-kEtz", "littEl"; with the l held over most of the syllable
+  it was too strong; "twinku twinku" was the natural English. On the way: `U l` has 17 ms of l,
+  and stretched it was a muffled, rolled "kru"; the word-final `U l-` with its release into
+  silence broke the voice off after the l.
+- **Syllabic n and m**: a schwa before `n` or `m` that ends its syllable (button, rhythm) takes at
+  most 0.1 s (0.35 of the syllable) and the consonant holds the rest, on its word-final recording
+  (`@ n-`) where the bank has one; mid-phrase that is `Held`, used only to the end of its
+  unstretched part (`oto.ini`'s consonant), its consonant stretched to fill, its release left
+  out. Not yet heard by the owner.
+- The sung audio starts at the score's 0 s, so a consonant before a first note at 0 (`- tw`) is
+  cut off: the test's Twinkle starts at 0.5 s.
 - **CVVC banks**: where the mora took a CV recording after a vowel and the bank has the bridge from
   that vowel into its consonant (`a k` before か; `a sh`, else `a s`, before し; `n` for ん), the
   bridge takes the end of the sound before: as long as the CV recording's preutterance, at most
