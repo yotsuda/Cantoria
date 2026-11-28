@@ -196,7 +196,12 @@ public static class UtauEnglishPhonemizer
                 {
                     (coda, onset) = (coda[..^1], [coda[^1]]);   // "hand out": the d begins the next vowel
                 }
-                if (coda.Count > 0 && Find(bank, p.Vowel + " " + coda[0], p.Midi) is { } vc)
+                // A syllabic consonant held on before another consonant (twinkle twinkle: the l before tw) is sung on
+                // the recording of it ending a word (U l-), which has it held: "U l" has 17 ms of l in Teto
+                // English, and stretched it was heard as a muffled, rolled "kru" (owner's report 2026-11-28).
+                if (coda.Count > 0 && ((p.Syllabic && coda.Count == 1 && onset.Count > 0 && onset[0] != coda[0]
+                        ? Find(bank, p.Vowel + " " + coda[0] + "-", p.Midi) : null)
+                    ?? Find(bank, p.Vowel + " " + coda[0], p.Midi)) is { } vc)
                 {
                     pieces.Add(new Piece(vc, null, coda[0]));
                 }

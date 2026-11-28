@@ -274,6 +274,9 @@ none is offered yet (the owner's choice: a voicebank the user installs needs no 
 - **Syllabic consonants**: a schwa before `l`, `n` or `m` that ends its syllable (twinkle, little,
   button) takes at most 0.1 s (0.35 of the syllable) and the consonant's piece holds the rest,
   its recording stretched; before `l` the vowel is the bank's `U` where it has `U l` (`kU`, `U l`).
+  Held before another consonant (twinkle twinkle: the l before `tw`) it is sung on the word-final
+  recording (`U l-`), which has the l held: Teto's `U l` has 17 ms of l, and stretched it was
+  heard as a muffled, rolled "kru".
   Held as Teto sings `@`, the owner heard "win-kEtz", "littEl", and asked for "twin-kULe"
   (2026-11-28).
 - The sung audio starts at the score's 0 s, so a consonant before a first note at 0 (`- tw`) is
