@@ -98,8 +98,8 @@ DiffSinger (プロセス内の ONNX)、NEUTRINO、VOICEVOX。主な呼び手は 
     CLI で GitHub から空の folder へ 15 秒、vocoder 設定なしで歌えた。**VS Code の中ではまだ動かしていない**。
 
 - **Mac で最適に歌う準備** (2026-11-28、オーナーの求め「mac はないが、可能な限り最適な実行を mac でも」。Unreleased)。
-  - `OnnxProviders.CoreMLDefaults` (MLProgram、全演算装置) に、環境変数 `CANTORIA_COREML` (`key=value;…`) を上書きして CoreML に渡す。
-    auto はまだ CoreML を選ばない。
+  - `OnnxProviders.CoreMLDefaults` (今は MLProgram・ALL・`Models=vocoder`、下の「決めた」) に、環境変数 `CANTORIA_COREML`
+    (`key=value;…`) を上書きして CoreML に渡す。`Models=` (空) で全モデルを CoreML に。
   - `tools/bench-providers.ps1`: `cantoria serve` で同じ楽譜を 1 回目 (読み込み・コンパイル込み) と半音上げて warm で歌い、秒の表と WAV。
     この機械で Qixuan 7 秒: CPU 15.4 / 17.1 s、DirectML 8.0 / 2.4 s (1 回目 / warm)。
   - `.github/workflows/mac.yml`: macOS ランナーで `cantoria fetch qixuan` し、cpu と CoreML の 4 設定を測る。job summary に表、
@@ -116,8 +116,6 @@ DiffSinger (プロセス内の ONNX)、NEUTRINO、VOICEVOX。主な呼び手は 
     「on the CPU here, CoreML for its vocoder」。**4 回目 (緑)**: `auto` は runner で CoreML を選び、vocoder 1.08 s
     (CPU 5.61)、warm 17.0 s (CPU 19.7)。macOS の CI の試験も auto = CoreML で通った。
     **オーナーの耳: CPU と CoreML の vocoder に違いはない** (2026-11-28、cpu-1.wav と coreml-Models-vocoder-1.wav)。残り: 本物の Mac の GPU。
-    WAV (`cpu-1.wav`、`coreml-ModelFormat-NeuralNetwork-1.wav`) は %TEMP%\cantoria-mac1 に落とした。**オーナーの耳はまだ**。
-    結果を見て: 正しく歌い速い設定を `CoreMLDefaults` に、CPU より遅くなければ auto を macOS で CoreML に (roadmap B5)。WAV はオーナーの耳で。
 
 **次の一手**:
 0. **sinsy の仕上げ**: push 後の CI (3 OS) と `macOS singing` (mac.yml、上の「Mac で最適に歌う準備」) を見る。オーナーに sinsy の声を聞いてもらう。拡張を F5 で動かし、
