@@ -79,6 +79,16 @@ public class OnnxProvidersTests
     }
 
     [Fact]
+    public void TheCoreMLModels_AreAllUnlessNamed()
+    {
+        Assert.Null(OnnxProviders.CoreMLModels(null));
+        Assert.Null(OnnxProviders.CoreMLModels("ModelFormat=NeuralNetwork"));
+        var models = OnnxProviders.CoreMLModels("Models=acoustic, Vocoder;ModelFormat=NeuralNetwork")!;
+        Assert.True(models.SetEquals(["acoustic", "vocoder"]));
+        Assert.Contains("VOCODER", models);                    // as written or not
+    }
+
+    [Fact]
     public void Describe_NamesEveryProvider_AndWhatAutoPicks()
     {
         var lines = OnnxProviders.Describe().ToList();

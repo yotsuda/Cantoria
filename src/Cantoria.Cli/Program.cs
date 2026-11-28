@@ -696,6 +696,14 @@ static async Task<int> Serve(string[] rest)
                     {
                         Console.Error.WriteLine($"cantoria: {text}");
                     }
+                    // Each model's seconds, for tools/bench-providers.ps1.
+                    if (Environment.GetEnvironmentVariable("CANTORIA_TRACE") is { Length: > 0 } && DiffSingerOf(singer) is { } traced)
+                    {
+                        foreach (string logged in traced.LastLog.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+                        {
+                            Console.Error.WriteLine($"cantoria: trace {FileNameOf(id)}: {logged}");
+                        }
+                    }
                     var output = request.Output ?? Path.Combine(outDir, FileNameOf(id) + ".wav");
                     var dirName = Path.GetDirectoryName(Path.GetFullPath(output));
                     if (!string.IsNullOrEmpty(dirName))

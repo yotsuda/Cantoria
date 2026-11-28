@@ -136,7 +136,15 @@ compute units), each pair of `CANTORIA_COREML` (`key=value;…`, ONNX Runtime's 
 provider options) put over them. Nobody here has a Mac; `.github/workflows/mac.yml`
 sings Qixuan on GitHub's macOS runner through `tools/bench-providers.ps1` (the CPU and
 CoreML settings; first and warm seconds, the WAVs as an artifact). That runner is a VM
-with no Metal, so it proves CoreML sings right, not how fast a real Mac's GPU is. On the CPU a 7 s phrase renders in 4–18 s at 10–20 steps; on DirectML
+with no Metal, so it proves CoreML sings right, not how fast a real Mac's GPU is.
+`CANTORIA_COREML`'s one key of Cantoria's own, `Models=acoustic,vocoder` (also `dur`,
+`pitch`, `variance`, `linguistic`), runs only those on CoreML and the rest on the CPU
+(`DiffSingerVoice.Open`'s role). `CANTORIA_TRACE` makes `serve` print each answer's
+log (each model's seconds) on stderr. First run there (2026-11-28, M1 VM, 3 cores, Qixuan,
+the 7 s example, 20 steps): the CPU 20.0 s first / 18.6 s warm; MLProgram on every model
+fails in the duration predictor's linguistic encoder (an attention slice of zero elements,
+which the CoreML provider refuses); NeuralNetwork sings, 17.9 / 14.4 s, with the graphs cut
+into 45–68 CoreML partitions covering about half the nodes. On the CPU a 7 s phrase renders in 4–18 s at 10–20 steps; on DirectML
 the acoustic model takes 0.3 s and the phrase under a second once the models are
 resident. The variance path is written after OpenUtau but untested (the voice at
 hand has no `dsvariance`).

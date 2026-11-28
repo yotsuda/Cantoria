@@ -103,7 +103,12 @@ DiffSinger (プロセス内の ONNX)、NEUTRINO、VOICEVOX。主な呼び手は 
   - `tools/bench-providers.ps1`: `cantoria serve` で同じ楽譜を 1 回目 (読み込み・コンパイル込み) と半音上げて warm で歌い、秒の表と WAV。
     この機械で Qixuan 7 秒: CPU 15.4 / 17.1 s、DirectML 8.0 / 2.4 s (1 回目 / warm)。
   - `.github/workflows/mac.yml`: macOS ランナーで `cantoria fetch qixuan` し、cpu と CoreML の 4 設定を測る。job summary に表、
-    artifact `macos-singing` に WAV。**push 後に初めて走る**。ランナーは VM で Metal がないので、GPU の速さは測れない。
+    artifact `macos-singing` に WAV。ランナーは VM で Metal がないので、GPU の速さは測れない。
+    **1 回目 (2026-11-28、緑)**: CPU 20.0 / 18.6 s。MLProgram は全モデルだと duration の linguistic で落ちる (attention の
+    長さ 0 の slice を CoreML EP が断る)。NeuralNetwork は歌い 17.9 / 14.4 s (グラフが 45〜68 個に切れ、CoreML は半分ほど)。
+    そこで `CANTORIA_COREML` に `Models=acoustic,vocoder` (CoreML に回すモデル、残りは CPU) と、serve の `CANTORIA_TRACE`
+    (モデルごとの秒を stderr に) を足し、表に warm の dur・pitch+acoustic・vocoder の列。**2 回目は push 待ち**。
+    WAV (`cpu-1.wav`、`coreml-ModelFormat-NeuralNetwork-1.wav`) は %TEMP%\cantoria-mac1 に落とした。**オーナーの耳はまだ**。
     結果を見て: 正しく歌い速い設定を `CoreMLDefaults` に、CPU より遅くなければ auto を macOS で CoreML に (roadmap B5)。WAV はオーナーの耳で。
 
 **次の一手**:

@@ -49,9 +49,10 @@ function Invoke-Run([string] $run) {
     $psi.RedirectStandardError = $true
     $psi.UseShellExecute = $false
     $psi.Environment['CANTORIA_COREML'] = if ($pairs) { $pairs } else { '' }
+    $psi.Environment['CANTORIA_TRACE'] = '1'          # each model's seconds on stderr
     $p = [System.Diagnostics.Process]::Start($psi)
     $errTask = $p.StandardError.ReadToEndAsync()
-    $row = [ordered]@{ run = $run; provider = ''; first = ''; warm = ''; error = '' }
+    $row = [ordered]@{ run = $run; provider = ''; first = ''; warm = ''; dur = ''; acoustic = ''; vocoder = ''; error = '' }
     try {
         $ready = $p.StandardOutput.ReadLine()
         if (-not $ready) { throw "serve said nothing" }
@@ -82,15 +83,29 @@ function Invoke-Run([string] $run) {
     if (-not $p.WaitForExit(120000)) { $p.Kill($true) }
     $stderr = $errTask.Result
     Set-Content -LiteralPath (Join-Path $Out "$safe.stderr.txt") -Value $stderr
+    # The warm request's seconds per model, summed over its phrases. Each phrase's log gives the
+    # seconds since the phrase began: "timing: … in 0.10 s" (duration), "acoustic: … in 17.86 s"
+    # (pitch, variance and acoustic since), "vocoder …: … in 19.44 s" (the vocoder since).
+    $sums = @{ dur = 0.0; acoustic = 0.0; vocoder = 0.0 }; $last = 0.0; $seen = $false
+    foreach ($m in [regex]::Matches($stderr, "trace 2: (timing|acoustic|vocoder)\b[^\n]* in ([0-9.]+) s")) {
+        $at = [double]::Parse($m.Groups[2].Value, [cultureinfo]::InvariantCulture)
+        switch ($m.Groups[1].Value) {
+            'timing' { $sums.dur += $at }
+            'acoustic' { $sums.acoustic += $at - $last }
+            'vocoder' { $sums.vocoder += $at - $last }
+        }
+        $last = $at; $seen = $true
+    }
+    if ($seen) { foreach ($k in 'dur', 'acoustic', 'vocoder') { $row[$k] = '{0:0.00}' -f $sums[$k] } }
     [pscustomobject]$row
 }
 
 $rows = foreach ($run in $Runs) { Invoke-Run $run }
 
 $md = @(
-    "| run | first (s) | warm (s) | ran on | error |",
-    "|---|---|---|---|---|"
-) + ($rows | ForEach-Object { "| ``$($_.run)`` | $($_.first) | $($_.warm) | $($_.provider -replace '\|', '/') | $($_.error -replace '\|', '/') |" })
+    "| run | first (s) | warm (s) | warm: dur | pitch+acoustic | vocoder | ran on | error |",
+    "|---|---|---|---|---|---|---|---|"
+) + ($rows | ForEach-Object { "| ``$($_.run)`` | $($_.first) | $($_.warm) | $($_.dur) | $($_.acoustic) | $($_.vocoder) | $($_.provider -replace '\|', '/') | $($_.error -replace '\|', '/') |" })
 $table = $md -join "`n"
 Set-Content -LiteralPath (Join-Path $Out 'bench.md') -Value $table
 $table

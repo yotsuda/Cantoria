@@ -75,7 +75,9 @@ public static class OnnxProviders
             }
             else
             {
-                options.AppendExecutionProvider(CoreMLName, CoreMLOptions(Environment.GetEnvironmentVariable(CoreMLVariable)));
+                var coreml = CoreMLOptions(Environment.GetEnvironmentVariable(CoreMLVariable));
+                coreml.Remove(CoreMLModelsKey);                     // Cantoria's, not the provider's
+                options.AppendExecutionProvider(CoreMLName, coreml);
             }
             return (options, gpu, null);
         }
@@ -106,6 +108,17 @@ public static class OnnxProviders
         ["ModelFormat"] = "MLProgram",
         ["MLComputeUnits"] = "ALL",
     };
+
+    /// <summary>The one key of <see cref="CoreMLVariable"/> that is Cantoria's: the models CoreML
+    /// runs, comma-separated (<c>acoustic</c>, <c>vocoder</c>, <c>dur</c>, <c>pitch</c>, <c>variance</c>,
+    /// <c>linguistic</c> for the predictors' encoders); the others run on the CPU. Absent: all.</summary>
+    public const string CoreMLModelsKey = "Models";
+
+    /// <summary>The models <see cref="CoreMLModelsKey"/> names in <paramref name="spec"/>, or null for all.</summary>
+    public static IReadOnlySet<string>? CoreMLModels(string? spec) =>
+        CoreMLOptions(spec).TryGetValue(CoreMLModelsKey, out var models)
+            ? models.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToHashSet(StringComparer.OrdinalIgnoreCase)
+            : null;
 
     /// <summary><see cref="CoreMLDefaults"/> with <paramref name="spec"/>'s <c>key=value</c> pairs
     /// (separated by <c>;</c>) put over them; an empty value removes the key.</summary>
