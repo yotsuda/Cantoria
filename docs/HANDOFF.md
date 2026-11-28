@@ -37,7 +37,9 @@ DiffSinger (プロセス内の ONNX)、NEUTRINO、VOICEVOX。主な呼び手は 
   - まだ: 英語の VCCV・ARPAsing、音源自身の音高の揺れ (modulation)、flags、解析の disk cache、音源の配布 (候補は
     `docs/utau-voices-2026-11-28.md`: 日本語は波音リツ・足立レイ、英中韓は筆音クミ。重音テトは TWINDRILL に聞くのが先)。
     `findEngines` は OpenUtau の Singers を DiffSinger の声として探すが、そこには UTAU 音源も入る。utau の folder にも勧められる。
-  - **CI はまだ回っていない** (push 待ち)。Linux・macOS での WORLD のビルドと `UtauTests` の歌を CI が初めて見る。
+  - **CI (2026-11-28 run 46128986717)**: Windows・macOS は緑 (WORLD のビルドと `UtauTests` も)。Linux は
+    `cantoria_world.cpp` の `size_t` が gcc で未定義で赤 → `<cstddef>` と `std::size_t` で直した (`459cd25`、push 待ち)。
+    Linux の `UtauTests` はその後の CI が初めて見る。
 
 - **roadmap E: sinsy を入れた** (2026-11-28、オーナーの選択「E をやって」。Unreleased)。設計は `docs/design.md` §3.4。
   - `native/sinsy/` (CMakeLists と `cantoria_sinsy.cpp`) を `tools/build-native.ps1` が `native/out/<rid>/` へ作り、
