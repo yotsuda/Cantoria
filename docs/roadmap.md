@@ -81,7 +81,8 @@ OpenUtau DiffSinger format — a folder the user installs, as a sound font is.
    no Mac; the aim is the best run a Mac allows). After three runs (design §3.2): `auto` takes
    CoreML on macOS for the vocoder alone (5–7× faster there than ONNX Runtime's CPU; the
    duration and acoustic models fail as an ML Program and are no faster as a NeuralNetwork).
-   Still open: the owner's ear on the CoreML WAVs, and a real Mac's GPU and Neural Engine (the
+   The owner heard no difference between the CPU's and CoreML's vocoder (2026-11-28). Still
+   open: a real Mac's GPU and Neural Engine (the
    runner has neither), which would show whether ALL or another compute-unit setting is best.
 
 *Done when* the same score sings through `neutrino/…` and `diffsinger/…` by changing the voice

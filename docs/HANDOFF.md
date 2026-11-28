@@ -115,7 +115,7 @@ DiffSinger (プロセス内の ONNX)、NEUTRINO、VOICEVOX。主な呼び手は 
     VM に GPU・Neural Engine がない (VM 最速の CPUOnly は CoreML 自身の CPU の道) から。拡張の Download a Voice は Mac で
     「on the CPU here, CoreML for its vocoder」。**4 回目 (緑)**: `auto` は runner で CoreML を選び、vocoder 1.08 s
     (CPU 5.61)、warm 17.0 s (CPU 19.7)。macOS の CI の試験も auto = CoreML で通った。
-    残り: オーナーの耳 (`%TEMP%\cantoria-mac3\macos-singing\` の cpu-1.wav と coreml-Models-vocoder-1.wav)、本物の Mac の GPU。
+    **オーナーの耳: CPU と CoreML の vocoder に違いはない** (2026-11-28、cpu-1.wav と coreml-Models-vocoder-1.wav)。残り: 本物の Mac の GPU。
     WAV (`cpu-1.wav`、`coreml-ModelFormat-NeuralNetwork-1.wav`) は %TEMP%\cantoria-mac1 に落とした。**オーナーの耳はまだ**。
     結果を見て: 正しく歌い速い設定を `CoreMLDefaults` に、CPU より遅くなければ auto を macOS で CoreML に (roadmap B5)。WAV はオーナーの耳で。
 
