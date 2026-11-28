@@ -130,9 +130,9 @@ cannot be created, the voice falls back to the CPU and says why
 CPU (…)", `serve` answers `provider`). The CLI's `--cpu` (the extension's
 `cantoria.general.useGPU` off) is `Cpu`. CUDA is not wired: it needs the user's CUDA
 and cuDNN and a package of hundreds of megabytes. CoreML comes in the standard package
-on macOS and is appended when asked for by name (`--provider coreml`), not by `Auto`,
-until it has been measured: with `OnnxProviders.CoreMLDefaults` (an ML Program on all
-compute units), each pair of `CANTORIA_COREML` (`key=value;…`, ONNX Runtime's CoreML
+on macOS, and `Auto` takes it there (2026-11-28, after three runs on the macOS runner, below):
+with `OnnxProviders.CoreMLDefaults` (the vocoder alone, as an ML Program, on all compute
+units; the other models on the CPU), each pair of `CANTORIA_COREML` (`key=value;…`, ONNX Runtime's CoreML
 provider options) put over them. Nobody here has a Mac; `.github/workflows/mac.yml`
 sings Qixuan on GitHub's macOS runner through `tools/bench-providers.ps1` (the CPU and
 CoreML settings; first and warm seconds, the WAVs as an artifact). That runner is a VM
@@ -149,7 +149,11 @@ model's encoder fails MLProgram the same way (the zero-element slice is in the m
 Qixuan's terms forbid changing them), and in NeuralNetwork it is no faster than the CPU
 (18.7–23.5 s against 17.0); the vocoder on CoreML NeuralNetwork took 2.35 s against the CPU's
 7.74. The runner's seconds swing by a third between runs, so the bench now reports the
-fastest of three warm requests. On the CPU a 7 s phrase renders in 4–18 s at 10–20 steps; on DirectML
+fastest of three warm requests. Third run, the vocoder alone on CoreML: 1.54 s (MLProgram,
+ALL), 1.65 (NeuralNetwork), 1.17 (CPUAndNeuralEngine), 0.96 (CPUOnly) against the CPU's 7.29;
+the whole warm song 14.8–18.8 s against 27.7; the WAVs' levels alike (RMS −25.5 to −26.6 dB, no
+clipping). The VM has no GPU, so CoreML's own CPU path (Accelerate) is what wins there;
+the default stays ALL so that a real Mac's GPU and Neural Engine can be chosen. On the CPU a 7 s phrase renders in 4–18 s at 10–20 steps; on DirectML
 the acoustic model takes 0.3 s and the phrase under a second once the models are
 resident. The variance path is written after OpenUtau but untested (the voice at
 hand has no `dsvariance`).

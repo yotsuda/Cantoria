@@ -279,7 +279,8 @@ sealed class Engines
     }
 
     /// <summary>A DiffSinger voice's options, on <see cref="Provider"/> (<c>--provider</c>; the default
-    /// <see cref="OnnxProvider.Auto"/> is DirectML when this build and this machine have it, else the CPU).</summary>
+    /// <see cref="OnnxProvider.Auto"/> is DirectML when this build and this machine have it, CoreML for the
+    /// vocoder on macOS, else the CPU).</summary>
     private DiffSingerOptions DiffSinger(string folder) => new(folder)
     {
         VocoderFolder = VocoderFolder,

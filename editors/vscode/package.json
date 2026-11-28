@@ -63,7 +63,7 @@
               "type": "boolean",
               "default": true,
               "scope": "machine-overridable",
-              "markdownDescription": "On (the default), every engine sings on the GPU where this computer has one it can use: NEUTRINO through CUDA, a DiffSinger voice through DirectML (any DirectX 12 GPU), VOICEVOX with its GPU option. Where there is none, the CPU sings without being asked. Nothing needs setting.\n\nTurn it off only to keep the GPU free for something else (a game, a video being rendered), or to see whether a GPU driver is what makes a voice sound wrong. Off, the CPU sings, several times slower."
+              "markdownDescription": "On (the default), every engine sings on the GPU where this computer has one it can use: NEUTRINO through CUDA, a DiffSinger voice through DirectML on Windows (any DirectX 12 GPU) and through Apple's CoreML on a Mac (its vocoder), VOICEVOX with its GPU option. Where there is none, the CPU sings without being asked. Nothing needs setting.\n\nTurn it off only to keep the GPU free for something else (a game, a video being rendered), or to see whether a GPU driver is what makes a voice sound wrong. Off, the CPU sings, several times slower."
             },
             "cantoria.general.cacheSizeMB": {
               "order": 4,

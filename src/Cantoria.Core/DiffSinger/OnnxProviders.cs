@@ -9,14 +9,14 @@ namespace Cantoria.DiffSinger;
 public enum OnnxProvider
 {
     /// <summary>The platform's GPU provider where this build and this machine have it, else the CPU:
-    /// DirectML on Windows (a DirectX 12 device); the CPU on Linux; the CPU on macOS too for now
-    /// (CoreML is there to ask for by name, untested here).</summary>
+    /// DirectML on Windows (a DirectX 12 device); CoreML on macOS (for the vocoder,
+    /// <see cref="OnnxProviders.CoreMLDefaults"/>); the CPU on Linux.</summary>
     Auto,
     /// <summary>The CPU, always.</summary>
     Cpu,
     /// <summary>DirectML (Windows, a DirectX 12 GPU, the DirectML build of the program), or an error.</summary>
     DirectML,
-    /// <summary>CoreML (macOS; in the standard ONNX Runtime package), or an error. Not measured yet.</summary>
+    /// <summary>CoreML (macOS; in the standard ONNX Runtime package), or an error.</summary>
     CoreML,
 }
 
@@ -27,8 +27,8 @@ public enum OnnxProvider
 /// when the build has no DirectML (the CPU package: the entry point is missing) or the machine no
 /// DirectX 12 device (the provider cannot be appended, or the first session cannot be created).
 /// Measured on the spike (2026-11-08, RTX 5070 Ti): the acoustic model 0.29 s on DirectML against
-/// 1.3–14 s on the CPU for a 7 s phrase. On macOS the standard package carries CoreML; it is
-/// appended on request only (<see cref="OnnxProvider.CoreML"/>) until it has been heard.
+/// 1.3–14 s on the CPU for a 7 s phrase. On macOS the standard package carries CoreML, which
+/// <see cref="OnnxProvider.Auto"/> takes for the vocoder (<see cref="CoreMLDefaults"/>).
 /// </summary>
 public static class OnnxProviders
 {
@@ -51,13 +51,13 @@ public static class OnnxProviders
             OnnxProvider.Cpu => null,
             OnnxProvider.DirectML => DirectMLName,
             OnnxProvider.CoreML => CoreMLName,
-            _ => OperatingSystem.IsWindows() ? DirectMLName : null,
+            _ => OperatingSystem.IsWindows() ? DirectMLName : OperatingSystem.IsMacOS() ? CoreMLName : null,
         };
         if (gpu is null)
         {
             return (new SessionOptions(), CpuName, null);
         }
-        if (wanted == OnnxProvider.Auto && Gpus.Hardware().Count == 0)
+        if (wanted == OnnxProvider.Auto && gpu == DirectMLName && Gpus.Hardware().Count == 0)
         {
             // DirectML would run on Microsoft's software adapter: the CPU, slower.
             return (new SessionOptions(), CpuName, NoGpuNote);
@@ -98,23 +98,29 @@ public static class OnnxProviders
     public const string CoreMLVariable = "CANTORIA_COREML";
 
     /// <summary>
-    /// The CoreML provider's options when nothing else is said: an ML Program (the newer format,
-    /// which takes more of ONNX's operators than NeuralNetwork) on every compute unit (CPU, GPU,
-    /// Neural Engine; CoreML chooses). Not yet measured against the others; the macOS workflow
-    /// (.github/workflows/mac.yml) is where they are compared.
+    /// The CoreML provider's options when nothing else is said: the vocoder alone, as an ML Program
+    /// (the newer format), on every compute unit (CPU, GPU, Neural Engine; CoreML chooses).
+    /// Measured on GitHub's macOS runner (2026-11-28, .github/workflows/mac.yml; an M1 VM with no
+    /// GPU): the vocoder 1.0–1.7 s on CoreML in every setting against 7.3 s on ONNX Runtime's CPU;
+    /// the duration and acoustic models fail as an ML Program (an attention slice of zero elements
+    /// inside them, which the provider refuses) and are no faster as a NeuralNetwork, so they stay on
+    /// the CPU. ALL rather than the VM's fastest, CPUOnly: a real Mac has the GPU and Neural Engine
+    /// the VM lacks, and CoreML picks.
     /// </summary>
     public static readonly IReadOnlyDictionary<string, string> CoreMLDefaults = new Dictionary<string, string>
     {
         ["ModelFormat"] = "MLProgram",
         ["MLComputeUnits"] = "ALL",
+        [CoreMLModelsKey] = "vocoder",
     };
 
     /// <summary>The one key of <see cref="CoreMLVariable"/> that is Cantoria's: the models CoreML
     /// runs, comma-separated (<c>acoustic</c>, <c>vocoder</c>, <c>dur</c>, <c>pitch</c>, <c>variance</c>,
-    /// <c>linguistic</c> for the predictors' encoders); the others run on the CPU. Absent: all.</summary>
+    /// <c>linguistic</c> for the predictors' encoders); the others run on the CPU. The default is the
+    /// vocoder (<see cref="CoreMLDefaults"/>); <c>Models=</c> (empty) gives CoreML every model.</summary>
     public const string CoreMLModelsKey = "Models";
 
-    /// <summary>The models <see cref="CoreMLModelsKey"/> names in <paramref name="spec"/>, or null for all.</summary>
+    /// <summary>The models CoreML runs with <paramref name="spec"/> over the defaults, or null for all.</summary>
     public static IReadOnlySet<string>? CoreMLModels(string? spec) =>
         CoreMLOptions(spec).TryGetValue(CoreMLModelsKey, out var models)
             ? models.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToHashSet(StringComparer.OrdinalIgnoreCase)
@@ -181,7 +187,7 @@ public static class OnnxProviders
     }
 
     /// <summary>Where <see cref="OnnxProvider.Auto"/> runs DiffSinger's models on this machine with this
-    /// build — <c>DirectML</c> or <c>CPU</c> — and why the CPU, when a GPU was looked for.</summary>
+    /// build — <c>DirectML</c>, <c>CoreML</c> or <c>CPU</c> — and why the CPU, when a GPU was looked for.</summary>
     public static (string Name, string? Note) Auto()
     {
         var (options, name, note) = Create(OnnxProvider.Auto);

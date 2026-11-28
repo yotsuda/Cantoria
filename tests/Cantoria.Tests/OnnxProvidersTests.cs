@@ -30,15 +30,20 @@ public class OnnxProvidersTests
         var (options, name, note) = OnnxProviders.Create(OnnxProvider.Auto);
         using (options)
         {
-            Assert.Contains(name, new[] { "CPU", "DirectML" });
+            Assert.Contains(name, new[] { "CPU", "DirectML", "CoreML" });
             if (OperatingSystem.IsWindows() && name == "CPU")
             {
                 // the CPU package, or no device; or no GPU but Windows' software adapter
                 Assert.True(note!.Contains("DirectML is not available") || note == OnnxProviders.NoGpuNote, note);
             }
-            if (!OperatingSystem.IsWindows())
+            if (OperatingSystem.IsMacOS())
             {
-                Assert.Equal("CPU", name);                              // Linux; macOS until CoreML is heard
+                Assert.Equal("CoreML", name);                           // the standard package carries it
+                Assert.Null(note);
+            }
+            if (OperatingSystem.IsLinux())
+            {
+                Assert.Equal("CPU", name);
                 Assert.Null(note);
             }
         }
@@ -81,8 +86,9 @@ public class OnnxProvidersTests
     [Fact]
     public void TheCoreMLModels_AreAllUnlessNamed()
     {
-        Assert.Null(OnnxProviders.CoreMLModels(null));
-        Assert.Null(OnnxProviders.CoreMLModels("ModelFormat=NeuralNetwork"));
+        Assert.True(OnnxProviders.CoreMLModels(null)!.SetEquals(["vocoder"]));   // the default
+        Assert.True(OnnxProviders.CoreMLModels("ModelFormat=NeuralNetwork")!.SetEquals(["vocoder"]));
+        Assert.Null(OnnxProviders.CoreMLModels("Models="));                       // every model
         var models = OnnxProviders.CoreMLModels("Models=acoustic, Vocoder;ModelFormat=NeuralNetwork")!;
         Assert.True(models.SetEquals(["acoustic", "vocoder"]));
         Assert.Contains("VOCODER", models);                    // as written or not

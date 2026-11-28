@@ -402,7 +402,7 @@ export function defaultVoicesFolder(home: string, join: (...parts: string[]) => 
     return join(home, 'Cantoria', 'DiffSinger');
 }
 
-/** Where this machine runs DiffSinger (`cantoria providers --json`): its hardware GPUs (Windows), `DirectML` or `CPU`, and why the CPU. */
+/** Where this machine runs DiffSinger (`cantoria providers --json`): its hardware GPUs (Windows), `DirectML`, `CoreML` (macOS: the vocoder) or `CPU`, and why the CPU. */
 export interface ProvidersHere { gpus: string[]; auto: string; note?: string }
 
 /** The engines that sing quickly on any CPU (Sinsy: an HMM voice, 7 s of song in 0.5 s); a DiffSinger voice is quick on a GPU only. */
@@ -427,7 +427,10 @@ export function offerRows(offers: VoiceOffer[], installed: Set<string>, here: Pr
     const speed = (o: VoiceOffer): string => {
         if (!here) { return ''; }
         if (QUICK_ON_CPU.has(engineOf(o))) { return 'quick on any computer'; }
-        return onCpu ? 'slow here: no GPU' : `on your GPU${here.gpus[0] ? ` (${here.gpus[0]})` : ''}`;
+        if (onCpu) { return 'slow here: no GPU'; }
+        // macOS: CoreML takes the vocoder; the acoustic model, most of the time, stays on the CPU.
+        if (here.auto === 'CoreML') { return 'on the CPU here, CoreML for its vocoder'; }
+        return `on your GPU${here.gpus[0] ? ` (${here.gpus[0]})` : ''}`;
     };
     const fetched = 'Fetched for you from its author, once you agree to its terms';
     const rows = offers.map(o => ({

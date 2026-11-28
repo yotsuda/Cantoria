@@ -82,9 +82,9 @@ public class DiffSingerSingerTests
         // Auto: DirectML where this build and this machine have it, else the CPU — and the log says which.
         using (var auto = new DiffSingerSinger(new DiffSingerOptions(Voice) { VocoderFolder = Vocoder, Steps = 10 }))
         {
-            Assert.Equal("DirectML?", auto.Provider);
+            Assert.Equal(OperatingSystem.IsWindows() ? "DirectML?" : OperatingSystem.IsMacOS() ? "CoreML?" : "CPU", auto.Provider);
             await auto.SingAsync(score);
-            Assert.Contains(auto.Provider, new[] { "DirectML", "CPU" });
+            Assert.Contains(auto.Provider, new[] { "DirectML", "CoreML", "CPU" });
             Assert.Contains("provider: " + auto.Provider, auto.LastLog);
             if (auto.Provider == "CPU")
             {

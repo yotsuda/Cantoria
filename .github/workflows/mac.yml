@@ -54,13 +54,14 @@ jobs:
           # 2026-11-28, run 1: MLProgram on every model fails in the duration predictor's
           # linguistic encoder (an empty attention slice); NeuralNetwork sings. Run 2: the acoustic
           # model fails the same way in MLProgram and is no faster on CoreML in NeuralNetwork; the
-          # vocoder is three times faster there (2.35 s against 7.74). Now: the vocoder alone.
+          # vocoder is three times faster there (2.35 s against 7.74). Run 3, the vocoder alone on
+          # CoreML: 1.0–1.7 s in every setting (MLProgram, NeuralNetwork, CPUAndNeuralEngine,
+          # CPUOnly) against 7.3 on the CPU. That is now the default, and auto takes it on macOS.
           $runs = if ($env:RUNS) { $env:RUNS -split '\s+' | Where-Object { $_ } } else { @(
             'cpu',
-            'coreml:Models=vocoder',
-            'coreml:Models=vocoder;ModelFormat=NeuralNetwork',
-            'coreml:Models=vocoder;MLComputeUnits=CPUAndNeuralEngine',
-            'coreml:Models=vocoder;MLComputeUnits=CPUOnly'
+            'auto',
+            'coreml:MLComputeUnits=CPUOnly',
+            'coreml:MLComputeUnits=CPUAndGPU'
           ) }
           ./tools/bench-providers.ps1 -Program out/osx-arm64/cantoria -VoicesDir (Join-Path $HOME 'ds-voices') -Voice diffsinger/Qixuan -Out bench -Runs $runs
           "## DiffSinger (Qixuan) on macOS`n" >> $env:GITHUB_STEP_SUMMARY

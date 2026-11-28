@@ -514,6 +514,9 @@ describe('downloading an offered voice', () => {
         const gpu = offerRows([qixuan, sinsy], new Set(['diffsinger/Qixuan']), { gpus: ['RTX'], auto: 'DirectML' });
         assert.deepEqual(gpu.map(r => [r.label, r.description]), [['Qixuan', 'ja, en, zh · 300 MB · on your GPU (RTX) · installed'], ['NIT', 'ja · 5 MB · quick on any computer']]);
         assert.deepEqual(offerRows([qixuan, sinsy], new Set(), undefined).map(r => [r.label, r.description, r.recommended]), [['Qixuan', 'ja, en, zh · 300 MB', false], ['NIT', 'ja · 5 MB', false]]);
+        // A Mac: CoreML has the vocoder, the CPU the rest; nothing is pressed on it.
+        const mac = offerRows([qixuan, sinsy], new Set(), { gpus: [], auto: 'CoreML' });
+        assert.deepEqual(mac.map(r => [r.label, r.description, r.recommended]), [['Qixuan', 'ja, en, zh · 300 MB · on the CPU here, CoreML for its vocoder', false], ['NIT', 'ja · 5 MB · quick on any computer', false]]);
     });
 
     it('adds up what each file has received, and reads what was installed', () => {

@@ -87,7 +87,9 @@ static int Help(int code)
           --sinsy-dir <folder>        the folder of Sinsy voices (default ~/Cantoria/Sinsy)
           --steps <n>                 DiffSinger sampling steps (default 20; fewer is faster)
           --provider <name>           DiffSinger: auto (default: DirectML on Windows where there is a
-                                      DirectX 12 device, else the CPU), cpu, directml, coreml (macOS; untested)
+                                      DirectX 12 device; CoreML for the vocoder on macOS; else the CPU),
+                                      cpu, directml, coreml (CANTORIA_COREML: key=value;… over its options,
+                                      Models=acoustic,vocoder,… the models it runs, the vocoder by default)
           --cpu                       the CPU for every engine (NEUTRINO without its GPU; --provider cpu)
           --threads <n>               NEUTRINO: CPU threads (default 4)
           --keep                      NEUTRINO: leave the MusicXML, labels and WAV under output\cantoria\

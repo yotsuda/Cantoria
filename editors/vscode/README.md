@@ -10,8 +10,9 @@ editor of its own.
 
 Open source, Apache-2.0: [github.com/yotsuda/Cantoria](https://github.com/yotsuda/Cantoria).
 Published for Windows x64, Linux x64 and macOS arm64 with the program bundled. NEUTRINO runs on
-Windows only. DiffSinger voices are built to sing on all three, on the CPU outside Windows, but
-have been heard only on Windows so far. Other platforms can point `cantoria.developer.program` at a build of
+Windows only. DiffSinger voices sing on all three: on a Mac with Apple's CoreML for the vocoder
+and the processor for the rest (sung on GitHub's macOS machines, not yet heard on a Mac at hand),
+on Linux on the processor. Other platforms can point `cantoria.developer.program` at a build of
 their own.
 
 ## Setup

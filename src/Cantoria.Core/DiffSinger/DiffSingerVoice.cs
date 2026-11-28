@@ -42,7 +42,8 @@ public sealed class DiffSingerVoice : IDisposable
             OnnxProvider.Cpu => OnnxProviders.CpuName,
             OnnxProvider.CoreML => OnnxProviders.CoreMLName + "?",
             OnnxProvider.DirectML => OnnxProviders.DirectMLName + "?",
-            _ => OperatingSystem.IsWindows() ? OnnxProviders.DirectMLName + "?" : OnnxProviders.CpuName,
+            _ => OperatingSystem.IsWindows() ? OnnxProviders.DirectMLName + "?"
+                : OperatingSystem.IsMacOS() ? OnnxProviders.CoreMLName + "?" : OnnxProviders.CpuName,
         };
         Acoustic = DsConfig.Load(Path.Combine(Folder, "dsconfig.yaml"));
         if (Acoustic.Acoustic is null)
@@ -84,8 +85,9 @@ public sealed class DiffSingerVoice : IDisposable
     /// <summary>The dictionary the words are read with: the duration module's.</summary>
     public DsDictionary Dictionary => Dur.Dictionary;
 
-    /// <summary>Where the models run, as settled when the first one was opened: <c>DirectML</c> or
-    /// <c>CPU</c>; <c>DirectML?</c> until then, when that is what will be tried
+    /// <summary>Where the models run, as settled when the first one was opened: <c>DirectML</c>,
+    /// <c>CoreML</c> (by default for the vocoder only, the rest on the CPU) or <c>CPU</c>;
+    /// <c>DirectML?</c> / <c>CoreML?</c> until then, when that is what will be tried
     /// (<see cref="OnnxProviders"/>).</summary>
     public string Provider { get; private set; }
 
