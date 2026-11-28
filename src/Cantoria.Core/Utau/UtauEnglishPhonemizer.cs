@@ -52,8 +52,8 @@ public static class UtauEnglishPhonemizer
     /// it that end its word's syllable.</summary>
     private sealed record Unit(List<string> Onset, string Vowel, List<string> Coda, double Start, double End, int Note, int Midi, bool Syllabic = false);
 
-    /// <summary>The consonants a schwa before them is all but swallowed by (little, button, rhythm).</summary>
-    private static readonly HashSet<string> SyllabicConsonants = ["l", "n", "m"];
+    /// <summary>The consonants a schwa before them is all but swallowed by (button, rhythm). Not l: see <see cref="Phrase"/>.</summary>
+    private static readonly HashSet<string> SyllabicConsonants = ["n", "m"];
 
     /// <summary>The most of a syllabic consonant's syllable (<c>kle</c>: k, a short vowel, then l) its vowel takes,
     /// and the share of the syllable at most.</summary>
@@ -163,15 +163,20 @@ public static class UtauEnglishPhonemizer
 
     private static void Phrase(List<UtauSegment> segments, List<Unit> units, UtauVoicebank bank, string voice, SungScore score, double before, double after)
     {
-        // A schwa before l, n or m that ends its syllable (twinkle, little): the consonant is most of the syllable,
-        // and before l the vowel is the bank's U where it has "U l" (owner's report 2026-11-28: the schwa held
-        // as Teto sings it was heard as "win-kEtz", "littEl"; "twin-kULe" was what was wanted).
+        // A schwa before l that ends its syllable (twinkle, little) is the bank's U where it has "U l", the l short
+        // after it as any last consonant (owner's reports 2026-11-28: the schwa as Teto sings it was heard as
+        // "win-kEtz", "littEl"; with the l held over most of the syllable it was "too strong", and "twinku twinku"
+        // was the natural English). Before n or m (button, rhythm) the schwa is short and the consonant holds on.
         for (int k = 0; k < units.Count; k++)
         {
             var u = units[k];
-            if (u.Vowel == "@" && u.Coda.Count > 0 && SyllabicConsonants.Contains(u.Coda[0]))
+            if (u.Vowel == "@" && u.Coda.Count > 0 && u.Coda[0] == "l" && Find(bank, "U l", u.Midi) is not null)
             {
-                units[k] = u with { Vowel = u.Coda[0] == "l" && Find(bank, "U l", u.Midi) is not null ? "U" : "@", Syllabic = true };
+                units[k] = u with { Vowel = "U" };
+            }
+            else if (u.Vowel == "@" && u.Coda.Count > 0 && SyllabicConsonants.Contains(u.Coda[0]))
+            {
+                units[k] = u with { Syllabic = true };
             }
         }
         for (int k = 0; k < units.Count; k++)
@@ -261,7 +266,7 @@ public static class UtauEnglishPhonemizer
             cv = (start && s == onset.Count ? Try("- " + alias) : null) ?? Try(alias);
             used = s;
         }
-        if (cv is null && u.Syllabic && u.Vowel == "U")
+        if (cv is null && u.Vowel == "U" && u.Coda.Count > 0 && u.Coda[0] == "l")   // (a schwa made U before l)
         {
             return Onset(pieces, u with { Vowel = "@" }, onset, vowelBefore, start, bank, voice, score);
         }

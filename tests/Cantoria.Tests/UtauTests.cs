@@ -200,19 +200,24 @@ public sealed class UtauTests : IDisposable
         // preutterance, the N was cut off by the k (owner's report 2026-11-28: "twin" heard as "we").
         Assert.Equal((0.26, 0.5), (Math.Round(segments[2].Start, 9), segments[2].End));
         Assert.Equal(0.26, segments[1].End, 9);
-        // "kle" is k, a short schwa, then the l held on (owner's report 2026-11-28: the schwa held was "win-kEtz").
-        Assert.Equal(0.6, segments[4].Start, 9);
-        // Where the bank has "U l", the vowel before it is U: "twin-kULe".
+        // The l of "kle" is short at its end, as any last consonant (owner's report 2026-11-28: held over most of the
+        // syllable it was too strong; "twinku" was the natural English).
+        Assert.Equal(0.7, segments[4].Start, 9);
+        // Where the bank has "U l", the schwa before it is U (the schwa as Teto sings it was heard as "win-kEtz").
         var withU = UtauVoicebank.Load(Bank("english-u", string.Concat(
             new[] { "- tw", "tw", "wI", "I N", "kU", "U l", "U l-", "k@", "@ l" }.Select(a => $"a.wav={a},0,100,-500,60,20\n"))));
-        // The l held before another consonant is the word-final recording, which has it held ("U l" stretched was
-        // heard as "kru").
         var twinkleTwin = UtauPhonemizer.Segments(new SungScore([
             new SungNote(0, 0.5, 60, "Twin", Hyphen: true), new SungNote(0.5, 0.5, 60, "kle"), new SungNote(1, 0.5, 60, "twin"),
         ], Language: "en"), withU, "utau/english");
-        Assert.Equal(["- tw", "wI", "I N", "kU", "U l-", "tw", "wI"], Aliases(twinkleTwin));   // ("twin" ends on n: "I n" is not in this bank)
-        // Mid-phrase, without its release into silence (the voice broke off after the l).
-        Assert.True(twinkleTwin[4].Held);
+        Assert.Equal(["- tw", "wI", "I N", "kU", "U l", "tw", "wI"], Aliases(twinkleTwin));   // ("twin" ends on n: "I n" is not in this bank)
+        // Before n the schwa is short and the n holds on, on the word-final recording without its release.
+        var button = UtauPhonemizer.Segments(new SungScore([
+            new SungNote(0, 0.5, 60, "but", Hyphen: true), new SungNote(0.5, 0.5, 60, "ton"), new SungNote(1, 0.5, 60, "twin"),
+        ], Language: "en"), UtauVoicebank.Load(Bank("english-n", string.Concat(
+            new[] { "- bV", "V t", "t@", "@ n", "@ n-", "tw", "wI" }.Select(a => $"a.wav={a},0,100,-500,60,20\n")))), "utau/english");
+        Assert.Equal(["- bV", "V t", "t@", "@ n-", "tw", "wI"], Aliases(button));
+        Assert.True(button[3].Held);
+        Assert.Equal(0.6, button[3].Start, 9);   // 0.1 s into "ton"
         // The last consonant ends a little into the rest after the note.
         Assert.True(segments[7].Start < 2.0 && segments[7].End > 2.0, $"{segments[7].Start}..{segments[7].End}");
         Assert.Equal(["en"], English().Languages);
