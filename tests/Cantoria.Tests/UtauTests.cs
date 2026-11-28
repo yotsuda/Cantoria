@@ -93,7 +93,7 @@ public sealed class UtauTests : IDisposable
         Assert.Equal("重音テト", VoiceEntries.Utau(_dir).Single().Label);
     }
 
-    private UtauVoicebank Vcv() => UtauVoicebank.Load(Bank("vcv", "a.wav=- か,0,100,-500,60,20\na.wav=a か,0,100,-500,60,20\na.wav=a こ,0,100,-500,60,20\na.wav=- こ,0,100,-500,60,20\na.wav=o ん,0,100,-500,60,20\na.wav=- あ,0,100,-500,60,20\na.wav=n あ,0,100,-500,60,20\n"));
+    private UtauVoicebank Vcv() => UtauVoicebank.Load(Bank("vcv", "a.wav=- か,0,100,-500,60,20\na.wav=a か,0,100,-500,60,20\na.wav=a こ,0,100,-500,60,20\na.wav=- こ,0,100,-500,60,20\na.wav=o ん,0,100,-500,60,20\na.wav=- あ,0,100,-500,60,20\na.wav=n あ,0,100,-500,60,20\na.wav=a -,0,100,-500,60,20\n"));
 
     private static IEnumerable<string> Aliases(List<UtauSegment> segments) => segments.Select(s => s.Oto.Alias);
 
@@ -108,8 +108,10 @@ public sealed class UtauTests : IDisposable
             new SungNote(5, 1, 64, "か"),
         ]);
         var segments = UtauPhonemizer.Segments(score, Vcv(), "utau/vcv");
-        Assert.Equal(["- か", "a か", "- か", "a か", "- か"], Aliases(segments));
+        // A phrase that has a rest after it ends on "a -"; one cut by a breath has no time for it.
+        Assert.Equal(["- か", "a か", "a -", "- か", "a か", "- か", "a -"], Aliases(segments));
         Assert.Equal((1.0, 2.0), (segments[1].Start, segments[1].End));
+        Assert.Equal((2.0, 2.0 + UtauPhonemizer.EndingSeconds), (segments[2].Start, segments[2].End));
     }
 
     [Fact]
@@ -130,7 +132,7 @@ public sealed class UtauTests : IDisposable
             new SungNote(1.5, 0.5, 64, null, Melisma: true),
         ]);
         var segments = UtauPhonemizer.Segments(score, Vcv(), "utau/vcv");
-        Assert.Equal(["- こ", "o ん", "n あ"], Aliases(segments));
+        Assert.Equal(["- こ", "o ん", "n あ", "a -"], Aliases(segments));
         Assert.Equal(1 - UtauPhonemizer.TailSeconds, segments[1].Start, 9);
         Assert.Equal(1.0, segments[1].End, 9);
         Assert.Equal(2.0, segments[2].End, 9);   // the melisma holds あ on

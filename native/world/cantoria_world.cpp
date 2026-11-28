@@ -66,8 +66,12 @@ CANTORIA_EXPORT int cantoria_world_analyze(const double* x, int length, int fs, 
   auto sp_rows = Rows(sp, frames, width);
   CheapTrick(x, length, fs, positions.data(), f0, frames, &cheaptrick, sp_rows.data());
 
+  // D4C's own voiced/unvoiced judgement (LoveTrain, threshold 0.85) is off: Harvest has judged it.
+  // On Kasane Teto's VCV "u き" it called the loud, steady second half of the い aperiodic, which
+  // was sung as breath (2026-11-28).
   D4COption d4c;
   InitializeD4COption(&d4c);
+  d4c.threshold = 0.0;
   auto ap_rows = Rows(ap, frames, width);
   D4C(x, length, fs, positions.data(), f0, frames, cheaptrick.fft_size, &d4c, ap_rows.data());
   return frames;

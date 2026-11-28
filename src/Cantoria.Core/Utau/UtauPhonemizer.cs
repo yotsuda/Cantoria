@@ -17,7 +17,8 @@ public sealed record UtauSegment(Oto Oto, double Start, double End, int Note);
 /// pitch's <c>prefix.map</c> prefix and suffix first, and as the kana then its romaji (<c>ka</c>). A
 /// syllable of several morae (<c>こん</c>) gives the first most of the note and each one after it
 /// at most <see cref="TailSeconds"/>. A melisma note, or <c>ー</c>, holds the sound before on; <c>っ</c>
-/// is a silence that the next mora starts out of.
+/// is a silence that the next mora starts out of. Where the bank has them, a phrase ends on the recording of
+/// its last vowel dying into silence (<c>a -</c>, else <c>a R</c>; <see cref="EndingSeconds"/> at most).
 /// </summary>
 public static class UtauPhonemizer
 {
@@ -36,14 +37,17 @@ public static class UtauPhonemizer
         string? vowel = null;      // the vowel sounding at the end of the last mora; null after silence
         double end = double.NegativeInfinity;
         bool breath = false;
+        int lastMidi = 60;
         for (int i = 0; i < score.Notes.Count; i++)
         {
             var n = score.Notes[i];
             bool joined = n.Start - end < Touching && !breath;
             if (!joined)
             {
+                Ending(segments, bank, vowel, lastMidi, i - 1, end, n.Start - end);
                 vowel = null;
             }
+            lastMidi = (int)Math.Round(n.Pitch);
             breath = n.Breath || n.Inhale;
             end = n.End;
             if (n.Melisma)
@@ -89,7 +93,29 @@ public static class UtauPhonemizer
                 segments[^1] = segments[^1] with { End = n.End };   // a syllable ending in っ ends silent
             }
         }
+        Ending(segments, bank, vowel, lastMidi, score.Notes.Count - 1, end, double.PositiveInfinity);
         return segments;
+    }
+
+    /// <summary>The most a phrase's ending recording (<c>a -</c>, <c>a R</c>: the vowel dying into silence) takes of the rest after it.</summary>
+    public const double EndingSeconds = 0.3;
+
+    /// <summary>A rest shorter than this has no ending recording: the next phrase begins too soon.</summary>
+    public const double EndingRoom = 0.08;
+
+    /// <summary>Where a 連続音 bank has one, the recording of <paramref name="vowel"/> dying into silence,
+    /// from the phrase's end into the <paramref name="room"/> after it.</summary>
+    private static void Ending(List<UtauSegment> segments, UtauVoicebank bank, string? vowel, int midi, int note, double at, double room)
+    {
+        if (vowel is null || room < EndingRoom || segments.Count == 0)
+        {
+            return;
+        }
+        var oto = bank.Find(vowel + " -", midi) ?? bank.Find(vowel + " R", midi);
+        if (oto is not null)
+        {
+            segments.Add(new UtauSegment(oto, at, at + Math.Min(EndingSeconds, room - EndingRoom / 4), note));
+        }
     }
 
     /// <summary>The aliases tried for a mora after <paramref name="vowel"/> (null after silence), in order.</summary>
