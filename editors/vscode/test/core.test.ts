@@ -10,7 +10,7 @@ import {
     ENGINES, characterNameOf, diffSingerEntriesIn, diffSingerSpeakersOf, diffSingerVoicesIn, languageProblem, languageTag, missingProgramNote, neutrinoFolderProblems, parseLine, programCandidates,
     planAsked, planLine, planOfNoOne,
     cancelLine, defaultVoiceFor, firstOfGender, genderOfWord, requestLine, resolveSinger, rid, scoreProblems, serveArgs, speakerOf, splitVoiceId, voiceEntriesIn, voiceId, voiceKey, voicesFolderProblems, voicesIn, voicevoxEntriesFrom, vsixTarget,
-    findEngines, VoiceOffer, defaultVoicesFolder, fetchLine, offerDetail, offerRows, defaultSinsyFolder, sinsyEntriesIn, sinsyVoicesIn,
+    findEngines, VoiceOffer, defaultVoicesFolder, fetchLine, offerDetail, offerRows, defaultSinsyFolder, sinsyEntriesIn, sinsyVoicesIn, defaultUtauFolder, utauEntriesIn, utauVoicesIn, utauText,
 } from '../src/core';
 import { DIFFSINGER_GENDERS, diffSingerGender } from '../src/diffSingerGenders';
 import { VOICEVOX_GENDERS, voicevoxGender } from '../src/voicevoxGenders';
@@ -153,6 +153,7 @@ describe('the engine\'s wire', () => {
         assert.deepEqual(JSON.parse(cancelLine('k.1')), { command: 'cancel', id: 'k.1' });
         assert.deepEqual(serveArgs('C:\\v', true, 4, '', '', 500), ['serve', '--out-dir', 'C:\\v', '--threads', '4', '--cache-mb', '500']);
         assert.deepEqual(serveArgs('C:\\v', true, 4, '', '', 0, 'C:\\sinsy'), ['serve', '--out-dir', 'C:\\v', '--threads', '4', '--sinsy-dir', 'C:\\sinsy']);
+        assert.deepEqual(serveArgs('C:\\v', true, 4, '', '', 0, '', 'C:\\utau'), ['serve', '--out-dir', 'C:\\v', '--threads', '4', '--utau-dir', 'C:\\utau']);
         assert.equal(JSON.parse(requestLine('k', { notes: [] }, 'voicevox/x', 'o', 'http://x:1')).voicevoxUrl, 'http://x:1');
         assert.deepEqual(voicevoxEntriesFrom({ detail: 'no' }), [], 'not a list of singers');
         assert.deepEqual(voicevoxEntriesFrom([{ name: 'ず', styles: [{ name: 'ふつう', type: 'talk' }, { name: 'ノーマル', type: 'frame_decode' }] }]),
@@ -176,6 +177,30 @@ describe('the engine\'s wire', () => {
         ]);
         assert.deepEqual(sinsyVoicesIn('nowhere', dirs, () => [], exists, join), []);
         assert.equal(defaultSinsyFolder('/home/u', join), '/home/u/Cantoria/Sinsy');
+    });
+
+    // As the program lists them (UtauOptions.Voices, VoiceEntries.Utau; UtauTests holds the same case).
+    it('lists the UTAU voicebanks: each folder with an oto.ini in it or one down, by the name its character.txt gives', () => {
+        const join = (...p: string[]) => p.join('/');
+        const files: Record<string, string[]> = {
+            U: ['readme.txt'],
+            'U/teto': ['character.txt'], 'U/teto/cv': ['OTO.INI', 'a.wav'],
+            'U/ritsu': ['oto.ini'],
+            'U/notes': ['readme.txt'],
+        };
+        const dirs = (d: string) => Object.keys(files).filter(k => k.startsWith(d + '/') && !k.slice(d.length + 1).includes('/')).map(k => k.slice(d.length + 1));
+        const exists = (p: string) => p in files;
+        // 重音テト in Shift_JIS, as UTAU writes it.
+        const sjis = new Uint8Array([0x6e, 0x61, 0x6d, 0x65, 0x3d, 0x8f, 0x64, 0x89, 0xb9, 0x83, 0x65, 0x83, 0x67, 0x0d, 0x0a]);
+        const read = (p: string) => p === 'U/teto/character.txt' ? sjis : undefined;
+        assert.deepEqual(utauVoicesIn('U', dirs, d => files[d] ?? [], exists, join), ['ritsu', 'teto']);
+        assert.deepEqual(utauEntriesIn('U', dirs, d => files[d] ?? [], exists, join, read), [
+            { id: 'utau/ritsu', engine: 'utau', name: 'ritsu', label: 'ritsu', language: 'ja' },
+            { id: 'utau/teto', engine: 'utau', name: 'teto', label: '重音テト', language: 'ja' },
+        ]);
+        assert.equal(utauText(new Uint8Array([0xef, 0xbb, 0xbf, 0xe3, 0x81, 0x82])), 'あ');   // UTF-8, its BOM dropped
+        assert.deepEqual(utauVoicesIn('nowhere', dirs, () => [], exists, join), []);
+        assert.equal(defaultUtauFolder('/home/u', join), '/home/u/Cantoria/UTAU');
     });
 
     it('takes a VOICEVOX voice\'s gender from the table, and leaves one it does not list unsaid', () => {
@@ -278,7 +303,7 @@ describe('where the program and the voices are', () => {
     // A voice is named engine/name everywhere (docs/roadmap.md A), so a second engine's voice
     // needs no new setting; a bare name is the first engine's.
     it('names a voice engine/name, and reads either form', () => {
-        assert.deepEqual(ENGINES, ['neutrino', 'diffsinger', 'voicevox', 'sinsy']);
+        assert.deepEqual(ENGINES, ['neutrino', 'diffsinger', 'voicevox', 'sinsy', 'utau']);
         assert.equal(voiceId('neutrino', 'MERROW'), 'neutrino/MERROW');
         assert.deepEqual(splitVoiceId('neutrino/MERROW'), { engine: 'neutrino', name: 'MERROW' });
         assert.deepEqual(splitVoiceId(' Neutrino/KIRITAN '), { engine: 'neutrino', name: 'KIRITAN' });
@@ -424,7 +449,7 @@ describe('the manifest', () => {
 
     it('puts the general settings first, the engines in alphabetical order, the developer\'s last', () => {
         const sections = [...manifest.contributes.configuration].sort((a: { order: number }, b: { order: number }) => a.order - b.order);
-        assert.deepEqual(sections.map((c: { title: string }) => c.title), ['General', 'DiffSinger', 'NEUTRINO', 'Sinsy', 'VOICEVOX', 'Developer']);
+        assert.deepEqual(sections.map((c: { title: string }) => c.title), ['General', 'DiffSinger', 'NEUTRINO', 'Sinsy', 'UTAU', 'VOICEVOX', 'Developer']);
     });
 
     it('groups the settings by what they are for', () => {
@@ -434,6 +459,7 @@ describe('the manifest', () => {
             NEUTRINO: ['neutrino.installFolder', 'neutrino.threads'],
             DiffSinger: ['diffsinger.vocoderFolder', 'diffsinger.voicesFolder'],
             Sinsy: ['sinsy.voicesFolder'],
+            UTAU: ['utau.voicesFolder'],
             VOICEVOX: ['voicevox.address', 'voicevox.installFolder'],
             Developer: ['developer.program'],
         });

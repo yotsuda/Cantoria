@@ -56,7 +56,7 @@ export interface CantoriaScore {
 }
 
 /** The engines this extension sings through; the first is what a bare voice name means. */
-export const ENGINES = ['neutrino', 'diffsinger', 'voicevox', 'sinsy'] as const;
+export const ENGINES = ['neutrino', 'diffsinger', 'voicevox', 'sinsy', 'utau'] as const;
 export type EngineName = typeof ENGINES[number];
 
 /** A voice as the API names it: `engine/name`, e.g. `neutrino/MERROW` — the form `sing`'s
@@ -329,6 +329,41 @@ export function sinsyEntriesIn(folder: string, listDirs: (dir: string) => string
     return sinsyVoicesIn(folder, listDirs, listFiles, exists, join).map(name => {
         const g = /_([fm])\d+$/.exec(name)?.[1];
         return { id: voiceId('sinsy', name), engine: 'sinsy' as const, name, label: name, language: 'ja', ...(g ? { gender: g === 'f' ? 'female' : 'male' } : {}) };
+    });
+}
+
+/** Where the UTAU voicebanks are when the setting is empty, as the program has it: `~/Cantoria/UTAU`. */
+export function defaultUtauFolder(home: string, join: (...parts: string[]) => string): string {
+    return join(home, 'Cantoria', 'UTAU');
+}
+
+/** The UTAU voicebanks in a folder, by name, as the program lists them (UtauOptions.Voices): each
+ *  folder in it with an `oto.ini` in it or in one of its folders (the name matched whatever its case),
+ *  sorted by UTF-16 code unit. */
+export function utauVoicesIn(folder: string, listDirs: (dir: string) => string[], listFiles: (dir: string) => string[],
+    exists: (p: string) => boolean, join: (...parts: string[]) => string): string[] {
+    if (!folder || !exists(folder)) { return []; }
+    const hasOto = (dir: string) => listFiles(dir).some(f => f.toLowerCase() === 'oto.ini');
+    return listDirs(folder).filter(d => hasOto(join(folder, d)) || listDirs(join(folder, d)).some(s => hasOto(join(folder, d, s)))).sort();
+}
+
+/** Bytes as text: UTF-8 where they decode as UTF-8 (a BOM dropped), else Shift_JIS, as UTAU writes. */
+export function utauText(bytes: Uint8Array): string {
+    try {
+        return new TextDecoder('utf-8', { fatal: true, ignoreBOM: false }).decode(bytes);
+    } catch {
+        return new TextDecoder('shift_jis').decode(bytes);
+    }
+}
+
+/** The UTAU voicebanks as the API lists them (VoiceEntries.Utau): Japanese, each by the `name=` of its
+ *  `character.txt` where it has one. */
+export function utauEntriesIn(folder: string, listDirs: (dir: string) => string[], listFiles: (dir: string) => string[],
+    exists: (p: string) => boolean, join: (...parts: string[]) => string, readBytes: (p: string) => Uint8Array | undefined): VoiceEntry[] {
+    return utauVoicesIn(folder, listDirs, listFiles, exists, join).map(name => {
+        const bytes = readBytes(join(folder, name, 'character.txt'));
+        const label = bytes ? utauText(bytes).split('\n').map(l => l.replace(/\r$/, '')).find(l => l.toLowerCase().startsWith('name='))?.slice(5).trim() : undefined;
+        return { id: voiceId('utau', name), engine: 'utau' as const, name, label: label || name, language: 'ja' };
     });
 }
 
@@ -624,13 +659,14 @@ export function cancelLine(id: string): string {
 export const SHUTDOWN_LINE = '{"command":"shutdown"}\n';
 
 /** The arguments of the resident engine: where the WAVs go, the GPU or not, the threads, the DiffSinger folders when set, the disk its renders may take. */
-export function serveArgs(outDir: string, gpu: boolean, threads: number, voicesFolder = '', vocoderFolder = '', cacheSizeMB = 0, sinsyFolder = ''): string[] {
+export function serveArgs(outDir: string, gpu: boolean, threads: number, voicesFolder = '', vocoderFolder = '', cacheSizeMB = 0, sinsyFolder = '', utauFolder = ''): string[] {
     const args = ['serve', '--out-dir', outDir, '--threads', String(Math.max(1, Math.floor(threads) || 1))];
     if (!gpu) { args.push('--cpu'); }
     if (voicesFolder.trim()) { args.push('--voices-dir', voicesFolder.trim()); }
     if (vocoderFolder.trim()) { args.push('--vocoder-dir', vocoderFolder.trim()); }
     if (cacheSizeMB > 0) { args.push('--cache-mb', String(Math.floor(cacheSizeMB))); }
     if (sinsyFolder.trim()) { args.push('--sinsy-dir', sinsyFolder.trim()); }
+    if (utauFolder.trim()) { args.push('--utau-dir', utauFolder.trim()); }
     return args;
 }
 

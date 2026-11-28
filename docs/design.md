@@ -191,7 +191,7 @@ from its phrases in a tenth of a second, so the two need no limits of their own.
 
 [Sinsy](http://sinsy.sourceforge.net/) 0.92 and hts_engine API 1.10 (Modified BSD; r9y9's git
 forks, fetched at pinned commits by SHA-256) compiled with a C entry point of Cantoria's into one
-shared library, `cantoria_sinsy` (`native/sinsy`; `tools/build-sinsy.ps1` builds it for the machine
+shared library, `cantoria_sinsy` (`native/sinsy`; `tools/build-native.ps1` builds it for the machine
 it runs on into `native/out/<rid>/`, which `Cantoria.Core`'s project copies beside the program with
 Sinsy's Japanese dictionary in `sinsy-dic/`). 666 KB on Windows. Called in process through
 `LibraryImport` (`SinsyNative`). Roadmap E's "fallback that always sings": no GPU, no other program,
@@ -222,6 +222,51 @@ a voice of a few MB (`VoiceOffers`: NIT SONG070 F001, CC BY 3.0).
 - One build per platform: the CI builds the library on each and fetches the voice as a user does,
   so the Sinsy tests and the published program sing on all three; the release builds Linux's and
   macOS's on their runners for the Windows job that packs.
+
+### 3.5 `utau` backend (fifth; sings since 2026-11-28)
+
+UTAU voicebanks — a folder of recordings with `oto.ini` — sung by Cantoria's own resampler and
+wavtool (`UtauSinger`) over [WORLD](https://github.com/mmorise/World) (Modified BSD; fetched at a
+pinned commit by SHA-256), compiled with a C entry point of Cantoria's into `cantoria_world`
+(`native/world`, 245 KB on Windows; `native/` is one CMake project for both libraries and
+`tools/build-native.ps1` builds them). Called through `LibraryImport` (`WorldNative`) over flat
+arrays. Like Sinsy, no GPU and no other program; unlike Sinsy, thousands of free voicebanks exist.
+Which can be offered for download is in [utau-voices-2026-11-28.md](utau-voices-2026-11-28.md);
+none is offered yet (the owner's choice: a voicebank the user installs needs no terms of ours).
+
+- **Reading a voicebank** (`UtauVoicebank`): every `oto.ini` in the folder and below (the folder's
+  own first, then its subfolders' by name; the first line of an alias wins), `prefix.map` (the
+  prefix and suffix an alias takes at each pitch: how a bank recorded at several pitches picks one)
+  and `character.txt`'s `name=` (the label). UTF-8 where the bytes decode as UTF-8, else Shift_JIS,
+  as UTAU writes. A bank is a folder of the UTAU voices folder with `oto.ini` in it or a folder down.
+- **Choosing the recording** (`UtauPhonemizer`): each kana mora is one recording; tried in order,
+  each with the pitch's prefix and suffix first: `a か` (VCV from the vowel sounding before; `n`
+  after ん), `- か` after silence (a rest, a breath, the start), then `か` (CV), and each as the kana
+  then its romaji. A syllable of several morae (`こん`) gives each mora after the first at most
+  0.12 s of the note's end. A melisma note or `ー` holds the sound before on; `っ` is silence the
+  next mora starts out of. A mora with none of its aliases is `has no sound for "…" (note N`, the
+  words Lily# points at a note by. Kana only (`NotKanaProblem`).
+- **Laying it in** (as UTAU's wavtool): a recording starts its preutterance before the note's beat
+  and its first overlap crossfades with the sound before; where preutterance minus overlap is more
+  than half the note before, both are cut to fit. A sound runs to where the next one's overlap ends,
+  or 30 ms past its note's end. A second before the score leads in and is cut.
+- **Singing it** (as a resampler): the recording's stretch (offset to cutoff) is analysed once a
+  singer (Harvest 60-1100 Hz, CheapTrick, D4C, 5 ms frames); the output frames take the consonant
+  (offset + consonant) as recorded and stretch the rest evenly where the note is longer, the
+  spectral envelope and aperiodicity interpolated between frames; the pitch is the score's — each
+  note's, held through the rest after it, gliding 40 ms either side of the start of a note that
+  follows without a rest, with the written vibrato and bend added as `Vibrato`/`Bend` add them to
+  a DiffSinger voice's curve — where the recording is voiced, 0 where it is not. The recording's
+  own pitch wobble is not kept. The audio is at the voicebank's rate (a file at another rate is
+  resampled to the first's).
+- Measured (2026-11-28): Kasane Teto's 単独音 (CV) sang the 7-second example in 1.5 s with every
+  long note within half a semitone. A synthetic buzz held exactly at 220 Hz was analysed into an
+  envelope that sang E4 an octave low; the test's voice wobbles as a singer's does.
+- Tests: `UtauTests` makes its own voicebank (a buzz with vowel-like resonances, noise for a
+  consonant) and sings it wherever `cantoria_world` is built, so the CI sings on all three
+  platforms with no voicebank fetched; `CANTORIA_UTAU_VOICE` (a voicebank's folder) adds a real one.
+- Not yet: CVVC and English banks, the bank's own pitch modulation, flags, a disk cache of the
+  analyses (each recording is analysed again in a new process), offering a voicebank for download.
 
 ## 4. CLI
 

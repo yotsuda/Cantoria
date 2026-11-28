@@ -17,7 +17,7 @@ import {
     PlanAsk, SingParameter, SingProgress, SingerPlan, planAsked, planOfNoOne,
     CantoriaScore, DefaultVoices, ENGINES, EngineName, VOICEVOX_URL, VoiceEntry, VoiceGender, defaultVoiceFor, diffSingerEntriesIn, diffSingerVoicesIn, findEngines, languageProblem, missingProgramNote, needsVoicevox, neutrinoFolderProblems, voicevoxRunIn, programCandidates,
     resolveSinger, scoreProblems, splitVoiceId, voiceEntriesIn, voiceId, voicesFolderProblems, voicesIn,
-    VoiceOffer, ProvidersHere, offerRows, defaultSinsyFolder, defaultVoicesFolder, fetchLine, sinsyEntriesIn, sinsyVoicesIn, offerDetail, moveVoiceUp, voicesFolderPicture, voicesTooDeep,
+    VoiceOffer, ProvidersHere, offerRows, defaultSinsyFolder, defaultUtauFolder, utauEntriesIn, utauVoicesIn, defaultVoicesFolder, fetchLine, sinsyEntriesIn, sinsyVoicesIn, offerDetail, moveVoiceUp, voicesFolderPicture, voicesTooDeep,
 } from './core';
 import { Engine, EngineSetup, RenderedVoice } from './engine';
 import { VoicevoxServer } from './voicevox';
@@ -89,6 +89,9 @@ function voicevoxUrl(): string { return settings().get<string>('voicevox.address
 function voicevoxFolder(): string { return settings().get<string>('voicevox.installFolder', '').trim(); }
 /** The Sinsy voices folder: the setting, else ~/Cantoria/Sinsy (the program's own default, so a Sinsy voice is always looked for). */
 function sinsyFolder(): string { return settings().get<string>('sinsy.voicesFolder', '').trim() || defaultSinsyFolder(os.homedir(), path.join); }
+/** The UTAU voicebanks folder: the setting, else ~/Cantoria/UTAU (the program's own default). */
+function utauFolder(): string { return settings().get<string>('utau.voicesFolder', '').trim() || defaultUtauFolder(os.homedir(), path.join); }
+function readBytesOr(p: string): Uint8Array | undefined { try { return fs.readFileSync(p); } catch { return undefined; } }
 
 /** VOICEVOX: an engine that is a server has no folder to read, so its voices are asked for. */
 const voicevox = new VoicevoxServer(() => ({ url: voicevoxUrl(), folder: voicevoxFolder(), gpu: settings().get<boolean>('general.useGPU', true) }), {
@@ -123,7 +126,7 @@ function voiceSetting(): Voice { return voiceOf(defaultVoiceFor(voices(), defaul
 function readTextOr(p: string): string | undefined { try { return fs.readFileSync(p, 'utf8'); } catch { return undefined; } }
 function listDirs(dir: string): string[] { try { return fs.readdirSync(dir, { withFileTypes: true }).filter(d => d.isDirectory()).map(d => d.name); } catch { return []; } }
 function listFiles(dir: string): string[] { try { return fs.readdirSync(dir, { withFileTypes: true }).filter(d => d.isFile()).map(d => d.name); } catch { return []; } }
-/** Every voice installed: NEUTRINO's, the DiffSinger folder's, the running VOICEVOX's, the Sinsy folder's. */
+/** Every voice installed: NEUTRINO's, the DiffSinger folder's, the running VOICEVOX's, the Sinsy folder's, the UTAU folder's. */
 function voices(): VoiceEntry[] {
     const n = neutrinoFolder(), d = voicesFolder();
     return [
@@ -131,6 +134,7 @@ function voices(): VoiceEntry[] {
         ...(d ? diffSingerEntriesIn(d, listDirs, fs.existsSync, readTextOr, path.join) : []),
         ...voicevox.voices,
         ...sinsyEntriesIn(sinsyFolder(), listDirs, listFiles, fs.existsSync, path.join),
+        ...utauEntriesIn(utauFolder(), listDirs, listFiles, fs.existsSync, path.join, readBytesOr),
     ];
 }
 
@@ -160,14 +164,15 @@ function setupNow(context: vscode.ExtensionContext): { setup?: EngineSetup; prob
     const n = neutrinoFolder(), d = voicesFolder();
     const problems: string[] = [];
     if (!prog) { problems.push(missingProgramNote(process.platform, process.arch, bundledBuilds(context))); }
-    if (!n && !d && voicevox.voices.length === 0 && !voicevoxFolder() && sinsyVoicesIn(sinsyFolder(), listDirs, listFiles, fs.existsSync, path.join).length === 0) {
+    if (!n && !d && voicevox.voices.length === 0 && !voicevoxFolder() && sinsyVoicesIn(sinsyFolder(), listDirs, listFiles, fs.existsSync, path.join).length === 0
+        && utauVoicesIn(utauFolder(), listDirs, listFiles, fs.existsSync, path.join).length === 0) {
         problems.push('no engine is set up: download a voice (Cantoria: Download a Voice…), choose a DiffSinger voices folder (Cantoria: Choose Voices Folder…) or a NEUTRINO folder (Cantoria: Choose NEUTRINO Folder…), or start VOICEVOX');
     }
     problems.push(...neutrinoFolderProblems(n, fs.existsSync, path.join, process.platform));
     problems.push(...voicesFolderProblems(d, fs.existsSync));
     if (problems.length > 0) { return { problems, program: prog }; }
     return {
-        setup: { program: prog!, neutrinoFolder: n, voicesFolder: d, vocoderFolder: vocoderFolder(), sinsyFolder: sinsyFolder(), gpu: settings().get<boolean>('general.useGPU', true), threads: settings().get<number>('neutrino.threads', 4), cacheSizeMB: settings().get<number>('general.cacheSizeMB', 1000) },
+        setup: { program: prog!, neutrinoFolder: n, voicesFolder: d, vocoderFolder: vocoderFolder(), sinsyFolder: sinsyFolder(), utauFolder: utauFolder(), gpu: settings().get<boolean>('general.useGPU', true), threads: settings().get<number>('neutrino.threads', 4), cacheSizeMB: settings().get<number>('general.cacheSizeMB', 1000) },
         problems, program: prog,
     };
 }
@@ -177,7 +182,7 @@ function engineFor(context: vscode.ExtensionContext): Engine {
     const { setup, problems } = setupNow(context);
     if (!setup) { throw new Error(problems.join('; ')); }
     if (engine && (engine.setup.program !== setup.program || engine.setup.neutrinoFolder !== setup.neutrinoFolder
-        || engine.setup.voicesFolder !== setup.voicesFolder || engine.setup.vocoderFolder !== setup.vocoderFolder || engine.setup.sinsyFolder !== setup.sinsyFolder
+        || engine.setup.voicesFolder !== setup.voicesFolder || engine.setup.vocoderFolder !== setup.vocoderFolder || engine.setup.sinsyFolder !== setup.sinsyFolder || engine.setup.utauFolder !== setup.utauFolder
         || engine.setup.gpu !== setup.gpu || engine.setup.threads !== setup.threads || engine.setup.cacheSizeMB !== setup.cacheSizeMB)) {
         engine.dispose();
         engine = undefined;
@@ -206,6 +211,10 @@ function voiceProblems(voice: Voice): string[] {
     if (voice.engine === 'sinsy') {
         const names = sinsyVoicesIn(sinsyFolder(), listDirs, listFiles, fs.existsSync, path.join);
         return names.includes(voice.name) ? [] : [`the Sinsy voice ${voice.name} is not in ${sinsyFolder()} (installed: ${names.join(', ') || 'none'}; Cantoria: Download a Voice… fetches one)`];
+    }
+    if (voice.engine === 'utau') {
+        const names = utauVoicesIn(utauFolder(), listDirs, listFiles, fs.existsSync, path.join);
+        return names.includes(voice.name) ? [] : [`the UTAU voicebank ${voice.name} is not in ${utauFolder()} (installed: ${names.join(', ') || 'none'}; put a voicebank's folder there, or set cantoria.utau.voicesFolder)`];
     }
     if (fs.existsSync(path.join(voice.name, 'dsconfig.yaml'))) { return []; }   // a folder named outright
     const d = voicesFolder();
@@ -525,7 +534,7 @@ async function checkSetup(context: vscode.ExtensionContext): Promise<void> {
     const s = await status(context);
     output.appendLine(`setup: program ${s.program ?? 'none'}; NEUTRINO ${s.neutrinoFolder || 'not set'}; DiffSinger voices ${s.voicesFolder || 'not set'}; voice ${s.voice}; installed ${s.voices.join(', ') || 'none'}; ${s.ready ? 'ready' : s.problems.join('; ')}`);
     if (s.ready) {
-        const where = s.backend === 'neutrino' ? `through NEUTRINO at ${s.neutrinoFolder}` : s.backend === 'voicevox' ? 'through the running VOICEVOX' : s.backend === 'sinsy' ? `through Sinsy, inside Cantoria, from ${sinsyFolder()}` : `a DiffSinger voice under ${s.voicesFolder}`;
+        const where = s.backend === 'neutrino' ? `through NEUTRINO at ${s.neutrinoFolder}` : s.backend === 'voicevox' ? 'through the running VOICEVOX' : s.backend === 'sinsy' ? `through Sinsy, inside Cantoria, from ${sinsyFolder()}` : s.backend === 'utau' ? `an UTAU voicebank, sung inside Cantoria, from ${utauFolder()}` : `a DiffSinger voice under ${s.voicesFolder}`;
         vscode.window.showInformationMessage(`Cantoria is ready: ${s.voice}, ${where}.`);
         return;
     }
@@ -558,7 +567,7 @@ export function activate(context: vscode.ExtensionContext): CantoriaApi {
         vscode.commands.registerCommand('cantoria.addOwnVoice', () => addOwnVoice()),
         vscode.commands.registerCommand('cantoria.forgetVoices', () => {
             release();      // the engine holds phrases in memory too
-            const n = new Engine({ program: '', neutrinoFolder: '', voicesFolder: '', vocoderFolder: '', sinsyFolder: '', gpu: true, threads: 1, cacheSizeMB: 0 }, path.join(storage, 'voices'), () => undefined).forget();
+            const n = new Engine({ program: '', neutrinoFolder: '', voicesFolder: '', vocoderFolder: '', sinsyFolder: '', utauFolder: '', gpu: true, threads: 1, cacheSizeMB: 0 }, path.join(storage, 'voices'), () => undefined).forget();
             vscode.window.setStatusBarMessage(`Cantoria: ${n} rendered voice${n === 1 ? '' : 's'} forgotten`, 4000);
         }),
         // A changed engine setting lets the engine go; the next sing starts one for the new settings.

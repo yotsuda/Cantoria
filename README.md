@@ -46,6 +46,13 @@ that is the one thing this library adds.
     extension's **Download a Voice**) fetches NIT SONG070 F001 (CC BY 3.0, 5 MB).
     An HMM voice sings only the range it was trained on; a phrase under it is
     sung higher and moved back down.
+  - `utau` — UTAU voicebanks (a folder of recordings with `oto.ini`), sung by
+    Cantoria's own resampler over [WORLD](https://github.com/mmorise/World)
+    (Modified BSD, built into the program like Sinsy): no GPU, no UTAU. Japanese
+    from kana, VCV (連続音) and CV (単独音) banks, with `prefix.map` for banks
+    recorded at several pitches; the voicebank folders are in the UTAU voices
+    folder (`--utau-dir`, default `~/Cantoria/UTAU`). Each voicebank is its
+    author's, under its own terms.
 
   The program is published for win-x64, linux-x64 and osx-arm64, and has been
   heard only on Windows so far.
@@ -56,7 +63,7 @@ Cantoria at it, exactly as a score player is pointed at a sound font.
 
 ## Status
 
-Early. All four backends sing. A voice is named `engine/name`, one voice a sing: voices that
+Early. All five backends sing. A voice is named `engine/name`, one voice a sing: voices that
 sing together are each sung, and their sounds laid together by the caller.
 
 ```
@@ -64,6 +71,7 @@ cantoria sing examples/yukiyakonko.json -o yuki.wav --voice neutrino/MERROW --ne
 cantoria sing examples/yukiyakonko.json -o yuki.wav --voice diffsinger/TIGER --voices-dir "C:\path\to\voices"
 cantoria sing examples/yukiyakonko.json -o yuki.wav --voice voicevox/ずんだもん-ノーマル
 cantoria sing examples/yukiyakonko.json -o yuki.wav --voice sinsy/nitech_jp_song070_f001   # after `cantoria fetch nitech-song070`
+cantoria sing examples/yukiyakonko.json -o yuki.wav --voice utau/重音テト --utau-dir "C:\path\to\voicebanks"
 cantoria voices --neutrino-dir … --voices-dir …                    # each voice, its gender and languages; --language en for those that sing it
 cantoria plan score.json --gender female --neutrino-dir … --voices-dir …
 ```

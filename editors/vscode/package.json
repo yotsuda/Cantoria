@@ -122,7 +122,7 @@
       {
         "id": "cantoria.voicevox",
         "title": "VOICEVOX",
-        "order": 5,
+        "order": 6,
         "properties": {
             "cantoria.voicevox.installFolder": {
               "order": 1,
@@ -155,9 +155,23 @@
         }
       },
       {
+        "id": "cantoria.utau",
+        "title": "UTAU",
+        "order": 5,
+        "properties": {
+            "cantoria.utau.voicesFolder": {
+              "order": 1,
+              "type": "string",
+              "default": "",
+              "scope": "machine-overridable",
+              "markdownDescription": "The folder of UTAU voicebanks: each folder in it with an `oto.ini` (in it, or in its subfolders for a bank recorded at several pitches) is a voice, `utau/` and the folder's name. Cantoria sings them itself (over WORLD, inside this extension), Japanese kana on any computer with no GPU and no UTAU. Each voicebank is its author's, under its own terms. Empty: `~/Cantoria/UTAU`."
+            }
+        }
+      },
+      {
         "id": "cantoria.developer",
         "title": "Developer",
-        "order": 6,
+        "order": 7,
         "properties": {
             "cantoria.developer.program": {
               "order": 1,

@@ -139,7 +139,7 @@ In the order their value against their cost looks today:
 |---|---|---|---|
 | `voicevox` | invoked (local HTTP server, song mode) | ja | free, popular; verify the song endpoints and the terms |
 | `sinsy` | in-process (thin native shim) | ja | **done 2026-11-28** (design §3.4): BSD, HMM, no GPU, the fallback that always sings; its voice NIT SONG070 F001 offered for download |
-| `utau` | in-process (WORLD resampler as OpenUtau's worldline, MIT) | ja, en, zh, ko, … (per bank) | proposed 2026-11-28: CPU, thousands of free banks; terms per bank, some offerable ([utau-voices-2026-11-28.md](utau-voices-2026-11-28.md)); on request |
+| `utau` | in-process (WORLD resampler as OpenUtau's worldline, MIT) | ja, en, zh, ko, … (per bank) | **done 2026-11-28** (design §3.5): CPU, thousands of free banks; Japanese VCV and CV banks the user installs; next CVVC and English, and offering a bank ([utau-voices-2026-11-28.md](utau-voices-2026-11-28.md)) |
 | `cevio` | COM, Windows | ja, en | commercial; on request |
 | `acestudio` | invoked (its local MCP server / `acestudio-cli`, the app running) | 8 | commercial (subscription, renders mostly in the cloud on credits); on request, and not before its agent access leaves "experimental" |
 | `guide` | in-process, no model (vowel/formant synthesis) | any (vowels) | zero setup; a pitch guide for rehearsal; worth shipping only if it sounds acceptable |

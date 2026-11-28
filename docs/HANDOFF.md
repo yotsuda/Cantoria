@@ -7,13 +7,25 @@ DiffSinger (プロセス内の ONNX)、NEUTRINO、VOICEVOX。主な呼び手は 
 
 ## 現在地 (2026-11-28)
 
-- **次のエンジンの候補に UTAU 音源 (`utau`) を挙げ、配れる音源の規約を調べた** (2026-11-28、オーナーの求め)。
-  `docs/utau-voices-2026-11-28.md`、roadmap E に行を足した。日本語は波音リツ (商用可、直リンクの zip)・足立レイ、
-  英中韓は筆音クミ (OneDrive)。重音テトは再配布禁止で、公式からの取得をどう読むかは TWINDRILL に聞くのが先。
-  作るかはオーナーが決める。
+- **roadmap E: utau を入れた** (2026-11-28、オーナーの求め「utau エンジンのサポートを追加して」。Unreleased)。設計は `docs/design.md` §3.5。
+  - WORLD (mmorise、Modified BSD) を `native/world` の `cantoria_world` に。`native/` は sinsy と一つの CMake になり、
+    **`tools/build-sinsy.ps1` は `tools/build-native.ps1` に名前を変えた** (CI・release・pack-extension も)。
+  - Core `Utau/`: `UtauVoicebank` (oto.ini・prefix.map・character.txt、UTF-8 でなければ Shift_JIS)、`UtauPhonemizer`
+    (かな→ `a か` / `- か` / `か`)、`UtauSinger` (WORLD で解析・伸ばし・楽譜の音高で合成、preutter・overlap で重ねる)。
+    CLI `--utau-dir` (`CANTORIA_UTAU_DIR`、`utau.voices`、既定 `~/Cantoria/UTAU`)、拡張 `cantoria.utau.voicesFolder`。
+  - 試験 `UtauTests` は自前の合成音源で歌うので CI の 3 OS で歌う (音源を取りに行かない)。実音源は `CANTORIA_UTAU_VOICE`。
+  - この機械の音源: `C:\Tools\utau\重音テト` (公式の TETO-tandoku-100619.zip、単独音)。zip の名前は Shift_JIS で、
+    Windows の展開では化ける (`ZipFile.ExtractToDirectory(…, Encoding.GetEncoding(932))` で展開した)。
+    **Download a Voice で UTAU 音源を配るときは、zip の名前の文字コードに注意。**
+  - **オーナーの耳はまだ**: 聞き比べ用 `utau-teto-yukiyakonko.wav` (scratchpad、消えうる。作り直しは
+    `cantoria sing examples/yukiyakonko.json --voice utau/重音テト --utau-dir C:\Tools\utau -o x.wav`)。
+  - まだ: CVVC・英語の音源、音源自身の音高の揺れ (modulation)、flags、解析の disk cache、音源の配布 (候補は
+    `docs/utau-voices-2026-11-28.md`: 日本語は波音リツ・足立レイ、英中韓は筆音クミ。重音テトは TWINDRILL に聞くのが先)。
+    `findEngines` は OpenUtau の Singers を DiffSinger の声として探すが、そこには UTAU 音源も入る。utau の folder にも勧められる。
+  - **CI はまだ回っていない** (push 待ち)。Linux・macOS での WORLD のビルドと `UtauTests` の歌を CI が初めて見る。
 
 - **roadmap E: sinsy を入れた** (2026-11-28、オーナーの選択「E をやって」。Unreleased)。設計は `docs/design.md` §3.4。
-  - `native/sinsy/` (CMakeLists と `cantoria_sinsy.cpp`) を `tools/build-sinsy.ps1` が `native/out/<rid>/` へ作り、
+  - `native/sinsy/` (CMakeLists と `cantoria_sinsy.cpp`) を `tools/build-native.ps1` が `native/out/<rid>/` へ作り、
     Core の csproj が DLL と `sinsy-dic/` をプログラムの隣へ写す。`native/out` は git に入らない (`out/`)。
     **ビルドしていない機械では sinsy は「この build にはない」と言うだけ**で、ほかは動く。
   - shim は Sinsy にラベルだけ作らせ、hts_engine を自分で回す。理由は音域: f001 は G#3 より下を全部 G#3 で歌った。
@@ -28,7 +40,7 @@ DiffSinger (プロセス内の ONNX)、NEUTRINO、VOICEVOX。主な呼び手は 
     (11 番目の音符「こん」を足すと出る。1 句目の同じ「やこん」では出ない)。HMM が出した長さがその音素の状態の数
     (5 フレーム = 25 ms) より短く、hts_engine が各状態を 1 フレームに切り上げただけで、歌は続く。ずれは数 ms。
     hts_engine の HTS_error が stderr へ直に書くので、黙らせるには第三者のソースに手を入れることになる。今は放っておく。
-  - **⚠️ build-sinsy.ps1 を共有のコンソールで動かすとき**: vcvars64 の環境は終わりに戻すようにした。戻す前の版で
+  - **⚠️ build-native.ps1 を共有のコンソールで動かすとき**: vcvars64 の環境は終わりに戻すようにした。戻す前の版で
     `Platform=x64` が残り、以後の `dotnet build` が `bin\x64\` に出て古い DLL を走らせた (2026-11-28)。
 
 - **GPU のない機械で Download a Voice が sinsy を勧める** (2026-11-28、オーナーの求め。Unreleased)。
@@ -123,7 +135,7 @@ DiffSinger (プロセス内の ONNX)、NEUTRINO、VOICEVOX。主な呼び手は 
     **オーナーの耳: CPU と CoreML の vocoder に違いはない** (2026-11-28、cpu-1.wav と coreml-Models-vocoder-1.wav)。残り: 本物の Mac の GPU。
 
 **次の一手**:
-0. **sinsy の仕上げ**: push 後の CI (3 OS) と `macOS singing` (mac.yml、上の「Mac で最適に歌う準備」) を見る。オーナーに sinsy の声を聞いてもらう。拡張を F5 で動かし、
+0. **utau と sinsy の仕上げ**: utau はオーナーに重音テトの声を聞いてもらい、CI (3 OS) で WORLD のビルドと `UtauTests` を見る。次は音源の配布か CVVC・英語 (オーナーが選ぶ)。sinsy は push 後の CI (3 OS) と `macOS singing` (mac.yml、上の「Mac で最適に歌う準備」) を見る。オーナーに sinsy の声を聞いてもらう。拡張を F5 で動かし、
    Download a Voice に 2 つの申し出が出て NIT SONG070 が入り、Lily# から `sinsy/nitech_jp_song070_f001` で歌うことを見る
    (まだ画面で見ていない)。E の残り (cevio、acestudio、guide) はどれもオーナーの求めがあれば。
    ACE Studio は外から呼べる手段 (実験版の MCP・CLI) を出したので計画外から外した。NNSVS は計画外、
@@ -192,7 +204,7 @@ DiffSinger (プロセス内の ONNX)、NEUTRINO、VOICEVOX。主な呼び手は 
   `extensionHost`、preLaunchTask `npm: compile`) は手元にしかない。無ければ作る (2026-11-26 に初めて作った)。
   同梱の program は `editors/vscode/bin/win-x64` (`tools/pack-extension.ps1` が作る)、無ければ設定 `cantoria.developer.program`。
 - CI は Windows・Linux・macOS で走る。試験に Windows のパスを書くと Linux と macOS で落ちる (`/` で書く)。
-- 試験で sinsy を歌わせるには先に `tools/build-sinsy.ps1` (Visual Studio の C++ が要る) と `CANTORIA_SINSY_VOICE`。
+- 試験で sinsy・utau を歌わせるには先に `tools/build-native.ps1` (Visual Studio の C++ が要る) と `CANTORIA_SINSY_VOICE`。
 - 声は `C:\Tools\voices` (TIGER、Nishiren、vocoder の nsf_hifigan)、sinsy の声は `C:\Tools\sinsy`。NEUTRINO と VOICEVOX の場所は VS Code の
   設定 `cantoria.*` にある。CLI で描いて確かめるとき:
   `src/Cantoria.Cli/bin/Release/net10.0/cantoria.exe sing score.json --voice diffsinger/Nishiren --voices-dir C:\Tools\voices --output x.wav`

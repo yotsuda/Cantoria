@@ -191,6 +191,35 @@ program and the extension carries them:
     PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS
     OR IMPLIED WARRANTIES ARE DISCLAIMED (the full text is in the COPYING files).
 
+### WORLD — Modified BSD (compiled into the program)
+
+https://github.com/mmorise/World at c794856b
+
+The `utau` backend's library (`cantoria_world`, built from `native/world`) is WORLD's
+analysis (Harvest, CheapTrick, D4C) and synthesis, compiled as they are (the sources
+are fetched at that commit, checked by SHA-256) with a small C entry point of
+Cantoria's. Its license ships beside the library in full (`COPYING.world`), so every
+copy of the program and the extension carries it:
+
+    WORLD: Copyright (c) 2010 M. Morise. All rights reserved.
+
+    Redistribution and use in source and binary forms, with or without
+    modification, are permitted provided that the following conditions are
+    met: redistributions of source code must retain the above copyright
+    notice, this list of conditions and the following disclaimer;
+    redistributions in binary form must reproduce the above copyright notice,
+    this list of conditions and the following disclaimer in the documentation
+    and/or other materials provided with the distribution; neither the name of
+    the developer nor the names of its contributors may be used to endorse or
+    promote products derived from this software without specific prior written
+    permission. THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND
+    CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES ARE DISCLAIMED
+    (the full text is in COPYING.world).
+
+UTAU voicebanks are their authors', under each one's terms — Cantoria ships none.
+The way a voicebank is read (`oto.ini`, `prefix.map`, VCV and CV aliases) follows
+UTAU's conventions as OpenUtau documents them; no OpenUtau code is copied.
+
 ### DiffSinger (OpenVPI) — Apache-2.0 (format only)
 
 https://github.com/openvpi/DiffSinger
