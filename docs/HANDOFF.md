@@ -38,8 +38,8 @@ DiffSinger (プロセス内の ONNX)、NEUTRINO、VOICEVOX。主な呼び手は 
     `docs/utau-voices-2026-11-28.md`: 日本語は波音リツ・足立レイ、英中韓は筆音クミ。重音テトは TWINDRILL に聞くのが先)。
     `findEngines` は OpenUtau の Singers を DiffSinger の声として探すが、そこには UTAU 音源も入る。utau の folder にも勧められる。
   - **CI (2026-11-28 run 46128986717)**: Windows・macOS は緑 (WORLD のビルドと `UtauTests` も)。Linux は
-    `cantoria_world.cpp` の `size_t` が gcc で未定義で赤 → `<cstddef>` と `std::size_t` で直した (`459cd25`、push 待ち)。
-    Linux の `UtauTests` はその後の CI が初めて見る。
+    `cantoria_world.cpp` の `size_t` が gcc で未定義で赤 → `<cstddef>` と `std::size_t` で直した (`459cd25`)。
+    次の run 46129385955 で 3 OS とも緑、Linux も 383 件通り skip 0 (`UtauTests` も歌った)。
 
 - **roadmap E: sinsy を入れた** (2026-11-28、オーナーの選択「E をやって」。Unreleased)。設計は `docs/design.md` §3.4。
   - `native/sinsy/` (CMakeLists と `cantoria_sinsy.cpp`) を `tools/build-native.ps1` が `native/out/<rid>/` へ作り、
@@ -49,8 +49,7 @@ DiffSinger (プロセス内の ONNX)、NEUTRINO、VOICEVOX。主な呼び手は 
     `SinsySinger.Shift` で句を C4〜E5 に移して歌わせ、half tone で戻す。
   - 声は `C:\Tools\sinsy` に置いた (テストは `CANTORIA_SINSY_VOICE` に .htsvoice)。`cantoria fetch nitech-song070` で入る。
   - 拡張: `cantoria.sinsy.voicesFolder` (空なら `~/Cantoria/Sinsy`)、声の一覧、Download a Voice に 2 つ目の申し出。
-  - **CI はまだ回っていない** (push 待ち)。Linux・macOS での sinsy のビルド (gcc/clang) と、SourceForge からの声の取得、
-    published のプログラムが歌うことを CI が初めて見る。赤ならそこを直す。WSL はこの機械にない (ディストリビューションなし)。
+  - CI は 3 OS とも緑 (2026-11-28、run 46094161029 以降。Linux・macOS での sinsy のビルドも)。WSL はこの機械にない (ディストリビューションなし)。
   - **オーナーの耳はまだ**: 聞き比べ用 `sinsy-yukiyakonko.wav` (2026-11-28 に作り直した。scratchpad、消えうる。作り直しは
     `cantoria sing examples/yukiyakonko.json --voice sinsy/nitech_jp_song070_f001 --sinsy-dir C:\Tools\sinsy -o x.wav`)。
   - この例では stderr に hts_engine の `HTS_set_specified_duration: Specified frame length is too short.` が 1 行出る
@@ -152,7 +151,7 @@ DiffSinger (プロセス内の ONNX)、NEUTRINO、VOICEVOX。主な呼び手は 
     **オーナーの耳: CPU と CoreML の vocoder に違いはない** (2026-11-28、cpu-1.wav と coreml-Models-vocoder-1.wav)。残り: 本物の Mac の GPU。
 
 **次の一手**:
-0. **utau と sinsy の仕上げ**: utau は CI (3 OS) で WORLD のビルドと `UtauTests` を見る。CVVC・英語 (X-SAMPA CVVC) は済んだ。残りの候補は音源の配布 (波音リツ)、英語の VCCV (筆音クミ)・ARPAsing、解析の disk cache (オーナーが選ぶ)。sinsy は push 後の CI (3 OS) と `macOS singing` (mac.yml、上の「Mac で最適に歌う準備」) を見る。オーナーに sinsy の声を聞いてもらう。拡張を F5 で動かし、
+0. **utau と sinsy の仕上げ**: utau の CI は 3 OS とも緑 (2026-11-28)。CVVC・英語 (X-SAMPA CVVC) は済んだ。残りの候補は音源の配布 (波音リツ)、英語の VCCV (筆音クミ)・ARPAsing、解析の disk cache (オーナーが選ぶ)。sinsy は push 後の CI (3 OS) と `macOS singing` (mac.yml、上の「Mac で最適に歌う準備」) を見る。オーナーに sinsy の声を聞いてもらう。拡張を F5 で動かし、
    Download a Voice に 2 つの申し出が出て NIT SONG070 が入り、Lily# から `sinsy/nitech_jp_song070_f001` で歌うことを見る
    (まだ画面で見ていない)。E の残り (cevio、acestudio、guide) はどれもオーナーの求めがあれば。
    ACE Studio は外から呼べる手段 (実験版の MCP・CLI) を出したので計画外から外した。NNSVS は計画外、
