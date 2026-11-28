@@ -5,6 +5,7 @@
 // over flat arrays, for Cantoria.Core's WorldNative. A spectrogram or aperiodicity is frames rows
 // of fft_size / 2 + 1 values, one row after another.
 
+#include <cstddef>
 #include <vector>
 
 #include "world/cheaptrick.h"
@@ -22,13 +23,13 @@ namespace {
 
 std::vector<double*> Rows(double* flat, int frames, int width) {
   std::vector<double*> rows(frames);
-  for (int i = 0; i < frames; ++i) rows[i] = flat + static_cast<size_t>(i) * width;
+  for (int i = 0; i < frames; ++i) rows[i] = flat + static_cast<std::size_t>(i) * width;
   return rows;
 }
 
 std::vector<const double*> Rows(const double* flat, int frames, int width) {
   std::vector<const double*> rows(frames);
-  for (int i = 0; i < frames; ++i) rows[i] = flat + static_cast<size_t>(i) * width;
+  for (int i = 0; i < frames; ++i) rows[i] = flat + static_cast<std::size_t>(i) * width;
   return rows;
 }
 
