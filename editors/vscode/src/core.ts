@@ -356,14 +356,51 @@ export function utauText(bytes: Uint8Array): string {
     }
 }
 
-/** The UTAU voicebanks as the API lists them (VoiceEntries.Utau): Japanese, each by the `name=` of its
- *  `character.txt` where it has one. */
+/** The aliases that say an UTAU voicebank sings English (UtauEnglishPhonemizer.Markers): an English
+ *  CVVC bank's schwa or "cat" vowel from silence, or into it. */
+export const UTAU_ENGLISH_MARKERS = ['- @', '@ -', '- {', '{ -'];
+
+/** The languages a voicebank of these aliases sings, as the program reads them (UtauVoicebank.LanguagesOf):
+ *  `ja` where an alias is kana, `en` where one is an English marker; `ja` where neither. */
+export function utauLanguagesOf(aliases: Iterable<string>): string[] {
+    let kana = false, english = false;
+    for (const alias of aliases) {
+        kana ||= /[ぁ-ヿ]/.test(alias);
+        english ||= UTAU_ENGLISH_MARKERS.includes(alias);
+    }
+    return kana && english ? ['ja', 'en'] : english ? ['en'] : ['ja'];
+}
+
+/** The aliases of every `oto.ini` in a voicebank, as the program reads them (UtauVoicebank.Load): its
+ *  own, and those anywhere in its folders. */
+export function utauAliasesIn(folder: string, listDirs: (dir: string) => string[], listFiles: (dir: string) => string[],
+    join: (...parts: string[]) => string, readBytes: (p: string) => Uint8Array | undefined): string[] {
+    const aliases: string[] = [];
+    const read = (dir: string, deep: boolean) => {
+        for (const f of listFiles(dir).filter(f => f.toLowerCase() === 'oto.ini')) {
+            const bytes = readBytes(join(dir, f));
+            for (const line of bytes ? utauText(bytes).split('\n') : []) {
+                // An empty alias is the file's name without its extension.
+                const m = /^([^=]+)=([^,\r]*)/.exec(line);
+                if (m) { aliases.push(m[2].trim() || m[1].trim().replace(/^.*[\\/]/, '').replace(/\.[^.]*$/, '')); }
+            }
+        }
+        if (deep) { for (const d of listDirs(dir)) { read(join(dir, d), true); } }
+    };
+    read(folder, false);
+    for (const d of listDirs(folder)) { read(join(folder, d), true); }
+    return aliases;
+}
+
+/** The UTAU voicebanks as the API lists them (VoiceEntries.Utau): each singing the languages its aliases
+ *  say (`utauLanguagesOf`), by the `name=` of its `character.txt` where it has one. */
 export function utauEntriesIn(folder: string, listDirs: (dir: string) => string[], listFiles: (dir: string) => string[],
     exists: (p: string) => boolean, join: (...parts: string[]) => string, readBytes: (p: string) => Uint8Array | undefined): VoiceEntry[] {
     return utauVoicesIn(folder, listDirs, listFiles, exists, join).map(name => {
         const bytes = readBytes(join(folder, name, 'character.txt'));
         const label = bytes ? utauText(bytes).split('\n').map(l => l.replace(/\r$/, '')).find(l => l.toLowerCase().startsWith('name='))?.slice(5).trim() : undefined;
-        return { id: voiceId('utau', name), engine: 'utau' as const, name, label: label || name, language: 'ja' };
+        const languages = utauLanguagesOf(utauAliasesIn(join(folder, name), listDirs, listFiles, join, readBytes));
+        return { id: voiceId('utau', name), engine: 'utau' as const, name, label: label || name, language: languages[0], languages };
     });
 }
 

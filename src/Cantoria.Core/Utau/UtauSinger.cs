@@ -13,7 +13,9 @@ namespace Cantoria.Utau;
 /// envelope and aperiodicity, made as long as its note (the consonant as recorded, the rest stretched
 /// evenly where the note is longer than the recording), synthesised again on the score's pitch, and
 /// laid in place with its preutterance before the beat and its overlap crossfaded into the sound before.
-/// No GPU and no model: it sings on any machine. Japanese kana only, as the voicebanks are.
+/// No GPU and no model: it sings on any machine. Japanese from kana, and English with an English CVVC
+/// voicebank (<see cref="UtauEnglishPhonemizer"/>); a voicebank sings the languages its aliases say
+/// (<see cref="UtauVoicebank.Languages"/>).
 /// <para>The pitch is the score's own: each note's, gliding over <see cref="GlideSeconds"/> either side of
 /// the start of a note that follows without a rest, with the written vibrato and bend
 /// (<see cref="Vibrato"/>, <see cref="Bend"/>) as DiffSinger voices sing them. Where the recording is
@@ -66,9 +68,9 @@ public sealed class UtauSinger : ISinger, IDisposable
         {
             throw new SingerException("the score is not sound: " + string.Join("; ", problems));
         }
-        if (NeutrinoMusicXml.NotKanaProblem(score, "UTAU") is { } notKana)
+        if (LanguageProblem(score) is { } language)
         {
-            throw new SingerException(notKana);
+            throw new SingerException(language);
         }
         await _oneAtATime.WaitAsync(ct).ConfigureAwait(false);
         try
@@ -81,9 +83,21 @@ public sealed class UtauSinger : ISinger, IDisposable
         }
     }
 
+    /// <summary>Why the score's words are not ones the engine reads (kana, or English), or null.</summary>
+    public static string? LanguageProblem(SungScore score) => score.Language switch
+    {
+        "ja" => NeutrinoMusicXml.NotKanaProblem(score, "UTAU"),
+        "en" => null,
+        _ => $"UTAU sings Japanese (kana) and English, and these words are {score.Language}",
+    };
+
     private SungAudio Sing(SungScore score, CancellationToken ct)
     {
         var bank = Bank();
+        if (!bank.Languages.Contains(score.Language))
+        {
+            throw new SingerException($"{Name} sings {string.Join(", ", bank.Languages)}, and these words are {score.Language}");
+        }
         var segments = UtauPhonemizer.Segments(score, bank, Name);
         int fs = segments.Count > 0 ? Recording(segments[0].Oto.File).SampleRate : score.SampleRate;
         double lead = LeadInSeconds;

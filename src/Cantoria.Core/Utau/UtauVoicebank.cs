@@ -44,6 +44,25 @@ public sealed class UtauVoicebank
     /// <summary>The aliases it has.</summary>
     public IReadOnlyCollection<string> Aliases => _aliases.Keys;
 
+    /// <summary>The languages it sings, as <see cref="LanguagesOf"/> reads its aliases.</summary>
+    public IReadOnlyList<string> Languages => _languages ??= LanguagesOf(_aliases.Keys);
+
+    private IReadOnlyList<string>? _languages;
+
+    /// <summary>The languages a voicebank of these aliases sings: <c>ja</c> where an alias is kana, <c>en</c> where it
+    /// has one of an English CVVC bank's (<see cref="UtauEnglishPhonemizer.Markers"/>); <c>ja</c> where neither (a
+    /// bank of romaji aliases).</summary>
+    public static IReadOnlyList<string> LanguagesOf(IEnumerable<string> aliases)
+    {
+        bool kana = false, english = false;
+        foreach (var alias in aliases)
+        {
+            kana |= alias.Any(c => c is >= 'ぁ' and <= 'ヿ');
+            english |= UtauEnglishPhonemizer.Markers.Contains(alias);
+        }
+        return kana && english ? ["ja", "en"] : english ? ["en"] : ["ja"];
+    }
+
     /// <summary>The alias's entry as written, or null.</summary>
     public Oto? Get(string alias) => _aliases.GetValueOrDefault(alias);
 

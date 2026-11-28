@@ -245,7 +245,28 @@ none is offered yet (the owner's choice: a voicebank the user installs needs no 
   then its romaji. A syllable of several morae (`こん`) gives each mora after the first at most
   0.12 s of the note's end. A melisma note or `ー` holds the sound before on; `っ` is silence the
   next mora starts out of. A mora with none of its aliases is `has no sound for "…" (note N`, the
-  words Lily# points at a note by. Kana only (`NotKanaProblem`).
+  words Lily# points at a note by. Japanese is kana only (`NotKanaProblem`).
+- **Languages**: a bank sings what its aliases say (`UtauVoicebank.LanguagesOf`, the extension's
+  `utauLanguagesOf` the same): `ja` where an alias is kana, `en` where it has `- @`, `@ -`, `- {` or
+  `{ -` (an English CVVC bank in X-SAMPA), `ja` where neither (romaji). A score in another language
+  is refused before singing, and English words by a bank that has no English.
+- **English** (`UtauEnglishPhonemizer`, for X-SAMPA CVVC banks laid out as Kasane Teto English): a
+  word is read as the CMU dictionary lists it, else by the model trained on it (`EnglishG2p`, what a
+  DiffSinger voice falls back on), dealt over its notes a vowel each (`EnglishPhonemizer.Deal`), and
+  turned into X-SAMPA (`ah` `V`, the schwa `@`, `er` `3`). Each vowel is sung on the recording of
+  its consonant running into it: two consonants where the bank has them (`kju`), else one (`wI`),
+  with `- ` after silence; the vowel alone (`- @`, `@`) or from the vowel before (`u A`) where no
+  consonant comes between. Consonants before that one take the longest cluster the bank has,
+  through to it (`- tw` before `wI`, `st` before `tA`), else single ones. Between two vowels: from
+  the vowel into the first consonant (`I N`, `@ l`), one consonant into the next where there is one
+  (`r d`), a word's last consonant beginning the next word where that has none of its own ("hand
+  out": `daU`). These pieces are laid before the vowel's beat, each as long as the recording after
+  it has as its preutterance (0.03-0.25 s), within half the sound before, or 0.4 s of the rest
+  before a phrase. A phrase ends on `A -` where it ends on a vowel and has a rest; else on its last
+  consonants (`A r-`; `{ l` then `l mz-`, else pair by pair), each as long as its recording after its
+  preutterance, ending up to 0.15 s into the rest and beginning no sooner than halfway through the
+  vowel, so a breath with no rest still has them. A consonant the bank lacks is passed over; a vowel
+  is refused with the note named. Not yet: VCCV (Hitsune Kumi), ARPAsing, a note's `phonemes`.
 - **CVVC banks**: where the mora took a CV recording after a vowel and the bank has the bridge from
   that vowel into its consonant (`a k` before か; `a sh`, else `a s`, before し; `n` for ん), the
   bridge takes the end of the sound before: as long as the CV recording's preutterance, at most
@@ -268,12 +289,14 @@ none is offered yet (the owner's choice: a voicebank the user installs needs no 
   resampled to the first's).
 - Measured (2026-11-28): the 7-second example in about 2 s, every long note within half a semitone,
   by Kasane Teto's 単独音 (CV) and 統合 (CV + 連続音) and Namine Ritsu's まばゆ (CVVC, three pitches by
-  `prefix.map`). A synthetic buzz held exactly at 220 Hz was analysed into an
+  `prefix.map`); Kasane Teto English sang "Twinkle, twinkle, little star" (8.3 s) in 2.3 s, every
+  note within 0.1 semitone. A synthetic buzz held exactly at 220 Hz was analysed into an
   envelope that sang E4 an octave low; the test's voice wobbles as a singer's does.
 - Tests: `UtauTests` makes its own voicebank (a buzz with vowel-like resonances, noise for a
   consonant) and sings it wherever `cantoria_world` is built, so the CI sings on all three
-  platforms with no voicebank fetched; `CANTORIA_UTAU_VOICE` (a voicebank's folder) adds a real one.
-- Not yet: English banks, the bank's own pitch modulation, flags, a disk cache of the
+  platforms with no voicebank fetched; `CANTORIA_UTAU_VOICE` (a voicebank's folder) adds a real one,
+  and `CANTORIA_UTAU_ENGLISH_VOICE` an English one singing Twinkle (its recordings in the test's output).
+- Not yet: other English styles (VCCV, ARPAsing), the bank's own pitch modulation, flags, a disk cache of the
   analyses (each recording is analysed again in a new process), offering a voicebank for download.
 
 ## 4. CLI

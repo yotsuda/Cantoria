@@ -243,7 +243,7 @@ sealed class Engines
 
     private static void RefuseWhatUtauCannotRead(SungScore score)
     {
-        if (NeutrinoMusicXml.NotKanaProblem(score, "UTAU") is { } problem)
+        if (UtauSinger.LanguageProblem(score) is { } problem)
         {
             throw new SingerException(problem);
         }

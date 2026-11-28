@@ -50,7 +50,9 @@ that is the one thing this library adds.
     Cantoria's own resampler over [WORLD](https://github.com/mmorise/World)
     (Modified BSD, built into the program like Sinsy): no GPU, no UTAU. Japanese
     from kana, VCV (連続音), CVVC and CV (単独音) banks, with `prefix.map` for banks
-    recorded at several pitches; the voicebank folders are in the UTAU voices
+    recorded at several pitches; English with an English CVVC bank in X-SAMPA
+    (Kasane Teto English), its words read as the DiffSinger voices read a word their
+    dictionary lacks. The voicebank folders are in the UTAU voices
     folder (`--utau-dir`, default `~/Cantoria/UTAU`). Each voicebank is its
     author's, under its own terms.
 

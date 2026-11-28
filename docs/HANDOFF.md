@@ -21,9 +21,17 @@ DiffSinger (プロセス内の ONNX)、NEUTRINO、VOICEVOX。主な呼び手は 
     (波音リツ CVVC、r73_mabayu_uruha.zip の中の zip。A3・Eb4・A4 の三音階を prefix.map で)。
   - 連続音で D4C の LoveTrain が「い」の後半を雑音と判定し息で歌われた → D4C の threshold を 0 に (Harvest が有声を決める)。
     CVVC は `a k` の橋を前の音の終わりに、句の終わりは `a -` / `a R` で。
-  - **オーナーの耳はまだ**: 聞き比べ用 `utau-teto-cv.wav`・`utau-teto-vcv.wav`・`utau-ritsu-cvvc.wav` (scratchpad、消えうる。
+  - オーナーの評 (2026-11-28): 「DiffSinger や Neutrino と比べるとかなり不自然な声だが、GPU なしで動かせるので入れる価値がある」。
+    聞き比べ用 `utau-teto-cv.wav`・`utau-teto-vcv.wav`・`utau-ritsu-cvvc.wav` (scratchpad、消えうる。
     作り直しは `cantoria sing examples/yukiyakonko.json --voice utau/重音テト統合 --utau-dir C:\Tools\utau -o x.wav` など)。
-  - まだ: 英語の音源、音源自身の音高の揺れ (modulation)、flags、解析の disk cache、音源の配布 (候補は
+  - **英語を入れた** (オーナーの選択「次は 1 英語の音源 が良い」): `UtauEnglishPhonemizer` が X-SAMPA の英語 CVVC
+    (重音テト English の並び: `- tw` `wI` `I N` `st` `tA` `A r-` `l mz-`) を歌う。語の読みは DiffSinger と同じ `EnglishG2p`
+    (CMU 辞書、なければモデル)。音源の言語は別名から (`LanguagesOf`: かながあれば ja、`- @` などがあれば en)、拡張も同じ規則。
+    音源は `C:\Tools\utau\重音テトEnglish` (公式 TETO-English-150401.zip の `重音テト音声ライブラリー` を平らに置いた)。
+    Twinkle を 8.3 s → 2.3 s、全音 0.1 半音以内。試験は `CANTORIA_UTAU_ENGLISH_VOICE`。**オーナーの耳はまだ**: `utau-teto-en.wav`
+    (作り直し: 試験の `Twinkle()` と同じ楽譜を JSON にして `--voice utau/重音テトEnglish`)。
+    筆音クミ en は VCCV (`-ka` `ak` 型) で別の割り当てが要る (1.1 GB、OneDrive)。ARPAsing も未対応。
+  - まだ: 英語の VCCV・ARPAsing、音源自身の音高の揺れ (modulation)、flags、解析の disk cache、音源の配布 (候補は
     `docs/utau-voices-2026-11-28.md`: 日本語は波音リツ・足立レイ、英中韓は筆音クミ。重音テトは TWINDRILL に聞くのが先)。
     `findEngines` は OpenUtau の Singers を DiffSinger の声として探すが、そこには UTAU 音源も入る。utau の folder にも勧められる。
   - **CI はまだ回っていない** (push 待ち)。Linux・macOS での WORLD のビルドと `UtauTests` の歌を CI が初めて見る。
@@ -139,7 +147,7 @@ DiffSinger (プロセス内の ONNX)、NEUTRINO、VOICEVOX。主な呼び手は 
     **オーナーの耳: CPU と CoreML の vocoder に違いはない** (2026-11-28、cpu-1.wav と coreml-Models-vocoder-1.wav)。残り: 本物の Mac の GPU。
 
 **次の一手**:
-0. **utau と sinsy の仕上げ**: utau はオーナーに重音テトの声を聞いてもらい、CI (3 OS) で WORLD のビルドと `UtauTests` を見る。次は音源の配布か CVVC・英語 (オーナーが選ぶ)。sinsy は push 後の CI (3 OS) と `macOS singing` (mac.yml、上の「Mac で最適に歌う準備」) を見る。オーナーに sinsy の声を聞いてもらう。拡張を F5 で動かし、
+0. **utau と sinsy の仕上げ**: utau はオーナーに重音テト English (`utau-teto-en.wav`) を聞いてもらい、CI (3 OS) で WORLD のビルドと `UtauTests` を見る。CVVC・英語 (X-SAMPA CVVC) は済んだ。残りの候補は音源の配布 (波音リツ)、英語の VCCV (筆音クミ)・ARPAsing、解析の disk cache (オーナーが選ぶ)。sinsy は push 後の CI (3 OS) と `macOS singing` (mac.yml、上の「Mac で最適に歌う準備」) を見る。オーナーに sinsy の声を聞いてもらう。拡張を F5 で動かし、
    Download a Voice に 2 つの申し出が出て NIT SONG070 が入り、Lily# から `sinsy/nitech_jp_song070_f001` で歌うことを見る
    (まだ画面で見ていない)。E の残り (cevio、acestudio、guide) はどれもオーナーの求めがあれば。
    ACE Studio は外から呼べる手段 (実験版の MCP・CLI) を出したので計画外から外した。NNSVS は計画外、

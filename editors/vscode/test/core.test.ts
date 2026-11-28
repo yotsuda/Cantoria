@@ -10,7 +10,7 @@ import {
     ENGINES, characterNameOf, diffSingerEntriesIn, diffSingerSpeakersOf, diffSingerVoicesIn, languageProblem, languageTag, missingProgramNote, neutrinoFolderProblems, parseLine, programCandidates,
     planAsked, planLine, planOfNoOne,
     cancelLine, defaultVoiceFor, firstOfGender, genderOfWord, requestLine, resolveSinger, rid, scoreProblems, serveArgs, speakerOf, splitVoiceId, voiceEntriesIn, voiceId, voiceKey, voicesFolderProblems, voicesIn, voicevoxEntriesFrom, vsixTarget,
-    findEngines, VoiceOffer, defaultVoicesFolder, fetchLine, offerDetail, offerRows, defaultSinsyFolder, sinsyEntriesIn, sinsyVoicesIn, defaultUtauFolder, utauEntriesIn, utauVoicesIn, utauText,
+    findEngines, VoiceOffer, defaultVoicesFolder, fetchLine, offerDetail, offerRows, defaultSinsyFolder, sinsyEntriesIn, sinsyVoicesIn, defaultUtauFolder, utauAliasesIn, utauEntriesIn, utauLanguagesOf, utauVoicesIn, utauText,
 } from '../src/core';
 import { DIFFSINGER_GENDERS, diffSingerGender } from '../src/diffSingerGenders';
 import { VOICEVOX_GENDERS, voicevoxGender } from '../src/voicevoxGenders';
@@ -186,18 +186,29 @@ describe('the engine\'s wire', () => {
             U: ['readme.txt'],
             'U/teto': ['character.txt'], 'U/teto/cv': ['OTO.INI', 'a.wav'],
             'U/ritsu': ['oto.ini'],
+            'U/teto-en': [], 'U/teto-en/en': [], 'U/teto-en/en/deep': ['oto.ini'],
             'U/notes': ['readme.txt'],
         };
         const dirs = (d: string) => Object.keys(files).filter(k => k.startsWith(d + '/') && !k.slice(d.length + 1).includes('/')).map(k => k.slice(d.length + 1));
         const exists = (p: string) => p in files;
         // 重音テト in Shift_JIS, as UTAU writes it.
         const sjis = new Uint8Array([0x6e, 0x61, 0x6d, 0x65, 0x3d, 0x8f, 0x64, 0x89, 0xb9, 0x83, 0x65, 0x83, 0x67, 0x0d, 0x0a]);
-        const read = (p: string) => p === 'U/teto/character.txt' ? sjis : undefined;
+        const otos: Record<string, string> = {
+            // An empty alias is its file's name: か is kana.
+            'U/teto/cv/OTO.INI': '_か.wav=か,0,100,-500,60,20\r\nか.wav=,0\r\n',
+            'U/ritsu/oto.ini': 'a.wav=ka,0\r\n',
+            'U/teto-en/en/deep/oto.ini': 'a.wav=- @,0\r\na.wav=b@,0\r\n',
+        };
+        const read = (p: string) => p === 'U/teto/character.txt' ? sjis : p in otos ? new TextEncoder().encode(otos[p]) : undefined;
         assert.deepEqual(utauVoicesIn('U', dirs, d => files[d] ?? [], exists, join), ['ritsu', 'teto']);
         assert.deepEqual(utauEntriesIn('U', dirs, d => files[d] ?? [], exists, join, read), [
-            { id: 'utau/ritsu', engine: 'utau', name: 'ritsu', label: 'ritsu', language: 'ja' },
-            { id: 'utau/teto', engine: 'utau', name: 'teto', label: '重音テト', language: 'ja' },
+            { id: 'utau/ritsu', engine: 'utau', name: 'ritsu', label: 'ritsu', language: 'ja', languages: ['ja'] },
+            { id: 'utau/teto', engine: 'utau', name: 'teto', label: '重音テト', language: 'ja', languages: ['ja'] },
         ]);
+        // The aliases of every oto.ini, however deep (as the program reads a voicebank), say what it sings.
+        assert.deepEqual(utauAliasesIn('U/teto', dirs, d => files[d] ?? [], join, read), ['か', 'か']);
+        assert.deepEqual(utauLanguagesOf(utauAliasesIn('U/teto-en', dirs, d => files[d] ?? [], join, read)), ['en']);
+        assert.deepEqual(utauLanguagesOf(['か', '{ -']), ['ja', 'en']);
         assert.equal(utauText(new Uint8Array([0xef, 0xbb, 0xbf, 0xe3, 0x81, 0x82])), 'あ');   // UTF-8, its BOM dropped
         assert.deepEqual(utauVoicesIn('nowhere', dirs, () => [], exists, join), []);
         assert.equal(defaultUtauFolder('/home/u', join), '/home/u/Cantoria/UTAU');

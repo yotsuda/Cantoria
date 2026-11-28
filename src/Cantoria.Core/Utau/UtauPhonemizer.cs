@@ -19,6 +19,7 @@ public sealed record UtauSegment(Oto Oto, double Start, double End, int Note);
 /// at most <see cref="TailSeconds"/>. A melisma note, or <c>ー</c>, holds the sound before on; <c>っ</c>
 /// is a silence that the next mora starts out of. Where the bank has them, a phrase ends on the recording of
 /// its last vowel dying into silence (<c>a -</c>, else <c>a R</c>; <see cref="EndingSeconds"/> at most).
+/// English words are <see cref="UtauEnglishPhonemizer"/>'s.
 /// </summary>
 public static class UtauPhonemizer
 {
@@ -33,6 +34,10 @@ public static class UtauPhonemizer
     /// in the words Lily# looks for (<c>has no sound for "…" (note N</c>).</exception>
     public static List<UtauSegment> Segments(SungScore score, UtauVoicebank bank, string voice)
     {
+        if (score.Language == "en")
+        {
+            return UtauEnglishPhonemizer.Segments(score, bank, voice);
+        }
         var segments = new List<UtauSegment>();
         string? vowel = null;      // the vowel sounding at the end of the last mora; null after silence
         double end = double.NegativeInfinity;

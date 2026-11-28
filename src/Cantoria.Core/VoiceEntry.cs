@@ -114,8 +114,9 @@ public static partial class VoiceEntries
             Gender = SinsyGender().Match(name) is { Success: true } m ? (m.Groups[1].Value == "f" ? "female" : "male") : null,
         }).ToList();
 
-    /// <summary>The UTAU voicebanks in a folder (<see cref="Utau.UtauOptions.Voices"/>), all Japanese (the
-    /// kana the engine reads), each by the name its <c>character.txt</c> gives (UTF-8, else Shift_JIS).</summary>
+    /// <summary>The UTAU voicebanks in a folder (<see cref="Utau.UtauOptions.Voices"/>), each singing the
+    /// languages its aliases say (<see cref="Utau.UtauVoicebank.LanguagesOf"/>: Japanese, English or both),
+    /// by the name its <c>character.txt</c> gives (UTF-8, else Shift_JIS).</summary>
     public static IReadOnlyList<VoiceEntry> Utau(string folder)
         => Cantoria.Utau.UtauOptions.Voices(folder).Select(name =>
         {
@@ -131,7 +132,19 @@ public static partial class VoiceEntries
             catch (IOException)
             {
             }
-            return new VoiceEntry("utau/" + name, "utau", name, string.IsNullOrEmpty(label) ? name : label) { Language = "ja" };
+            IReadOnlyList<string> languages = ["ja"];
+            try
+            {
+                languages = Cantoria.Utau.UtauVoicebank.Load(Path.Combine(folder, name)).Languages;
+            }
+            catch (Exception e) when (e is IOException or UnauthorizedAccessException or SingerException)
+            {
+            }
+            return new VoiceEntry("utau/" + name, "utau", name, string.IsNullOrEmpty(label) ? name : label)
+            {
+                Language = languages[0],
+                Languages = languages,
+            };
         }).ToList();
 
     /// <summary>What a NEUTRINO voice's <c>info.toml</c> says of its speaker: <c>[speaker] name = "Merrow"</c>,

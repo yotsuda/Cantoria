@@ -3,7 +3,8 @@
 Sings the lyrics of a score for notation extensions such as
 [Lily#](https://marketplace.visualstudio.com/items?itemName=yotsuda.lilysharp), through the singing
 engines you have installed: **DiffSinger** voices, **NEUTRINO** and **VOICEVOX**, and **Sinsy**
-and **UTAU** voicebanks, which are sung inside the extension, Japanese on any computer. Voices from
+and **UTAU** voicebanks, which are sung inside the extension on any computer (Japanese, and English
+with an English UTAU voicebank). Voices from
 different engines can sing in one score, each asked for by itself. The extension carries the
 `cantoria` program, holds the settings and sings for other extensions through its API. It has no
 editor of its own.
@@ -41,7 +42,9 @@ its licence asks.
 
 **UTAU voicebanks sing too**, inside this extension and with no UTAU: put a voicebank's folder (the
 recordings with `oto.ini`, unpacked as its author ships it) in the UTAU voices folder and it is listed
-as `utau/` and the folder's name. Japanese kana, from 連続音 (VCV), CVVC and 単独音 (CV) banks. Each voicebank
+as `utau/` and the folder's name. Japanese kana, from 連続音 (VCV), CVVC and 単独音 (CV) banks, and English
+from an English CVVC bank such as Kasane Teto English. No GPU is needed, and it sounds plainer than
+DiffSinger or NEUTRINO. Each voicebank
 is its author's: download it from the author and use it under the author's terms.
 
 **Any other voice you like sings too.** Qixuan is only the voice Cantoria may fetch for you. Any

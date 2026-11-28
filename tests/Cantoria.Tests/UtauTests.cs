@@ -5,6 +5,7 @@ using System.Text;
 using Cantoria.Audio;
 using Cantoria.Utau;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace Cantoria.Tests;
 
@@ -19,7 +20,13 @@ public sealed class UtauTests : IDisposable
 {
     private readonly string _dir = Path.Combine(Path.GetTempPath(), "cantoria-utau-" + Guid.NewGuid().ToString("N"));
 
-    public UtauTests() => Directory.CreateDirectory(_dir);
+    private readonly ITestOutputHelper _output;
+
+    public UtauTests(ITestOutputHelper output)
+    {
+        _output = output;
+        Directory.CreateDirectory(_dir);
+    }
 
     public void Dispose()
     {
@@ -167,6 +174,62 @@ public sealed class UtauTests : IDisposable
         Assert.Contains("\"- ぴ\"", e.Message);
     }
 
+    /// <summary>An English CVVC bank in X-SAMPA, as Kasane Teto English is laid out.</summary>
+    private UtauVoicebank English() => UtauVoicebank.Load(Bank("english", string.Concat(
+        new[] { "- tw", "wI", "I N", "k@", "@ l", "st", "tA", "A r-", "A -", "- @", "@ -", "- kju", "u t-", "- ju", "u A" }
+            .Select(a => $"a.wav={a},0,100,-500,60,20\n"))));
+
+    [Fact]
+    public void AnEnglishBank_SingsAWord_FromItsClusters_IntoItsLastConsonant()
+    {
+        // "Twin- kle star" is t w I N | k @ l | s t A r (the CMU dictionary's, a vowel a note); "a" is @.
+        var score = new SungScore([
+            new SungNote(0, 0.5, 60, "Twin", Hyphen: true),
+            new SungNote(0.5, 0.5, 60, "kle"),
+            new SungNote(1, 1, 67, "star"),
+            new SungNote(3, 1, 67, "a"),
+        ], Language: "en");
+        var segments = UtauPhonemizer.Segments(score, English(), "utau/english");
+        // No "twI" nor "- wI": the cluster from silence, then the vowel's own consonant; "st" before "tA" the same.
+        Assert.Equal(["- tw", "wI", "I N", "k@", "@ l", "st", "tA", "A r-", "- @", "@ -"], Aliases(segments));
+        // The cluster leads into the beat by the next recording's preutterance (60 ms).
+        Assert.Equal((-0.06, 0.0), (Math.Round(segments[0].Start, 9), segments[0].End));
+        Assert.Equal(0.0, segments[1].Start);
+        // The last consonant ends a little into the rest after the note.
+        Assert.True(segments[7].Start < 2.0 && segments[7].End > 2.0, $"{segments[7].Start}..{segments[7].End}");
+        Assert.Equal(["en"], English().Languages);
+        Assert.Equal(["en"], VoiceEntries.Utau(_dir).Single(v => v.Name == "english").Languages);
+    }
+
+    [Fact]
+    public void AnEnglishBank_JoinsAVowelToTheVowelBefore_AndAWordsLastConsonantToTheNext()
+    {
+        // "cute" k j u t: two consonants into the vowel, as the bank has it ("kju"). "you are": j u, A r.
+        var score = new SungScore([
+            new SungNote(0, 1, 60, "cute"),
+            new SungNote(2, 1, 60, "you"),
+            new SungNote(3, 1, 60, "are"),
+        ], Language: "en");
+        var segments = UtauPhonemizer.Segments(score, English(), "utau/english");
+        Assert.Equal(["- kju", "u t-", "- ju", "u A", "A r-"], Aliases(segments));
+    }
+
+    [Fact]
+    public async Task WordsABankDoesNotSing_AreRefused()
+    {
+        Assert.Equal(["ja"], Vcv().Languages);
+        Assert.Equal(["ja", "en"], UtauVoicebank.LanguagesOf(["か", "- @"]));
+        Assert.Contains("these words are zh", UtauSinger.LanguageProblem(new SungScore([new SungNote(0, 1, 60, "好")], Language: "zh")));
+        Assert.Null(UtauSinger.LanguageProblem(new SungScore([new SungNote(0, 1, 60, "star")], Language: "en")));
+        if (!UtauOptions.Built)
+        {
+            return;
+        }
+        using var singer = new UtauSinger(new UtauOptions(Bank("ja", "a.wav=か,0,100,-500,60,20\n")));
+        var e = await Assert.ThrowsAsync<SingerException>(() => singer.SingAsync(new SungScore([new SungNote(0, 1, 60, "star")], Language: "en")));
+        Assert.Contains("sings ja, and these words are en", e.Message);
+    }
+
     [Fact]
     public void ThePitchCurve_HoldsThroughRests_AndGlidesBetweenNotesThatTouch()
     {
@@ -280,6 +343,52 @@ public sealed class UtauTests : IDisposable
         foreach (var r in held)
         {
             Assert.True(r.Voiced >= 0.7, $"note {r.Index} is voiced {r.Voiced:0%}");
+            Assert.InRange(r.Sung!.Value, r.Written - 0.5, r.Written + 0.5);
+        }
+    }
+
+    /// <summary>"Twinkle, twinkle, little star, how I wonder what you are", a note a half second.</summary>
+    private static SungScore Twinkle()
+    {
+        (string Lyric, int Pitch, int Beats, bool Hyphen)[] words =
+        [
+            ("Twin", 60, 1, true), ("kle", 60, 1, false), ("twin", 67, 1, true), ("kle", 67, 1, false), ("lit", 69, 1, true),
+            ("tle", 69, 1, false), ("star", 67, 2, false), ("how", 65, 1, false), ("I", 65, 1, false), ("won", 64, 1, true),
+            ("der", 64, 1, false), ("what", 62, 1, false), ("you", 62, 1, false), ("are", 60, 2, false),
+        ];
+        var notes = new List<SungNote>();
+        double t = 0;
+        foreach (var w in words)
+        {
+            notes.Add(new SungNote(t, w.Beats * 0.5, w.Pitch, w.Lyric, Hyphen: w.Hyphen, Breath: w.Lyric == "star"));
+            t += w.Beats * 0.5;
+        }
+        return new SungScore(notes, Language: "en");
+    }
+
+    [Fact]
+    public async Task ARealEnglishVoicebank_SingsTwinkle_InTune()
+    {
+        var voice = Environment.GetEnvironmentVariable("CANTORIA_UTAU_ENGLISH_VOICE");
+        if (voice is null || !UtauOptions.Built)
+        {
+            return;
+        }
+        var score = Twinkle();
+        foreach (var s in UtauPhonemizer.Segments(score, UtauVoicebank.Load(voice), "utau/en"))
+        {
+            _output.WriteLine($"{s.Note,3} {s.Start,7:0.000} {s.End,7:0.000}  {s.Oto.Alias}");
+        }
+        using var singer = new UtauSinger(new UtauOptions(voice));
+        var audio = await singer.SingAsync(score);
+        var held = PitchCheck.Of(audio, score).Where(r => score.Notes[r.Index].Duration >= 0.5).ToList();
+        foreach (var r in held)
+        {
+            _output.WriteLine($"note {r.Index}: written {r.Written}, sung {r.Sung:0.00}, voiced {r.Voiced:0%}");
+        }
+        foreach (var r in held)
+        {
+            Assert.True(r.Voiced >= 0.6, $"note {r.Index} is voiced {r.Voiced:0%}");
             Assert.InRange(r.Sung!.Value, r.Written - 0.5, r.Written + 0.5);
         }
     }

@@ -42,6 +42,19 @@ public sealed class DsDictionary
         return d;
     }
 
+    /// <summary>A dictionary of symbols and no entries: what <see cref="EnglishPhonemizer"/> needs to deal
+    /// a word's phonemes over its syllables when the words are read elsewhere (an UTAU voicebank's, by
+    /// <see cref="EnglishG2p"/>).</summary>
+    internal static DsDictionary OfSymbols(IEnumerable<string> symbols, Func<string, bool> isVowel)
+    {
+        var d = new DsDictionary();
+        foreach (var symbol in symbols)
+        {
+            d._vowel[symbol] = isVowel(symbol);
+        }
+        return d;
+    }
+
     public int Count => _entries.Count;
     public bool IsSymbol(string symbol) => _vowel.ContainsKey(symbol);
     public bool IsVowel(string symbol) => _vowel.TryGetValue(symbol, out var v) && v;
