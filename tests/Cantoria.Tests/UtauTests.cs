@@ -124,6 +124,26 @@ public sealed class UtauTests : IDisposable
     }
 
     [Fact]
+    public void ACvvcBank_BridgesFromTheVowelBefore_IntoTheConsonant()
+    {
+        var bank = UtauVoicebank.Load(Bank("cvvc", "a.wav=- か,0,100,-500,60,20\na.wav=か,0,100,-500,60,20\na.wav=あ,0,100,-500,60,20\na.wav=し,0,100,-500,60,20\na.wav=a k,0,100,-500,250,80\na.wav=a s,0,100,-500,250,80\n"));
+        var score = new SungScore([
+            new SungNote(0, 1, 60, "か"),
+            new SungNote(1, 1, 62, "か"),
+            new SungNote(2, 1, 62, "あ"),   // a vowel: no consonant to bridge into
+            new SungNote(3, 1, 62, "し"),   // "a sh" is not there, "a s" is
+        ]);
+        var segments = UtauPhonemizer.Segments(score, bank, "utau/cvvc");
+        Assert.Equal(["- か", "a k", "か", "あ", "a s", "し"], Aliases(segments));
+        // The bridge takes the end of the note before, as long as か's preutterance (60 ms).
+        Assert.Equal(0.94, segments[0].End, 9);
+        Assert.Equal((0.94, 1.0), (Math.Round(segments[1].Start, 9), segments[1].End));
+        Assert.Equal(["sh", "s"], UtauPhonemizer.Consonants("し"));
+        Assert.Equal(["ky"], UtauPhonemizer.Consonants("きゃ"));
+        Assert.Empty(UtauPhonemizer.Consonants("あ"));
+    }
+
+    [Fact]
     public void ASyllableOfTwoMorae_GivesTheSecondATail_AndAMelismaHoldsTheSoundOn()
     {
         var score = new SungScore([

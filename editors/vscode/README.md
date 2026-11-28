@@ -41,7 +41,7 @@ its licence asks.
 
 **UTAU voicebanks sing too**, inside this extension and with no UTAU: put a voicebank's folder (the
 recordings with `oto.ini`, unpacked as its author ships it) in the UTAU voices folder and it is listed
-as `utau/` and the folder's name. Japanese kana, from 連続音 (VCV) and 単独音 (CV) banks. Each voicebank
+as `utau/` and the folder's name. Japanese kana, from 連続音 (VCV), CVVC and 単独音 (CV) banks. Each voicebank
 is its author's: download it from the author and use it under the author's terms.
 
 **Any other voice you like sings too.** Qixuan is only the voice Cantoria may fetch for you. Any

@@ -37,7 +37,7 @@ public static class UtauPhonemizer
         string? vowel = null;      // the vowel sounding at the end of the last mora; null after silence
         double end = double.NegativeInfinity;
         bool breath = false;
-        int lastMidi = 60;
+        int lastMidi = 60, lastSegmentMidi = 60;
         for (int i = 0; i < score.Notes.Count; i++)
         {
             var n = score.Notes[i];
@@ -83,9 +83,15 @@ public static class UtauPhonemizer
                 }
                 var tried = Candidates(mora, vowel).ToList();
                 int midi = (int)Math.Round(n.Pitch);
-                var oto = tried.Select(a => bank.Find(a, midi)).FirstOrDefault(o => o is not null)
+                var found = tried.Select(a => (Alias: a, Oto: bank.Find(a, midi))).FirstOrDefault(f => f.Oto is not null);
+                var oto = found.Oto
                     ?? throw new SingerException($"{voice} has no sound for \"{n.Lyric}\" (note {i} at {n.Start:0.###} s): its voicebank has none of the aliases {string.Join(", ", tried.Select(a => $"\"{a}\""))}");
+                if (vowel is not null && !found.Alias.StartsWith(vowel + " ", StringComparison.Ordinal) && segments.Count > 0)
+                {
+                    BridgeFromVowel(segments, bank, vowel, mora, oto, from, lastSegmentMidi);
+                }
                 segments.Add(new UtauSegment(oto, from, to, i));
+                lastSegmentMidi = midi;
                 vowel = VowelOf(mora);
             }
             if (segments.Count > 0 && segments[^1].Note == i && vowel is not null)
@@ -95,6 +101,54 @@ public static class UtauPhonemizer
         }
         Ending(segments, bank, vowel, lastMidi, score.Notes.Count - 1, end, double.PositiveInfinity);
         return segments;
+    }
+
+    /// <summary>The most of the sound before that a CVVC bank's bridge (<c>a k</c>) takes.</summary>
+    public const double BridgeSeconds = 0.25;
+
+    /// <summary>
+    /// In a CVVC bank, the recording from the vowel before into the mora's consonant (<c>a k</c> before
+    /// <c>か</c>), laid at the end of the sound before as UTAU users lay it: as long as the CV recording's
+    /// preutterance, at most <see cref="BridgeSeconds"/> and half the sound before. Nothing where the bank
+    /// has none (a CV bank), or for a mora that is a vowel.
+    /// </summary>
+    private static void BridgeFromVowel(List<UtauSegment> segments, UtauVoicebank bank, string vowel, string mora, Oto cv, double at, int midi)
+    {
+        var before = segments[^1];
+        if (before.End < at - Touching)
+        {
+            return;   // silence between them (っ): nothing to bridge
+        }
+        foreach (var consonant in Consonants(mora))
+        {
+            if (bank.Find(vowel + " " + consonant, midi) is not { } vc)
+            {
+                continue;
+            }
+            double length = Math.Min(Math.Min(BridgeSeconds, (at - before.Start) / 2), Math.Max(0.03, cv.Preutter / 1000));
+            segments[^1] = before with { End = at - length };
+            segments.Add(new UtauSegment(vc, at - length, at, before.Note));
+            return;
+        }
+    }
+
+    /// <summary>A mora's consonant as a CVVC alias writes it, for each of its romaji spellings: <c>k</c> for か,
+    /// <c>sh</c> then <c>s</c> for し, <c>ky</c> for きゃ, <c>n</c> for ん; none for a vowel.</summary>
+    public static IEnumerable<string> Consonants(string mora)
+    {
+        if (mora == "ん")
+        {
+            yield return "n";
+            yield break;
+        }
+        foreach (var romaji in KanaPhonemizer.Graphemes(mora).Skip(1))
+        {
+            var consonant = romaji.TrimEnd('a', 'i', 'u', 'e', 'o');
+            if (consonant.Length > 0 && consonant.Length < romaji.Length)
+            {
+                yield return consonant;
+            }
+        }
     }
 
     /// <summary>The most a phrase's ending recording (<c>a -</c>, <c>a R</c>: the vowel dying into silence) takes of the rest after it.</summary>

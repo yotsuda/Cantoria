@@ -246,12 +246,19 @@ none is offered yet (the owner's choice: a voicebank the user installs needs no 
   0.12 s of the note's end. A melisma note or `ー` holds the sound before on; `っ` is silence the
   next mora starts out of. A mora with none of its aliases is `has no sound for "…" (note N`, the
   words Lily# points at a note by. Kana only (`NotKanaProblem`).
+- **CVVC banks**: where the mora took a CV recording after a vowel and the bank has the bridge from
+  that vowel into its consonant (`a k` before か; `a sh`, else `a s`, before し; `n` for ん), the
+  bridge takes the end of the sound before: as long as the CV recording's preutterance, at most
+  0.25 s and half the sound before (as UTAU users lay a VC note). A vowel mora has no bridge.
+- **Endings**: where the bank has one (`a -`, else `a R`), a phrase with a rest after it ends on its
+  last vowel dying into silence, for up to 0.3 s of the rest; a rest under 80 ms (a breath) has none.
 - **Laying it in** (as UTAU's wavtool): a recording starts its preutterance before the note's beat
   and its first overlap crossfades with the sound before; where preutterance minus overlap is more
   than half the note before, both are cut to fit. A sound runs to where the next one's overlap ends,
   or 30 ms past its note's end. A second before the score leads in and is cut.
 - **Singing it** (as a resampler): the recording's stretch (offset to cutoff) is analysed once a
-  singer (Harvest 60-1100 Hz, CheapTrick, D4C, 5 ms frames); the output frames take the consonant
+  singer (Harvest 60-1100 Hz, CheapTrick, D4C with its own voicing judgement off, 5 ms frames: its
+  LoveTrain called the loud second half of the い in Teto's VCV `u き` aperiodic, sung as breath); the output frames take the consonant
   (offset + consonant) as recorded and stretch the rest evenly where the note is longer, the
   spectral envelope and aperiodicity interpolated between frames; the pitch is the score's — each
   note's, held through the rest after it, gliding 40 ms either side of the start of a note that
@@ -259,13 +266,14 @@ none is offered yet (the owner's choice: a voicebank the user installs needs no 
   a DiffSinger voice's curve — where the recording is voiced, 0 where it is not. The recording's
   own pitch wobble is not kept. The audio is at the voicebank's rate (a file at another rate is
   resampled to the first's).
-- Measured (2026-11-28): Kasane Teto's 単独音 (CV) sang the 7-second example in 1.5 s with every
-  long note within half a semitone. A synthetic buzz held exactly at 220 Hz was analysed into an
+- Measured (2026-11-28): the 7-second example in about 2 s, every long note within half a semitone,
+  by Kasane Teto's 単独音 (CV) and 統合 (CV + 連続音) and Namine Ritsu's まばゆ (CVVC, three pitches by
+  `prefix.map`). A synthetic buzz held exactly at 220 Hz was analysed into an
   envelope that sang E4 an octave low; the test's voice wobbles as a singer's does.
 - Tests: `UtauTests` makes its own voicebank (a buzz with vowel-like resonances, noise for a
   consonant) and sings it wherever `cantoria_world` is built, so the CI sings on all three
   platforms with no voicebank fetched; `CANTORIA_UTAU_VOICE` (a voicebank's folder) adds a real one.
-- Not yet: CVVC and English banks, the bank's own pitch modulation, flags, a disk cache of the
+- Not yet: English banks, the bank's own pitch modulation, flags, a disk cache of the
   analyses (each recording is analysed again in a new process), offering a voicebank for download.
 
 ## 4. CLI

@@ -49,7 +49,7 @@ that is the one thing this library adds.
   - `utau` — UTAU voicebanks (a folder of recordings with `oto.ini`), sung by
     Cantoria's own resampler over [WORLD](https://github.com/mmorise/World)
     (Modified BSD, built into the program like Sinsy): no GPU, no UTAU. Japanese
-    from kana, VCV (連続音) and CV (単独音) banks, with `prefix.map` for banks
+    from kana, VCV (連続音), CVVC and CV (単独音) banks, with `prefix.map` for banks
     recorded at several pitches; the voicebank folders are in the UTAU voices
     folder (`--utau-dir`, default `~/Cantoria/UTAU`). Each voicebank is its
     author's, under its own terms.

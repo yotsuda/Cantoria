@@ -17,9 +17,13 @@ DiffSinger (プロセス内の ONNX)、NEUTRINO、VOICEVOX。主な呼び手は 
   - この機械の音源: `C:\Tools\utau\重音テト` (公式の TETO-tandoku-100619.zip、単独音)。zip の名前は Shift_JIS で、
     Windows の展開では化ける (`ZipFile.ExtractToDirectory(…, Encoding.GetEncoding(932))` で展開した)。
     **Download a Voice で UTAU 音源を配るときは、zip の名前の文字コードに注意。**
-  - **オーナーの耳はまだ**: 聞き比べ用 `utau-teto-yukiyakonko.wav` (scratchpad、消えうる。作り直しは
-    `cantoria sing examples/yukiyakonko.json --voice utau/重音テト --utau-dir C:\Tools\utau -o x.wav`)。
-  - まだ: CVVC・英語の音源、音源自身の音高の揺れ (modulation)、flags、解析の disk cache、音源の配布 (候補は
+  - この機械の音源は ほかに `重音テト統合` (TETO-tougou、単独音 + 連続音)、`namineritsu_mabayu` と `namineritsu_uruha`
+    (波音リツ CVVC、r73_mabayu_uruha.zip の中の zip。A3・Eb4・A4 の三音階を prefix.map で)。
+  - 連続音で D4C の LoveTrain が「い」の後半を雑音と判定し息で歌われた → D4C の threshold を 0 に (Harvest が有声を決める)。
+    CVVC は `a k` の橋を前の音の終わりに、句の終わりは `a -` / `a R` で。
+  - **オーナーの耳はまだ**: 聞き比べ用 `utau-teto-cv.wav`・`utau-teto-vcv.wav`・`utau-ritsu-cvvc.wav` (scratchpad、消えうる。
+    作り直しは `cantoria sing examples/yukiyakonko.json --voice utau/重音テト統合 --utau-dir C:\Tools\utau -o x.wav` など)。
+  - まだ: 英語の音源、音源自身の音高の揺れ (modulation)、flags、解析の disk cache、音源の配布 (候補は
     `docs/utau-voices-2026-11-28.md`: 日本語は波音リツ・足立レイ、英中韓は筆音クミ。重音テトは TWINDRILL に聞くのが先)。
     `findEngines` は OpenUtau の Singers を DiffSinger の声として探すが、そこには UTAU 音源も入る。utau の folder にも勧められる。
   - **CI はまだ回っていない** (push 待ち)。Linux・macOS での WORLD のビルドと `UtauTests` の歌を CI が初めて見る。
