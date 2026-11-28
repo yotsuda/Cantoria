@@ -13,7 +13,7 @@ namespace Cantoria;
 /// <c>engine/name</c>, what it calls itself, and what it says of itself where it says.
 /// </summary>
 /// <param name="Id"><c>engine/name</c>.</param>
-/// <param name="Engine"><c>neutrino</c>, <c>diffsinger</c>, <c>voicevox</c> or <c>sinsy</c>.</param>
+/// <param name="Engine"><c>neutrino</c>, <c>diffsinger</c>, <c>voicevox</c>, <c>sinsy</c> or <c>utau</c>.</param>
 /// <param name="Name">The engine's own name for the voice: a folder, a singing style.</param>
 /// <param name="Label">What the voice calls itself, else <paramref name="Name"/>.</param>
 public sealed record VoiceEntry(string Id, string Engine, string Name, string Label)
@@ -112,6 +112,26 @@ public static partial class VoiceEntries
         {
             Language = "ja",
             Gender = SinsyGender().Match(name) is { Success: true } m ? (m.Groups[1].Value == "f" ? "female" : "male") : null,
+        }).ToList();
+
+    /// <summary>The UTAU voicebanks in a folder (<see cref="Utau.UtauOptions.Voices"/>), all Japanese (the
+    /// kana the engine reads), each by the name its <c>character.txt</c> gives (UTF-8, else Shift_JIS).</summary>
+    public static IReadOnlyList<VoiceEntry> Utau(string folder)
+        => Cantoria.Utau.UtauOptions.Voices(folder).Select(name =>
+        {
+            var character = Path.Combine(folder, name, "character.txt");
+            string? label = null;
+            try
+            {
+                label = File.Exists(character)
+                    ? Cantoria.Utau.UtauVoicebank.Text(character).Split('\n').Select(l => l.TrimEnd('\r'))
+                        .FirstOrDefault(l => l.StartsWith("name=", StringComparison.OrdinalIgnoreCase))?[5..].Trim()
+                    : null;
+            }
+            catch (IOException)
+            {
+            }
+            return new VoiceEntry("utau/" + name, "utau", name, string.IsNullOrEmpty(label) ? name : label) { Language = "ja" };
         }).ToList();
 
     /// <summary>What a NEUTRINO voice's <c>info.toml</c> says of its speaker: <c>[speaker] name = "Merrow"</c>,

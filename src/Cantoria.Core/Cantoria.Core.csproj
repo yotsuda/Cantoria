@@ -49,10 +49,12 @@
     <EmbeddedResource Include="DiffSinger\g2p-arpabet.zip" LogicalName="Cantoria.DiffSinger.g2p-arpabet.zip" />
   </ItemGroup>
 
-  <!-- The sinsy backend: cantoria_sinsy (Sinsy and hts_engine_API, Modified BSD; native/sinsy) and
-       Sinsy's Japanese dictionary, built per platform by tools/build-sinsy.ps1 into native/out/<rid>/
-       and copied beside the program. The rid is the publish's, else this machine's. A build for a rid
-       with nothing there has no sinsy engine (SinsyOptions.Validate says so); the CI builds them. -->
+  <!-- The native libraries: cantoria_sinsy (Sinsy and hts_engine_API, Modified BSD; native/sinsy) with
+       Sinsy's Japanese dictionary for the sinsy backend, and cantoria_world (WORLD, Modified BSD;
+       native/world) for the utau backend, built per platform by tools/build-native.ps1 into
+       native/out/<rid>/ and copied beside the program. The rid is the publish's, else this machine's.
+       A build for a rid with nothing there has neither engine (SinsyOptions.Validate and
+       UtauOptions.Validate say so); the CI builds them. -->
   <PropertyGroup>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <SinsyRid>$(RuntimeIdentifier)</SinsyRid>

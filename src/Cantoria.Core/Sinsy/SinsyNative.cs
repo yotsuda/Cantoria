@@ -7,7 +7,7 @@ namespace Cantoria.Sinsy;
 
 /// <summary>
 /// The C entry point of <c>cantoria_sinsy</c> (<c>native/sinsy/cantoria_sinsy.cpp</c>): Sinsy and
-/// hts_engine_API in one library beside the program, built by <c>tools/build-sinsy.ps1</c>.
+/// hts_engine_API in one library beside the program, built by <c>tools/build-native.ps1</c>.
 /// </summary>
 internal static partial class SinsyNative
 {

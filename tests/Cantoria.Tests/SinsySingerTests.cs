@@ -10,7 +10,7 @@ namespace Cantoria.Tests;
 /// The facts that sing run only where a Sinsy voice is: set CANTORIA_SINSY_VOICE to its
 /// <c>.htsvoice</c> (the CI fetches nitech_jp_song070_f001). Elsewhere they pass without doing
 /// anything, as DiffSingerSingerTests do. The engine itself (cantoria_sinsy beside the tests) is
-/// built by tools/build-sinsy.ps1.
+/// built by tools/build-native.ps1.
 /// </summary>
 public class SinsySingerTests
 {

@@ -8,25 +8,8 @@
 # Sinsy's own CMakeLists asks for CMake 2.8 and builds its bundled hts_engine as a separate
 # library, so the sources are listed here instead.
 #
-#   cmake -S native/sinsy -B <build> -G Ninja -DCMAKE_BUILD_TYPE=Release
-#   cmake --build <build>
-#
-# tools/build-sinsy.ps1 does this and copies the library and Sinsy's Japanese dictionary to
-# native/out/<rid>/, where Cantoria.Core's project takes them from.
-
-cmake_minimum_required(VERSION 3.20)
-project(cantoria_sinsy C CXX)
-
-set(CMAKE_CXX_STANDARD 11)
-set(CMAKE_POSITION_INDEPENDENT_CODE ON)
-set(CMAKE_C_VISIBILITY_PRESET hidden)
-set(CMAKE_CXX_VISIBILITY_PRESET hidden)
-if(MSVC)
-  # One DLL with the C runtime inside: nothing to install beside it.
-  set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
-  add_compile_options(/utf-8 /W1 /EHsc)
-  add_compile_definitions(_CRT_SECURE_NO_WARNINGS _CRT_NONSTDC_NO_WARNINGS)
-endif()
+# Built from native/CMakeLists.txt (its settings: C++11, hidden symbols, the static MSVC runtime);
+# tools/build-native.ps1 installs the library and Sinsy's Japanese dictionary into native/out/<rid>/.
 
 include(FetchContent)
 FetchContent_Declare(sinsy_src

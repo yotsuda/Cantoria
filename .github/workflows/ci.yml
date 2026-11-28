@@ -36,9 +36,9 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 10.0.x
-      - name: Build the Sinsy engine
+      - name: Build the native libraries (Sinsy, WORLD)
         shell: pwsh
-        run: ./tools/build-sinsy.ps1
+        run: ./tools/build-native.ps1
       - name: Keep the Sinsy voice between runs
         uses: actions/cache@v4
         with:

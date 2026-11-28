@@ -1,10 +1,11 @@
 param(
-    [string]$Build = "$PSScriptRoot/../artifacts/sinsy-build",   # CMake's build folder
+    [string]$Build = "$PSScriptRoot/../artifacts/native-build",  # CMake's build folder
     [string]$Out                                                 # default native/out/<this machine's rid>
 )
-# The Sinsy engine (native/sinsy) built for this machine: cantoria_sinsy.dll / libcantoria_sinsy.so /
-# libcantoria_sinsy.dylib and Sinsy's Japanese dictionary (sinsy-dic/) into native/out/<rid>/,
-# where Cantoria.Core's project copies them from into every build and publish for that rid.
+# Cantoria's native libraries (native/) built for this machine into native/out/<rid>/, where
+# Cantoria.Core's project copies them from into every build and publish for that rid: the Sinsy
+# engine (cantoria_sinsy.dll / libcantoria_sinsy.so / libcantoria_sinsy.dylib and Sinsy's Japanese
+# dictionary, sinsy-dic/) and WORLD for the UTAU engine (cantoria_world, COPYING.world).
 # Needs CMake and a C++ compiler: on Windows, Visual Studio's (found through vswhere and its
 # vcvars64.bat, with the CMake and Ninja that come with it). Paths are written with / for cmake
 # on every system.
@@ -30,7 +31,7 @@ try {
     }
     # Ninja where there is one (Visual Studio's comes with vcvars64), else CMake's own choice.
     $generator = if (Get-Command ninja -ErrorAction SilentlyContinue) { @('-G', 'Ninja') } else { @() }
-    & cmake -S "$root/native/sinsy" -B $Build @generator -DCMAKE_BUILD_TYPE=Release
+    & cmake -S "$root/native" -B $Build @generator -DCMAKE_BUILD_TYPE=Release
     if ($LASTEXITCODE -ne 0) { throw "cmake configure failed" }
     & cmake --build $Build --config Release
     if ($LASTEXITCODE -ne 0) { throw "cmake build failed" }

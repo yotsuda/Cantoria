@@ -77,6 +77,7 @@ static int Help(int code)
           diffsinger/TIGER            a folder under the DiffSinger voices folder, or a path holding dsconfig.yaml
           voicevox/ずんだもん-ノーマル  a singing style of the running VOICEVOX
           sinsy/nitech_jp_song070_f001  a .htsvoice in the Sinsy voices folder (or one folder down)
+          utau/重音テト               an UTAU voicebank (a folder with oto.ini) in the UTAU voices folder
 
         sing options:
           --voice <engine/name>       the voice (default neutrino/MERROW)
@@ -85,6 +86,7 @@ static int Help(int code)
           --vocoder-dir <folder>      a vocoder folder for DiffSinger voices that bundle none
           --voicevox-url <url>        where the running VOICEVOX answers (default http://127.0.0.1:50021)
           --sinsy-dir <folder>        the folder of Sinsy voices (default ~/Cantoria/Sinsy)
+          --utau-dir <folder>         the folder whose subfolders are UTAU voicebanks (default ~/Cantoria/UTAU)
           --steps <n>                 DiffSinger sampling steps (default 20; fewer is faster)
           --provider <name>           DiffSinger: auto (default: DirectML on Windows where there is a
                                       DirectX 12 device; CoreML for the vocoder on macOS; else the CPU),
@@ -130,9 +132,9 @@ static int Help(int code)
         End of stdin ends the process.
 
         The folders are taken from the options, else the environment (CANTORIA_NEUTRINO_DIR,
-        CANTORIA_VOICES_DIR, CANTORIA_VOCODER_DIR, CANTORIA_SINSY_DIR), else cantoria.json in the user's
+        CANTORIA_VOICES_DIR, CANTORIA_VOCODER_DIR, CANTORIA_SINSY_DIR, CANTORIA_UTAU_DIR), else cantoria.json in the user's
         config folder (%APPDATA%\cantoria on Windows, ~/.config/cantoria elsewhere: "neutrino": {"folder": …},
-        "diffsinger": {"voices": …, "vocoder": …}, "sinsy": {"voices": …}). NEUTRINO runs on Windows only. The score format
+        "diffsinger": {"voices": …, "vocoder": …}, "sinsy": {"voices": …}, "utau": {"voices": …}). NEUTRINO runs on Windows only. The score format
         is documented in README.md.
 
         """);
@@ -786,7 +788,7 @@ static string FileNameOf(string id)
 /// <summary>The options the engines share, read off the arguments; what is not one is kept for the command.</summary>
 sealed class EngineArgs
 {
-    public string? Voice, Backend, NeutrinoDir, VoicesDir, VocoderDir, SinsyDir, VoicevoxUrl, Output, OutDir, Path;
+    public string? Voice, Backend, NeutrinoDir, VoicesDir, VocoderDir, SinsyDir, UtauDir, VoicevoxUrl, Output, OutDir, Path;
     /// <summary><c>plan</c>'s and <c>voices</c>' own: what is asked for, each gender's default voice, the answer as JSON.</summary>
     public string? Gender, Language, DefaultFemale, DefaultMale;
     public bool Keep, Json;
@@ -809,6 +811,7 @@ sealed class EngineArgs
                 case "--voices-dir" when i + 1 < rest.Length: a.VoicesDir = rest[++i]; break;
                 case "--vocoder-dir" when i + 1 < rest.Length: a.VocoderDir = rest[++i]; break;
                 case "--sinsy-dir" when i + 1 < rest.Length: a.SinsyDir = rest[++i]; break;
+                case "--utau-dir" when i + 1 < rest.Length: a.UtauDir = rest[++i]; break;
                 case "--voicevox-url" when i + 1 < rest.Length: a.VoicevoxUrl = rest[++i]; break;
                 case "--threads" when i + 1 < rest.Length && int.TryParse(rest[i + 1], out a.Threads): i++; break;
                 case "--steps" when i + 1 < rest.Length && int.TryParse(rest[i + 1], out a.Steps): i++; break;
@@ -853,7 +856,7 @@ sealed class EngineArgs
         return a;
     }
 
-    public Engines Engines() => Cantoria.Cli.Engines.Configure(NeutrinoDir, VoicesDir, VocoderDir, Provider, Threads, Steps, Keep, VoicevoxUrl, DefaultFemale, DefaultMale, SinsyDir);
+    public Engines Engines() => Cantoria.Cli.Engines.Configure(NeutrinoDir, VoicesDir, VocoderDir, Provider, Threads, Steps, Keep, VoicevoxUrl, DefaultFemale, DefaultMale, SinsyDir, UtauDir);
 }
 
 /// <summary>One line of <c>cantoria serve</c>'s stdin.</summary>

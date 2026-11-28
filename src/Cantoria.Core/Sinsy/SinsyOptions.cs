@@ -45,7 +45,7 @@ public sealed record SinsyOptions(string VoiceFile)
         var problems = new List<string>();
         if (!Built)
         {
-            problems.Add($"this build of Cantoria has no Sinsy engine ({LibraryFile} and sinsy-dic are not beside the program; tools/build-sinsy.ps1 builds them)");
+            problems.Add($"this build of Cantoria has no Sinsy engine ({LibraryFile} and sinsy-dic are not beside the program; tools/build-native.ps1 builds them)");
         }
         else if (!File.Exists(Path.Combine(DictionaryFolder, "japanese.utf_8.table")))
         {

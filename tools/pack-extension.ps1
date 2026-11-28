@@ -76,10 +76,13 @@ try {
         $exe = if ($rid.StartsWith('win')) { 'cantoria.exe' } else { 'cantoria' }
         if (-not (Test-Path "$bin\$exe")) { throw "$bin\$exe is missing" }
         if ($rid -eq 'win-x64' -and -not (Test-Path "$bin\DirectML.dll")) { throw "$bin\DirectML.dll is missing: the DirectML package did not copy it (PlatformTarget?)" }
-        # The Sinsy engine (native code, one build per platform: tools/build-sinsy.ps1 there, into native\out\<rid>).
-        $sinsy = if ($rid.StartsWith('win')) { 'cantoria_sinsy.dll' } elseif ($rid.StartsWith('osx')) { 'libcantoria_sinsy.dylib' } else { 'libcantoria_sinsy.so' }
-        if (-not (Test-Path "$bin\$sinsy") -or -not (Test-Path "$bin\sinsy-dic\japanese.utf_8.table")) {
-            throw "$bin has no Sinsy engine ($sinsy, sinsy-dic): build it on that platform with tools/build-sinsy.ps1 and put native\out\$rid here (the release workflow does)"
+        # The native libraries (one build per platform: tools/build-native.ps1 there, into native\out\<rid>):
+        # the Sinsy engine and WORLD, which the UTAU engine sings with.
+        $lib = { param($name) if ($rid.StartsWith('win')) { "$name.dll" } elseif ($rid.StartsWith('osx')) { "lib$name.dylib" } else { "lib$name.so" } }
+        $sinsy = & $lib 'cantoria_sinsy'
+        $world = & $lib 'cantoria_world'
+        if (-not (Test-Path "$bin\$sinsy") -or -not (Test-Path "$bin\sinsy-dic\japanese.utf_8.table") -or -not (Test-Path "$bin\$world")) {
+            throw "$bin has not the native libraries ($sinsy, sinsy-dic, $world): build them on that platform with tools/build-native.ps1 and put native\out\$rid here (the release workflow does)"
         }
         $size = (Get-ChildItem $bin -Recurse -File | Measure-Object Length -Sum).Sum / 1MB
         "{0}: program {1}, bin {2:F1} MB" -f $rid, $programVersion, $size

@@ -55,9 +55,9 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
-      - name: Build the Sinsy engine
+      - name: Build the native libraries (Sinsy, WORLD)
         shell: pwsh
-        run: ./tools/build-sinsy.ps1 -Out native/out/${{ matrix.rid }}
+        run: ./tools/build-native.ps1 -Out native/out/${{ matrix.rid }}
       - uses: actions/upload-artifact@v4
         with:
           name: sinsy-${{ matrix.rid }}
@@ -98,11 +98,11 @@ jobs:
           npx --yes @vscode/vsce verify-pat $publisher
           if ($LASTEXITCODE -ne 0) { throw "verify-pat failed for '$publisher': nothing was published" }
 
-      - name: The Sinsy engine for each platform
+      - name: The native libraries (Sinsy, WORLD) for each platform
         # Windows' built here; Linux's and macOS's from the sinsy job, where the projects take them from.
         run: |
-          ./tools/build-sinsy.ps1
-          if ($LASTEXITCODE -ne 0) { throw "the Sinsy build failed" }
+          ./tools/build-native.ps1
+          if ($LASTEXITCODE -ne 0) { throw "the native build failed" }
       - uses: actions/download-artifact@v4
         with:
           name: sinsy-linux-x64
