@@ -50,7 +50,7 @@ DiffSinger (プロセス内の ONNX)、NEUTRINO、VOICEVOX。主な呼び手は 
   - 声は `C:\Tools\sinsy` に置いた (テストは `CANTORIA_SINSY_VOICE` に .htsvoice)。`cantoria fetch nitech-song070` で入る。
   - 拡張: `cantoria.sinsy.voicesFolder` (空なら `~/Cantoria/Sinsy`)、声の一覧、Download a Voice に 2 つ目の申し出。
   - CI は 3 OS とも緑 (2026-11-28、run 46094161029 以降。Linux・macOS での sinsy のビルドも)。WSL はこの機械にない (ディストリビューションなし)。
-  - **オーナーの耳はまだ**: 聞き比べ用 `sinsy-yukiyakonko.wav` (2026-11-28 に作り直した。scratchpad、消えうる。作り直しは
+  - **オーナーの耳** (2026-11-28): 「いちおう日本語で歌っているように聴こえる」。聞き比べ用 `sinsy-yukiyakonko.wav` (2026-11-28 に作り直した。scratchpad、消えうる。作り直しは
     `cantoria sing examples/yukiyakonko.json --voice sinsy/nitech_jp_song070_f001 --sinsy-dir C:\Tools\sinsy -o x.wav`)。
   - この例では stderr に hts_engine の `HTS_set_specified_duration: Specified frame length is too short.` が 1 行出る
     (11 番目の音符「こん」を足すと出る。1 句目の同じ「やこん」では出ない)。HMM が出した長さがその音素の状態の数
@@ -151,7 +151,7 @@ DiffSinger (プロセス内の ONNX)、NEUTRINO、VOICEVOX。主な呼び手は 
     **オーナーの耳: CPU と CoreML の vocoder に違いはない** (2026-11-28、cpu-1.wav と coreml-Models-vocoder-1.wav)。残り: 本物の Mac の GPU。
 
 **次の一手**:
-0. **utau と sinsy の仕上げ**: utau の CI は 3 OS とも緑 (2026-11-28)。CVVC・英語 (X-SAMPA CVVC) は済んだ。残りの候補は音源の配布 (波音リツ)、英語の VCCV (筆音クミ)・ARPAsing、解析の disk cache (オーナーが選ぶ)。sinsy は push 後の CI (3 OS) と `macOS singing` (mac.yml、上の「Mac で最適に歌う準備」) を見る。オーナーに sinsy の声を聞いてもらう。拡張を F5 で動かし、
+0. **utau と sinsy の仕上げ**: utau の CI は 3 OS とも緑 (2026-11-28)。CVVC・英語 (X-SAMPA CVVC) は済んだ。残りの候補は音源の配布 (波音リツ)、英語の VCCV (筆音クミ)・ARPAsing、解析の disk cache (オーナーが選ぶ)。sinsy は push 後の CI (3 OS) と `macOS singing` (mac.yml、上の「Mac で最適に歌う準備」) を見る。sinsy の声はオーナーが聞いた (日本語に聴こえる)。拡張を F5 で動かし、
    Download a Voice に 2 つの申し出が出て NIT SONG070 が入り、Lily# から `sinsy/nitech_jp_song070_f001` で歌うことを見る
    (まだ画面で見ていない)。E の残り (cevio、acestudio、guide) はどれもオーナーの求めがあれば。
    ACE Studio は外から呼べる手段 (実験版の MCP・CLI) を出したので計画外から外した。NNSVS は計画外、
