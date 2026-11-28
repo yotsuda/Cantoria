@@ -117,8 +117,8 @@ public sealed class UtauSinger : ISinger, IDisposable
         {
             ct.ThrowIfCancellationRequested();
             var s = segments[k];
-            var (from, to, fadeIn, fadeOut) = timings[k];
-            var y = Render(s.Oto, fs, from, to, curve, lead);
+            var (from, to, fadeIn, fadeOut, skip) = timings[k];
+            var y = Render(s.Oto, fs, from, to, curve, lead, skip * 1000);
             int at = (int)Math.Round((from + lead) * fs);
             int inLen = Math.Max(1, (int)(fadeIn * fs)), outLen = Math.Max(1, (int)(fadeOut * fs));
             for (int i = 0; i < y.Length; i++)
@@ -143,11 +143,12 @@ public sealed class UtauSinger : ISinger, IDisposable
     /// does; after a bridge (<see cref="UtauSegment.Bridge"/>), laid for that preutterance to sound over it, more
     /// than nine tenths.
     /// </summary>
-    public static (double From, double To, double FadeIn, double FadeOut)[] Timings(IReadOnlyList<UtauSegment> segments)
+    public static (double From, double To, double FadeIn, double FadeOut, double Skip)[] Timings(IReadOnlyList<UtauSegment> segments)
     {
         int count = segments.Count;
         var pre = new double[count];
         var over = new double[count];
+        var skip = new double[count];
         var joined = new bool[count];   // the sound follows the one before without silence
         for (int k = 0; k < count; k++)
         {
@@ -161,6 +162,8 @@ public sealed class UtauSinger : ISinger, IDisposable
                 if (p - o > room && p - o > 0)
                 {
                     double cut = room / (p - o);
+                    // A recording from a vowel loses the front of that vowel; another starts later in its recording's time.
+                    skip[k] = s.FromVowel ? p * (1 - cut) : 0;
                     p *= cut;
                     o *= cut;
                 }
@@ -168,7 +171,7 @@ public sealed class UtauSinger : ISinger, IDisposable
             pre[k] = p;
             over[k] = o;
         }
-        var timings = new (double, double, double, double)[count];
+        var timings = new (double, double, double, double, double)[count];
         for (int k = 0; k < count; k++)
         {
             var s = segments[k];
@@ -178,7 +181,7 @@ public sealed class UtauSinger : ISinger, IDisposable
             to = Math.Max(to, from + 2 * FrameMs / 1000);
             double fadeIn = joined[k] ? Math.Max(over[k], AttackSeconds) : AttackSeconds;
             double fadeOut = next ? Math.Max(over[k + 1], AttackSeconds) : ReleaseSeconds;
-            timings[k] = (from, to, fadeIn, fadeOut);
+            timings[k] = (from, to, fadeIn, fadeOut, skip[k]);
         }
         return timings;
     }
@@ -225,22 +228,24 @@ public sealed class UtauSinger : ISinger, IDisposable
         return curve;
     }
 
-    /// <summary>A recording made as long as from..to (seconds on the score's clock) on the curve's pitch.</summary>
-    private double[] Render(Oto oto, int fs, double from, double to, float[] curve, double lead)
+    /// <summary>A recording made as long as from..to (seconds on the score's clock) on the curve's pitch, its first
+    /// <paramref name="skipMs"/> left out.</summary>
+    private double[] Render(Oto oto, int fs, double from, double to, float[] curve, double lead, double skipMs = 0)
     {
         var src = Analyse(oto, fs);
-        double fixedMs = Math.Clamp(oto.Consonant, 0, src.LengthMs);
+        skipMs = Math.Clamp(skipMs, 0, Math.Max(0, src.LengthMs - 2 * FrameMs));
+        double fixedMs = Math.Clamp(oto.Consonant - skipMs, 0, src.LengthMs - skipMs);
         double outMs = (to - from) * 1000;
         int frames = (int)(outMs / FrameMs) + 1;
         int width = src.Width;
         var f0 = new double[frames];
         var sp = new double[frames * width];
         var ap = new double[frames * width];
-        double rest = outMs - fixedMs, recorded = src.LengthMs - fixedMs;
+        double rest = outMs - fixedMs, recorded = src.LengthMs - skipMs - fixedMs;
         for (int j = 0; j < frames; j++)
         {
             double t = j * FrameMs;
-            double srcMs = t <= fixedMs ? t : fixedMs + (rest <= recorded || rest <= 0 ? t - fixedMs : (t - fixedMs) * recorded / rest);
+            double srcMs = skipMs + (t <= fixedMs ? t : fixedMs + (rest <= recorded || rest <= 0 ? t - fixedMs : (t - fixedMs) * recorded / rest));
             double x = Math.Clamp(srcMs / FrameMs, 0, src.Frames - 1);
             int i0 = (int)x, i1 = Math.Min(i0 + 1, src.Frames - 1);
             double w = x - i0;

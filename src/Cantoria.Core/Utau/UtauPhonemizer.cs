@@ -8,8 +8,10 @@ namespace Cantoria.Utau;
 /// <summary>One recording a note sings: the alias's entry, and the seconds it sounds from the beat
 /// (<see cref="Start"/>, where its preutterance ends) to <see cref="End"/>. <see cref="Note"/> is the
 /// score's note it begins in. <see cref="Bridge"/>: a consonant laid before the next recording's beat (a CVVC
-/// <c>a k</c>, an English cluster), as long as it is so that the next recording's preutterance sounds over it.</summary>
-public sealed record UtauSegment(Oto Oto, double Start, double End, int Note, bool Bridge = false);
+/// <c>a k</c>, an English cluster), as long as it is so that the next recording's preutterance sounds over it.
+/// <see cref="FromVowel"/>: its recording begins on the vowel before its consonant (<c>a k</c>, <c>@ l</c>), so a
+/// preutterance cut to fit is cut from the recording's front and its consonant still begins on <see cref="Start"/>.</summary>
+public sealed record UtauSegment(Oto Oto, double Start, double End, int Note, bool Bridge = false, bool FromVowel = false);
 
 /// <summary>
 /// Japanese kana to an UTAU voicebank's recordings. Each mora of a syllable is one recording: in a
@@ -133,7 +135,7 @@ public static class UtauPhonemizer
             }
             double length = Math.Min(Math.Min(BridgeSeconds, (at - before.Start) / 2), Math.Max(0.03, cv.Preutter / 1000));
             segments[^1] = before with { End = at - length };
-            segments.Add(new UtauSegment(vc, at - length, at, before.Note, Bridge: true));
+            segments.Add(new UtauSegment(vc, at - length, at, before.Note, Bridge: true, FromVowel: true));
             return;
         }
     }

@@ -200,6 +200,13 @@ public sealed class UtauTests : IDisposable
         // preutterance, the N was cut off by the k (owner's report 2026-11-28: "twin" heard as "we").
         Assert.Equal((0.26, 0.5), (Math.Round(segments[2].Start, 9), segments[2].End));
         Assert.Equal(0.26, segments[1].End, 9);
+        // "kle" is k, a short schwa, then the l held on (owner's report 2026-11-28: the schwa held was "win-kEtz").
+        Assert.Equal(0.6, segments[4].Start, 9);
+        // Where the bank has "U l", the vowel before it is U: "twin-kULe".
+        var withU = UtauVoicebank.Load(Bank("english-u", string.Concat(
+            new[] { "- tw", "wI", "I N", "kU", "U l", "U l-", "k@", "@ l" }.Select(a => $"a.wav={a},0,100,-500,60,20\n"))));
+        Assert.Equal(["- tw", "wI", "I N", "kU", "U l-"],
+            Aliases(UtauPhonemizer.Segments(new SungScore([new SungNote(0, 0.5, 60, "Twin", Hyphen: true), new SungNote(0.5, 0.5, 60, "kle")], Language: "en"), withU, "utau/english")));
         // The last consonant ends a little into the rest after the note.
         Assert.True(segments[7].Start < 2.0 && segments[7].End > 2.0, $"{segments[7].Start}..{segments[7].End}");
         Assert.Equal(["en"], English().Languages);
@@ -352,7 +359,8 @@ public sealed class UtauTests : IDisposable
         }
     }
 
-    /// <summary>"Twinkle, twinkle, little star, how I wonder what you are", a note a half second.</summary>
+    /// <summary>"Twinkle, twinkle, little star, how I wonder what you are", a note a half second, from 0.5 s: the
+    /// sung audio starts at 0, and the t before the first note's beat would be cut off.</summary>
     private static SungScore Twinkle()
     {
         (string Lyric, int Pitch, int Beats, bool Hyphen)[] words =
@@ -362,7 +370,7 @@ public sealed class UtauTests : IDisposable
             ("der", 64, 1, false), ("what", 62, 1, false), ("you", 62, 1, false), ("are", 60, 2, false),
         ];
         var notes = new List<SungNote>();
-        double t = 0;
+        double t = 0.5;
         foreach (var w in words)
         {
             notes.Add(new SungNote(t, w.Beats * 0.5, w.Pitch, w.Lyric, Hyphen: w.Hyphen, Breath: w.Lyric == "star"));

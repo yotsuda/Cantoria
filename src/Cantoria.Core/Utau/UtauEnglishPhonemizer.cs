@@ -50,7 +50,17 @@ public static class UtauEnglishPhonemizer
 
     /// <summary>One vowel and the consonants about it: those before it in its syllable, and those after
     /// it that end its word's syllable.</summary>
-    private sealed record Unit(List<string> Onset, string Vowel, List<string> Coda, double Start, double End, int Note, int Midi);
+    private sealed record Unit(List<string> Onset, string Vowel, List<string> Coda, double Start, double End, int Note, int Midi, bool Syllabic = false);
+
+    /// <summary>The consonants a schwa before them is all but swallowed by (little, button, rhythm).</summary>
+    private static readonly HashSet<string> SyllabicConsonants = ["l", "n", "m"];
+
+    /// <summary>The most of a syllabic consonant's syllable (<c>kle</c>: k, a short vowel, then l) its vowel takes,
+    /// and the share of the syllable at most.</summary>
+    public const double SyllabicVowelSeconds = 0.1, SyllabicVowelShare = 0.35;
+
+    /// <summary>Where a syllabic consonant begins in its syllable.</summary>
+    private static double SyllabicAt(Unit u) => u.Start + Math.Min(SyllabicVowelSeconds, SyllabicVowelShare * (u.End - u.Start));
 
     /// <summary>The recordings the score sings, in time order.</summary>
     /// <exception cref="SingerException">A word that cannot be read, or a vowel the voicebank has no recording for;
@@ -153,6 +163,17 @@ public static class UtauEnglishPhonemizer
 
     private static void Phrase(List<UtauSegment> segments, List<Unit> units, UtauVoicebank bank, string voice, SungScore score, double before, double after)
     {
+        // A schwa before l, n or m that ends its syllable (twinkle, little): the consonant is most of the syllable,
+        // and before l the vowel is the bank's U where it has "U l" (owner's report 2026-11-28: the schwa held
+        // as Teto sings it was heard as "win-kEtz", "littEl"; "twin-kULe" was what was wanted).
+        for (int k = 0; k < units.Count; k++)
+        {
+            var u = units[k];
+            if (u.Vowel == "@" && u.Coda.Count > 0 && SyllabicConsonants.Contains(u.Coda[0]))
+            {
+                units[k] = u with { Vowel = u.Coda[0] == "l" && Find(bank, "U l", u.Midi) is not null ? "U" : "@", Syllabic = true };
+            }
+        }
         for (int k = 0; k < units.Count; k++)
         {
             var u = units[k];
@@ -160,6 +181,7 @@ public static class UtauEnglishPhonemizer
             Piece cv;
             double room;
             int pieceNote;
+            double? firstFrom = null;
             if (k == 0)
             {
                 cv = Onset(pieces, u, u.Onset, null, true, bank, voice, score);
@@ -196,8 +218,12 @@ public static class UtauEnglishPhonemizer
                 cv = Onset(pieces, u, onset, coda.Count == 0 ? p.Vowel : null, false, bank, voice, score);
                 room = (u.Start - segments[^1].Start) * RoomShare;
                 pieceNote = p.Note;
+                if (p.Syllabic && pieces.Count > 0 && pieces[0].First is null)
+                {
+                    firstFrom = SyllabicAt(p);
+                }
             }
-            LayBefore(segments, pieces, cv, u.Start, room, pieceNote);
+            LayBefore(segments, pieces, cv, u.Start, room, pieceNote, firstFrom);
             segments.Add(new UtauSegment(cv.Oto, u.Start, u.End, u.Note));
         }
         End(segments, units[^1], bank, after);
@@ -226,6 +252,10 @@ public static class UtauEnglishPhonemizer
             string alias = string.Concat(onset.Skip(onset.Count - s)) + u.Vowel;
             cv = (start && s == onset.Count ? Try("- " + alias) : null) ?? Try(alias);
             used = s;
+        }
+        if (cv is null && u.Syllabic && u.Vowel == "U")
+        {
+            return Onset(pieces, u with { Vowel = "@" }, onset, vowelBefore, start, bank, voice, score);
         }
         if (cv is null)
         {
@@ -292,7 +322,7 @@ public static class UtauEnglishPhonemizer
 
     /// <summary>The pieces laid before <paramref name="beat"/>, each as long as <see cref="Before"/> says, all within
     /// <paramref name="room"/>; the sound before cut where they begin.</summary>
-    private static void LayBefore(List<UtauSegment> segments, List<Piece> pieces, Piece cv, double beat, double room, int note)
+    private static void LayBefore(List<UtauSegment> segments, List<Piece> pieces, Piece cv, double beat, double room, int note, double? firstFrom = null)
     {
         if (pieces.Count == 0)
         {
@@ -305,14 +335,16 @@ public static class UtauEnglishPhonemizer
         }
         double total = lengths.Sum(), scale = total > room && room > 0 ? room / total : 1;
         double at = beat - total * scale;
-        if (segments.Count > 0 && segments[^1].End > at && segments[^1].Start < at)
+        // A syllabic consonant's piece (little: "U l") begins early and holds its consonant on.
+        double start = firstFrom is { } early && early < at ? early : at;
+        if (segments.Count > 0 && segments[^1].End > start && segments[^1].Start < start)
         {
-            segments[^1] = segments[^1] with { End = at };
+            segments[^1] = segments[^1] with { End = start };
         }
         for (int k = 0; k < pieces.Count; k++)
         {
             double to = at + lengths[k] * scale;
-            segments.Add(new UtauSegment(pieces[k].Oto, at, to, note, Bridge: true));
+            segments.Add(new UtauSegment(pieces[k].Oto, k == 0 ? start : at, to, note, Bridge: true, FromVowel: pieces[k].First is null));
             at = to;
         }
     }
@@ -378,11 +410,12 @@ public static class UtauEnglishPhonemizer
         double earliest = vowel.Start + (u.End - vowel.Start) / 2;
         double scale = endAt - total < earliest ? Math.Max(0.01, endAt - earliest) / total : 1;
         double at = endAt - total * scale;
-        segments[^1] = vowel with { End = at };
-        foreach (var (piece, length) in pieces.Zip(lengths))
+        double start = u.Syllabic ? Math.Min(at, SyllabicAt(u)) : at;   // "little": the l holds on
+        segments[^1] = vowel with { End = start };
+        for (int j = 0; j < pieces.Count; j++)
         {
-            double to = at + length * scale;
-            segments.Add(new UtauSegment(piece.Oto, at, to, u.Note, Bridge: true));
+            double to = at + lengths[j] * scale;
+            segments.Add(new UtauSegment(pieces[j].Oto, j == 0 ? start : at, to, u.Note, Bridge: true, FromVowel: pieces[j].First is null));
             at = to;
         }
     }

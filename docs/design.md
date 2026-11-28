@@ -269,7 +269,15 @@ none is offered yet (the owner's choice: a voicebank the user installs needs no 
   little star" as "we-ketz we-ketz we- testou" (2026-11-28): the N of twin and the l of kle and tle
   were cut off within 30 ms by the consonant after. A recording after such a bridge (`Bridge`, the
   Japanese CVVC `a k` too) may take nine tenths of it with its preutterance, not half
-  (`UtauSinger.Timings`). A phrase ends on `A -` where it ends on a vowel and has a rest; else on its last
+  (`UtauSinger.Timings`); a recording that begins on a vowel (`a k`, `@ l`, `FromVowel`) whose
+  preutterance is cut loses the front of that vowel, so its consonant still begins on its beat.
+- **Syllabic consonants**: a schwa before `l`, `n` or `m` that ends its syllable (twinkle, little,
+  button) takes at most 0.1 s (0.35 of the syllable) and the consonant's piece holds the rest,
+  its recording stretched; before `l` the vowel is the bank's `U` where it has `U l` (`kU`, `U l`).
+  Held as Teto sings `@`, the owner heard "win-kEtz", "littEl", and asked for "twin-kULe"
+  (2026-11-28).
+- The sung audio starts at the score's 0 s, so a consonant before a first note at 0 (`- tw`) is
+  cut off: the test's Twinkle starts at 0.5 s. A phrase ends on `A -` where it ends on a vowel and has a rest; else on its last
   consonants (`A r-`; `{ l` then `l mz-`, else pair by pair), each as long as its recording after its
   preutterance, ending up to 0.15 s into the rest and beginning no sooner than halfway through the
   vowel, so a breath with no rest still has them. A consonant the bank lacks is passed over; a vowel
