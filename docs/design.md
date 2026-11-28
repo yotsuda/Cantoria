@@ -275,7 +275,9 @@ none is offered yet (the owner's choice: a voicebank the user installs needs no 
   button) takes at most 0.1 s (0.35 of the syllable) and the consonant's piece holds the rest,
   its recording stretched; before `l` the vowel is the bank's `U` where it has `U l` (`kU`, `U l`).
   The held l (twinkle) is sung on the word-final recording (`U l-`), which has it held: Teto's `U l` has 17 ms of l, and stretched it was
-  heard as a muffled, rolled "kru".
+  heard as a muffled, rolled "kru". Mid-phrase it is `Held`: used only to the end of its
+  unstretched part (`oto.ini`'s consonant), the l after its preutterance stretched to fill, for
+  with its release into silence the voice broke off after the l.
   Held as Teto sings `@`, the owner heard "win-kEtz", "littEl", and asked for "twin-kULe"
   (2026-11-28).
 - The sung audio starts at the score's 0 s, so a consonant before a first note at 0 (`- tw`) is

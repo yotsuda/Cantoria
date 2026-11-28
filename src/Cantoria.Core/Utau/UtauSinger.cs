@@ -118,7 +118,7 @@ public sealed class UtauSinger : ISinger, IDisposable
             ct.ThrowIfCancellationRequested();
             var s = segments[k];
             var (from, to, fadeIn, fadeOut, skip) = timings[k];
-            var y = Render(s.Oto, fs, from, to, curve, lead, skip * 1000);
+            var y = Render(s.Oto, fs, from, to, curve, lead, skip * 1000, s.Held);
             int at = (int)Math.Round((from + lead) * fs);
             int inLen = Math.Max(1, (int)(fadeIn * fs)), outLen = Math.Max(1, (int)(fadeOut * fs));
             for (int i = 0; i < y.Length; i++)
@@ -229,19 +229,23 @@ public sealed class UtauSinger : ISinger, IDisposable
     }
 
     /// <summary>A recording made as long as from..to (seconds on the score's clock) on the curve's pitch, its first
-    /// <paramref name="skipMs"/> left out.</summary>
-    private double[] Render(Oto oto, int fs, double from, double to, float[] curve, double lead, double skipMs = 0)
+    /// <paramref name="skipMs"/> left out. <paramref name="held"/>: only to the end of its unstretched part (its
+    /// release left out), what follows its preutterance stretched (<see cref="UtauSegment.Held"/>).</summary>
+    private double[] Render(Oto oto, int fs, double from, double to, float[] curve, double lead, double skipMs = 0, bool held = false)
     {
         var src = Analyse(oto, fs);
-        skipMs = Math.Clamp(skipMs, 0, Math.Max(0, src.LengthMs - 2 * FrameMs));
-        double fixedMs = Math.Clamp(oto.Consonant - skipMs, 0, src.LengthMs - skipMs);
+        double endMs = held ? Math.Clamp(oto.Consonant, 3 * FrameMs, src.LengthMs) : src.LengthMs;
+        skipMs = Math.Clamp(skipMs, 0, Math.Max(0, endMs - 2 * FrameMs));
+        double fixedMs = held
+            ? Math.Clamp(oto.Preutter + 30 - skipMs, 0, Math.Max(0, endMs - skipMs - 2 * FrameMs))
+            : Math.Clamp(oto.Consonant - skipMs, 0, src.LengthMs - skipMs);
         double outMs = (to - from) * 1000;
         int frames = (int)(outMs / FrameMs) + 1;
         int width = src.Width;
         var f0 = new double[frames];
         var sp = new double[frames * width];
         var ap = new double[frames * width];
-        double rest = outMs - fixedMs, recorded = src.LengthMs - skipMs - fixedMs;
+        double rest = outMs - fixedMs, recorded = endMs - skipMs - fixedMs;
         for (int j = 0; j < frames; j++)
         {
             double t = j * FrameMs;

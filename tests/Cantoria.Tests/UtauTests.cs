@@ -207,10 +207,12 @@ public sealed class UtauTests : IDisposable
             new[] { "- tw", "tw", "wI", "I N", "kU", "U l", "U l-", "k@", "@ l" }.Select(a => $"a.wav={a},0,100,-500,60,20\n"))));
         // The l held before another consonant is the word-final recording, which has it held ("U l" stretched was
         // heard as "kru").
-        Assert.Equal(["- tw", "wI", "I N", "kU", "U l-", "tw", "wI"],   // ("twin" ends on n: "I n" is not in this bank)
-            Aliases(UtauPhonemizer.Segments(new SungScore([
-                new SungNote(0, 0.5, 60, "Twin", Hyphen: true), new SungNote(0.5, 0.5, 60, "kle"), new SungNote(1, 0.5, 60, "twin"),
-            ], Language: "en"), withU, "utau/english")));
+        var twinkleTwin = UtauPhonemizer.Segments(new SungScore([
+            new SungNote(0, 0.5, 60, "Twin", Hyphen: true), new SungNote(0.5, 0.5, 60, "kle"), new SungNote(1, 0.5, 60, "twin"),
+        ], Language: "en"), withU, "utau/english");
+        Assert.Equal(["- tw", "wI", "I N", "kU", "U l-", "tw", "wI"], Aliases(twinkleTwin));   // ("twin" ends on n: "I n" is not in this bank)
+        // Mid-phrase, without its release into silence (the voice broke off after the l).
+        Assert.True(twinkleTwin[4].Held);
         // The last consonant ends a little into the rest after the note.
         Assert.True(segments[7].Start < 2.0 && segments[7].End > 2.0, $"{segments[7].Start}..{segments[7].End}");
         Assert.Equal(["en"], English().Languages);
@@ -410,8 +412,8 @@ public sealed class UtauTests : IDisposable
         }
         foreach (var r in held)
         {
-            // (little's "tle" ends on st, unvoiced, after the l of "U l-" dying away: about 56% of it is voiced.)
-            Assert.True(r.Voiced >= 0.5, $"note {r.Index} is voiced {r.Voiced:0%}");
+            // (little's "tle" ends on st, unvoiced: about 68% of it is voiced; 56% while the l of "U l-" died away.)
+            Assert.True(r.Voiced >= 0.6, $"note {r.Index} is voiced {r.Voiced:0%}");
             Assert.InRange(r.Sung!.Value, r.Written - 0.5, r.Written + 0.5);
         }
     }

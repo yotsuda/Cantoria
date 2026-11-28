@@ -199,9 +199,12 @@ public static class UtauEnglishPhonemizer
                 // A syllabic consonant held on (twinkle: the l) is sung on the recording of it ending a word (U l-),
                 // which has it held: "U l" has 17 ms of l in Teto English, and stretched it was heard as a muffled,
                 // rolled "kru" (owner's report 2026-11-28).
-                if (coda.Count > 0 && ((p.Syllabic && coda.Count == 1
-                        ? Find(bank, p.Vowel + " " + coda[0] + "-", p.Midi) : null)
-                    ?? Find(bank, p.Vowel + " " + coda[0], p.Midi)) is { } vc)
+                // Its release into silence is left out (Held): sung, the voice broke off after the l (owner's report).
+                if (coda.Count > 0 && p.Syllabic && coda.Count == 1 && Find(bank, p.Vowel + " " + coda[0] + "-", p.Midi) is { } final)
+                {
+                    pieces.Add(new Piece(final, null, coda[0], Held: true));
+                }
+                else if (coda.Count > 0 && Find(bank, p.Vowel + " " + coda[0], p.Midi) is { } vc)
                 {
                     pieces.Add(new Piece(vc, null, coda[0]));
                 }
@@ -304,7 +307,7 @@ public static class UtauEnglishPhonemizer
     public const double RoomShare = 0.6;
 
     /// <summary>A recording and the consonants it begins and ends on (null: a vowel, or silence).</summary>
-    private sealed record Piece(Oto Oto, string? First, string? Last);
+    private sealed record Piece(Oto Oto, string? First, string? Last, bool Held = false);
 
     /// <summary>
     /// How long a piece lasts before the next one's beat. Where the next one begins on the consonant this one ends
@@ -322,7 +325,8 @@ public static class UtauEnglishPhonemizer
         {
             return Math.Clamp(pre, 0.03, UtauPhonemizer.BridgeSeconds);
         }
-        return Math.Clamp(After(piece.Oto), 0.03, 0.2) + Math.Clamp(pre - next.Oto.Overlap / 1000, 0.03, UtauPhonemizer.BridgeSeconds);
+        double own = piece.Held ? (piece.Oto.Consonant - piece.Oto.Preutter) / 1000 : After(piece.Oto);
+        return Math.Clamp(own, 0.03, 0.2) + Math.Clamp(pre - next.Oto.Overlap / 1000, 0.03, UtauPhonemizer.BridgeSeconds);
     }
 
     /// <summary>The pieces laid before <paramref name="beat"/>, each as long as <see cref="Before"/> says, all within
@@ -349,7 +353,7 @@ public static class UtauEnglishPhonemizer
         for (int k = 0; k < pieces.Count; k++)
         {
             double to = at + lengths[k] * scale;
-            segments.Add(new UtauSegment(pieces[k].Oto, k == 0 ? start : at, to, note, Bridge: true, FromVowel: pieces[k].First is null));
+            segments.Add(new UtauSegment(pieces[k].Oto, k == 0 ? start : at, to, note, Bridge: true, FromVowel: pieces[k].First is null, Held: pieces[k].Held));
             at = to;
         }
     }
