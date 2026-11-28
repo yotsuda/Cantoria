@@ -107,7 +107,11 @@ DiffSinger (プロセス内の ONNX)、NEUTRINO、VOICEVOX。主な呼び手は 
     **1 回目 (2026-11-28、緑)**: CPU 20.0 / 18.6 s。MLProgram は全モデルだと duration の linguistic で落ちる (attention の
     長さ 0 の slice を CoreML EP が断る)。NeuralNetwork は歌い 17.9 / 14.4 s (グラフが 45〜68 個に切れ、CoreML は半分ほど)。
     そこで `CANTORIA_COREML` に `Models=acoustic,vocoder` (CoreML に回すモデル、残りは CPU) と、serve の `CANTORIA_TRACE`
-    (モデルごとの秒を stderr に) を足し、表に warm の dur・pitch+acoustic・vocoder の列。**2 回目は push 待ち**。
+    (モデルごとの秒を stderr に) を足し、表に warm の dur・pitch+acoustic・vocoder の列。
+    **2 回目**: acoustic も MLProgram では同じ理由で落ち (モデルの中の作り。Qixuan の規約で模型は変えられない)、NeuralNetwork でも
+    CPU より速くない。**vocoder は CoreML NeuralNetwork で 2.35 s (CPU 7.74 s)**。VM の揺れが 3 割あるので warm を 3 回歌い最速を取る。
+    **3 回目は push 待ち**: vocoder だけを CoreML に、MLProgram・NeuralNetwork・CPUAndNeuralEngine・CPUOnly で比べる。
+    勝った設定を `CoreMLDefaults` (と `Models=vocoder` を既定に) にし、auto を macOS で CoreML にするかを決める。
     WAV (`cpu-1.wav`、`coreml-ModelFormat-NeuralNetwork-1.wav`) は %TEMP%\cantoria-mac1 に落とした。**オーナーの耳はまだ**。
     結果を見て: 正しく歌い速い設定を `CoreMLDefaults` に、CPU より遅くなければ auto を macOS で CoreML に (roadmap B5)。WAV はオーナーの耳で。
 

@@ -144,7 +144,12 @@ log (each model's seconds) on stderr. First run there (2026-11-28, M1 VM, 3 core
 the 7 s example, 20 steps): the CPU 20.0 s first / 18.6 s warm; MLProgram on every model
 fails in the duration predictor's linguistic encoder (an attention slice of zero elements,
 which the CoreML provider refuses); NeuralNetwork sings, 17.9 / 14.4 s, with the graphs cut
-into 45–68 CoreML partitions covering about half the nodes. On the CPU a 7 s phrase renders in 4–18 s at 10–20 steps; on DirectML
+into 45–68 CoreML partitions covering about half the nodes. Second run: the acoustic
+model's encoder fails MLProgram the same way (the zero-element slice is in the models, and
+Qixuan's terms forbid changing them), and in NeuralNetwork it is no faster than the CPU
+(18.7–23.5 s against 17.0); the vocoder on CoreML NeuralNetwork took 2.35 s against the CPU's
+7.74. The runner's seconds swing by a third between runs, so the bench now reports the
+fastest of three warm requests. On the CPU a 7 s phrase renders in 4–18 s at 10–20 steps; on DirectML
 the acoustic model takes 0.3 s and the phrase under a second once the models are
 resident. The variance path is written after OpenUtau but untested (the voice at
 hand has no `dsvariance`).

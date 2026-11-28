@@ -26,6 +26,9 @@ param(
     [string] $Score = (Join-Path $PSScriptRoot '..' 'examples' 'yukiyakonko.json'),
     [string[]] $Runs = @('cpu', 'coreml'),
     [int] $Steps = 20,
+    # Warm requests after the first, each the score a semitone higher than the last; the fastest
+    # is reported (a shared runner's seconds swing by a third from one run to the next).
+    [int] $Warm = 3,
     [string] $Out = 'bench'
 )
 
@@ -33,9 +36,11 @@ $ErrorActionPreference = 'Stop'
 $Program = (Resolve-Path $Program).Path
 New-Item -ItemType Directory -Force -Path $Out | Out-Null
 $Out = (Resolve-Path $Out).Path
-$base = Get-Content -Raw $Score | ConvertFrom-Json
-$up = Get-Content -Raw $Score | ConvertFrom-Json
-foreach ($n in $up.notes) { $n.pitch = [int]$n.pitch + 1 }
+$scores = foreach ($k in 0..$Warm) {
+    $s = Get-Content -Raw $Score | ConvertFrom-Json
+    foreach ($n in $s.notes) { $n.pitch = [int]$n.pitch + $k }
+    $s
+}
 
 function Invoke-Run([string] $run) {
     $provider, $pairs = $run -split ':', 2
@@ -57,7 +62,8 @@ function Invoke-Run([string] $run) {
         $ready = $p.StandardOutput.ReadLine()
         if (-not $ready) { throw "serve said nothing" }
         $i = 0
-        foreach ($s in @($base, $up)) {
+        $warmSeconds = @()
+        foreach ($s in $scores) {
             $i++
             $wav = Join-Path $Out "$safe-$i.wav"
             $req = @{ id = "$i"; score = $s; voice = $Voice; output = $wav } | ConvertTo-Json -Depth 10 -Compress
@@ -71,8 +77,10 @@ function Invoke-Run([string] $run) {
             } while ($answer.id -ne "$i")
             if ($answer.error) { throw $answer.error }
             if ($answer.provider) { $row.provider = $answer.provider }
-            $row[$(if ($i -eq 1) { 'first' } else { 'warm' })] = '{0:0.00}' -f [double]$answer.seconds
+            if ($i -eq 1) { $row.first = '{0:0.00}' -f [double]$answer.seconds } else { $warmSeconds += [double]$answer.seconds }
+            if ($i -gt 2) { Remove-Item -LiteralPath $wav -ErrorAction Ignore }    # two WAVs a run are enough to listen to
         }
+        $row.warm = '{0:0.00}' -f ($warmSeconds | Measure-Object -Minimum).Minimum
         $p.StandardInput.WriteLine('{"command":"shutdown"}')
         $p.StandardInput.Close()
     }
@@ -83,20 +91,25 @@ function Invoke-Run([string] $run) {
     if (-not $p.WaitForExit(120000)) { $p.Kill($true) }
     $stderr = $errTask.Result
     Set-Content -LiteralPath (Join-Path $Out "$safe.stderr.txt") -Value $stderr
-    # The warm request's seconds per model, summed over its phrases. Each phrase's log gives the
-    # seconds since the phrase began: "timing: … in 0.10 s" (duration), "acoustic: … in 17.86 s"
-    # (pitch, variance and acoustic since), "vocoder …: … in 19.44 s" (the vocoder since).
-    $sums = @{ dur = 0.0; acoustic = 0.0; vocoder = 0.0 }; $last = 0.0; $seen = $false
-    foreach ($m in [regex]::Matches($stderr, "trace 2: (timing|acoustic|vocoder)\b[^\n]* in ([0-9.]+) s")) {
-        $at = [double]::Parse($m.Groups[2].Value, [cultureinfo]::InvariantCulture)
-        switch ($m.Groups[1].Value) {
-            'timing' { $sums.dur += $at }
-            'acoustic' { $sums.acoustic += $at - $last }
-            'vocoder' { $sums.vocoder += $at - $last }
+    # Each warm request's seconds per model, summed over its phrases; the fastest of each is
+    # reported. Each phrase's log gives the seconds since the phrase began: "timing: … in 0.10 s"
+    # (duration), "acoustic: … in 17.86 s" (pitch, variance and acoustic since), "vocoder …: … in
+    # 19.44 s" (the vocoder since).
+    $best = @{}
+    foreach ($id in 2..($Warm + 1)) {
+        $sums = @{ dur = 0.0; acoustic = 0.0; vocoder = 0.0 }; $last = 0.0; $seen = $false
+        foreach ($m in [regex]::Matches($stderr, "trace ${id}: (timing|acoustic|vocoder)\b[^\n]* in ([0-9.]+) s")) {
+            $at = [double]::Parse($m.Groups[2].Value, [cultureinfo]::InvariantCulture)
+            switch ($m.Groups[1].Value) {
+                'timing' { $sums.dur += $at }
+                'acoustic' { $sums.acoustic += $at - $last }
+                'vocoder' { $sums.vocoder += $at - $last }
+            }
+            $last = $at; $seen = $true
         }
-        $last = $at; $seen = $true
+        if ($seen) { foreach ($k in $sums.Keys) { if (-not $best.ContainsKey($k) -or $sums[$k] -lt $best[$k]) { $best[$k] = $sums[$k] } } }
     }
-    if ($seen) { foreach ($k in 'dur', 'acoustic', 'vocoder') { $row[$k] = '{0:0.00}' -f $sums[$k] } }
+    foreach ($k in $best.Keys) { $row[$k] = '{0:0.00}' -f $best[$k] }
     [pscustomobject]$row
 }
 
